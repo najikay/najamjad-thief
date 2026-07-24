@@ -1,0 +1,29 @@
+# Nightly self-play statistics (T-0217, FR-STR-7): never blocks PRs; skips
+# loudly until the E21 harness lands, then publishes win-rate artifacts that
+# feed the analysis notebook's sensitivity study.
+name: nightly-selfplay
+on:
+  schedule:
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  selfplay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Run seeded self-play harness when present
+        run: |
+          if [ -f scripts/selfplay_harness.py ]; then
+            uv sync --frozen
+            uv run python scripts/selfplay_harness.py --nightly --seed-count 100
+          else
+            echo "::notice::self-play harness not built yet (E21) — skipping by design"
+          fi
+      - name: Publish win-rate summary
+        if: hashFiles('results/selfplay/summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfplay-summary
+          path: results/selfplay/summary.json

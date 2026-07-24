@@ -1,0 +1,67 @@
+{
+  "_schema": "Agreed game configuration for one match. Values come from the master parameter table (Appendix F). Per the appendix's mandatory rules both teams must hold BYTE-IDENTICAL values, lock them cryptographically (config_sha256), give the file a unique name per game, and attach it to GitHub. 'status' recap: minimum = may only be raised; permanent = must not change; negotiation = any agreed value.",
+  "schema_version": "1.1",
+  "_note": "Shared, agreed game terms. BOTH peers must hold a byte-identical copy; the pre-game signature exchange refuses to play on any mismatch. This overlays the private per-peer game.toml. Book: Appendix F.",
+  "agreed_between": [
+    "segal-police-team",
+    "segal-thief-team"
+  ],
+  "board_and_agents": {
+    "grid_size": 7,
+    "thief_start": [
+      3,
+      3
+    ],
+    "cop_start": [
+      0,
+      0
+    ]
+  },
+  "movement_and_barriers": {
+    "move_set": [
+      "N",
+      "S",
+      "E",
+      "W",
+      "STAY"
+    ],
+    "max_barriers": 14,
+    "max_moves": 35,
+    "survival_threshold": 35
+  },
+  "scoring": {
+    "capture_cop": 20,
+    "capture_thief": 5,
+    "survival_cop": 5,
+    "survival_thief": 10,
+    "tie_score": 2
+  },
+  "pheromones": {
+    "pheromone_center_intensity": 0.9,
+    "pheromone_decay": 0.1,
+    "pheromone_grid_size": 5
+  },
+  "network_and_league": {
+    "num_games": 1,
+    "token_budget_per_series": 200000
+  },
+  "rate_limiter_gatekeeper": {
+    "requests_per_minute": 30,
+    "concurrent_requests": 2,
+    "retry_backoff_sec": 5,
+    "max_retries": 3,
+    "queue_depth": 100
+  },
+  "game_id": "segal-police-team-vs-segal-thief-team",
+  "game_uid": "57ea5514-cff0-b04c-edb8-f6efeadeb4ee",
+  "sub_game_number": 1,
+  "links": {
+    "_remark": "These are logical roles, NOT fixed filenames. Each actual file name MUST be derived from the game_id so that files from different games are never mixed. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json where <NN> is the sub_game_number. The names below are examples for game_id=S01R02-team07-vs-team13.",
+    "declaration": "declaration_segal-police-team-vs-segal-thief-team.json",
+    "config": "config_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "log": "log_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "result": "result_segal-police-team-vs-segal-thief-team.json"
+  },
+  "config_name": "config_segal-police-team-vs-segal-thief-team_g01.json",
+  "config_sha256": "bd23d9eef59d92abd23f8795f6d34411b7ee3fe54bc5bf424cc14a004694c040"
+}

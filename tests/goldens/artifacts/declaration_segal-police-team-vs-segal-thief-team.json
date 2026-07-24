@@ -1,0 +1,75 @@
+{
+  "_schema": "Static declaration for the WHOLE game (the full series of sub-games) between two teams. This is the single home for every field that does NOT change while the sub-games are played: team identity, members, cop/thief repository URLs, MCP server URLs, hardware spec, LLM model, the agreed max-tokens-per-game cap, and the game start/end times. Roles (cop/thief) switch across the sub-games, so no role and no sub_game_number appear here. Both teams sign it and lock it cryptographically before play (book ch5 Step-0). Data that changes per sub-game (github_commit, moves, scores) lives in 3-game-log.json and 4-final-result.json.",
+  "schema_version": "1.1",
+  "declaration_type": "pre_game_declaration",
+  "game_id": "segal-police-team-vs-segal-thief-team",
+  "game_uid": "57ea5514-cff0-b04c-edb8-f6efeadeb4ee",
+  "links": {
+    "_remark": "These are logical roles, NOT fixed filenames. Each actual file name MUST be derived from the game_id so that files from different games are never mixed. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json where <NN> is the sub_game_number. The names below are examples for game_id=S01R02-team07-vs-team13.",
+    "declaration": "declaration_segal-police-team-vs-segal-thief-team.json",
+    "config": "config_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "log": "log_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "result": "result_segal-police-team-vs-segal-thief-team.json"
+  },
+  "timezone": "Asia/Jerusalem",
+  "game_started_at": "2026-07-11T10:52:38.641957+00:00",
+  "game_ended_at": "2026-07-11T10:53:10.841957+00:00",
+  "num_sub_games": 1,
+  "max_tokens_per_game": 200000,
+  "groups": {
+    "group_1": {
+      "group_id": "segal-thief-team",
+      "group_name": "Segal-Thief-Team",
+      "members": [
+        "id-2001",
+        "id-2002",
+        "id-2003"
+      ],
+      "repos": {
+        "cop": "https://github.com/rmisegal/Game-P2P-Cop-Chase",
+        "thief": "https://github.com/rmisegal/Game-P2P-Cop-Chase"
+      },
+      "mcp_servers": {
+        "cop": "http://127.0.0.1:8801/mcp",
+        "thief": "http://127.0.0.1:8801/mcp"
+      },
+      "llm_model": "claude-opus-4-8[1m]",
+      "hardware_spec": {
+        "cpu_type": "Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz",
+        "cpu_freq_mhz": 2400,
+        "cpu_cores": 8,
+        "ram_gb": 31.8,
+        "gpu_model": "NVIDIA GeForce RTX 2060",
+        "vram_gb": 6.0
+      },
+      "signature": "d0c2c1bd96dce4f9012e25e600123445dbc09cd1b87a519964a4cc2e8a6e628c"
+    },
+    "group_2": {
+      "group_id": "segal-police-team",
+      "group_name": "Segal-Police-Team",
+      "members": [
+        "id-1001",
+        "id-1002",
+        "id-1003"
+      ],
+      "repos": {
+        "cop": "https://github.com/rmisegal/Game-P2P-Cop-Chase",
+        "thief": "https://github.com/rmisegal/Game-P2P-Cop-Chase"
+      },
+      "mcp_servers": {
+        "cop": "http://127.0.0.1:8802/mcp",
+        "thief": "http://127.0.0.1:8802/mcp"
+      },
+      "llm_model": "claude-opus-4-8[1m]",
+      "hardware_spec": {
+        "cpu_type": "Intel(R) Core(TM) i9-9980HK CPU @ 2.40GHz",
+        "cpu_freq_mhz": 2400,
+        "cpu_cores": 8,
+        "ram_gb": 31.8,
+        "gpu_model": "NVIDIA GeForce RTX 2060",
+        "vram_gb": 6.0
+      },
+      "signature": "1821f13670c4e8aa6ff628d1858e2447dae63a6fdb3b8656f6a4a0aac3ac071a"
+    }
+  }
+}

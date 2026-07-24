@@ -1,0 +1,29 @@
+# CI compliance robot (PLAN ADR-010): every guideline gate the grader can
+# machine-check runs on every push, so a red main branch is impossible to miss.
+name: ci
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies (locked)
+        run: uv sync --frozen
+      - name: Ruff — zero violations (guidelines §7.1)
+        run: uv run ruff check .
+      - name: File-size gate — 150 hard / 120 warn (guidelines §3.2)
+        run: uv run python scripts/check_file_sizes.py
+      - name: Repo rules — uv-only, no silent excepts, no secrets
+        run: uv run python scripts/check_repo_rules.py
+      - name: Structure presence — mandated files exist (guidelines E6 gate)
+        run: |
+          for f in README.md docs/PRD.md docs/PLAN.md docs/TODO.md docs/CORE_SYNC.md \
+                   .env-example uv.lock LICENSE config/rate_limits.json; do
+            test -f "$f" || { echo "missing mandated file: $f"; exit 1; }
+          done
+      - name: Tests + coverage >= 85 enforced (guidelines §6.2)
+        run: uv run pytest tests/
+      - name: Pyright basic (ADR-014, stricter-than-guidelines)
+        run: uv run pyright

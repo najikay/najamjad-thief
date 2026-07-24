@@ -1,0 +1,75 @@
+{
+  "_schema": "Summary and final result for the WHOLE game (all sub-games) between two teams. It condenses the per-sub-game logs into a per-group score for every sub-game plus the aggregate outcome the lecturer needs to build the league standings. Static team metadata (identity, members, repos, MCP, hardware, model) is NOT repeated here — it lives in 1-pre-game-declaration.json and is referenced via game_id / group_id. Both teams must agree on this result and each sends its own copy to the lecturer (book ch9).",
+  "schema_version": "1.1",
+  "report_type": "final_game_result",
+  "game_id": "segal-police-team-vs-segal-thief-team",
+  "game_uid": "57ea5514-cff0-b04c-edb8-f6efeadeb4ee",
+  "links": {
+    "_remark": "These are logical roles, NOT fixed filenames. Each actual file name MUST be derived from the game_id so that files from different games are never mixed. Match-level files (declaration, result) are named <role>_<game_id>.json; per-sub-game files (config, log) are named <role>_<game_id>_g<NN>.json where <NN> is the sub_game_number. The names below are examples for game_id=S01R02-team07-vs-team13.",
+    "declaration": "declaration_segal-police-team-vs-segal-thief-team.json",
+    "config": "config_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "log": "log_segal-police-team-vs-segal-thief-team_g<NN>.json",
+    "result": "result_segal-police-team-vs-segal-thief-team.json"
+  },
+  "timezone": "Asia/Jerusalem",
+  "groups": [
+    "segal-police-team",
+    "segal-thief-team"
+  ],
+  "num_sub_games": 1,
+  "sub_games": [
+    {
+      "sub_game_number": 1,
+      "roles": {
+        "segal-thief-team": "thief",
+        "segal-police-team": "police"
+      },
+      "started_at": "2026-07-11T10:52:38.641957+00:00",
+      "ended_at": "2026-07-11T10:53:10.841957+00:00",
+      "result": "capture",
+      "winner_group": "segal-police-team",
+      "tie": false,
+      "github_commit": {
+        "segal-thief-team": "unknown",
+        "segal-police-team": "unknown"
+      },
+      "tokens": {
+        "segal-thief-team": 0,
+        "segal-police-team": 0
+      },
+      "score": {
+        "segal-thief-team": 5,
+        "segal-police-team": 20
+      },
+      "log_files": {
+        "segal-thief-team": "log_segal-police-team-vs-segal-thief-team_g01.json",
+        "segal-police-team": "log_segal-police-team-vs-segal-thief-team_g01.json"
+      },
+      "audit": {
+        "log_verified": true,
+        "tampered": false
+      }
+    }
+  ],
+  "final_result": {
+    "total_score": {
+      "segal-police-team": 20,
+      "segal-thief-team": 5
+    },
+    "sub_games_won": {
+      "segal-police-team": 1,
+      "segal-thief-team": 0
+    },
+    "ties": 0,
+    "winner_group": "segal-police-team",
+    "series_tie": false,
+    "tokens_total_series": {
+      "segal-police-team": 0,
+      "segal-thief-team": 0
+    }
+  },
+  "mutual_agreement": {
+    "sha256": "31d678dadbd226dcb1ad87848386416702dcf0735746d7c812350ebc69cbdc81",
+    "confirmed": true
+  }
+}

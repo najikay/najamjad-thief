@@ -1,0 +1,24 @@
+# Secrets — never committed (guidelines §7.4; book rules 39-40)
+.env
+*.pem
+*.key
+credentials.json
+token.json
+secrets/
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+
+# Runtime artifacts (archived per match under version control only via matches/)
+logs/
+*.log
+
+# Per-match private material stays out of history
+matches/**/secrets*
