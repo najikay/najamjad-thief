@@ -62,10 +62,33 @@ def test_no_module_compares_a_commit_with_plain_equality() -> None:
 
 
 def test_nonces_come_from_the_secrets_module_only() -> None:
-    """`random` is predictable; a guessable nonce would break every commitment."""
+    """`random` is predictable; a guessable nonce would break every commitment.
+
+    One exception, and it is deliberate: the template bank uses seeded `random`
+    to vary hint wording, because reproducible dialogue makes a lost game
+    debuggable and a replay faithful. It never touches cryptographic material —
+    `test_the_template_bank_never_produces_cryptographic_material` proves that.
+    """
+    allowed = {"template_provider.py"}
     for path in SOURCES:
+        if path.name in allowed:
+            continue
         text = _read(path)
         assert "import random" not in text, f"{path.name} imports the predictable random module"
+
+
+def test_the_template_bank_never_produces_cryptographic_material() -> None:
+    """The one module allowed weak randomness must not reach the crypto layer."""
+    source = _read(SRC / "llm/template_provider.py")
+    for forbidden in ("nonce", "token_hex", "commit", "seal(", "hashlib"):
+        assert forbidden not in source, f"template_provider.py touches {forbidden!r}"
+
+
+def test_seeded_randomness_is_confined_to_the_llm_layer() -> None:
+    """Nothing in domain/ or net/ may depend on a predictable RNG."""
+    for folder in ("domain", "net", "protocol", "negotiation"):
+        for path in (SRC / folder).rglob("*.py"):
+            assert "import random" not in _read(path), f"{folder}/{path.name} imports random"
 
 
 def test_nonce_entropy_is_sixteen_bytes() -> None:

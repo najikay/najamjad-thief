@@ -369,11 +369,11 @@
 - [x] **T-1106** (P0) Add ngrok-fallback tests: switching `tunnel.provider` in config selects ngrok static domain with zero code change — DoD: tests green [ADR-004]
 - [x] **T-1107** (P0) Implement the ngrok fallback path — DoD: T-1106 green
 - [x] **T-1108** (P0) Add tunnel-health event tests: up/down/restart transitions emitted to the event bus (feeds the UI tunnel panel) — DoD: tests green [FR-OBS-1]
-- [~] **T-1109** (P0) Ops: create the named tunnel(s) + DNS routes (cop and thief hostnames) in the chosen provider; store credentials outside the repo — DoD: both public URLs reachable from a phone network; nothing tunnel-secret in git [deps: T-1101]
+- [x] **T-1109** (P0) Ops: create the named tunnel(s) + DNS routes (cop and thief hostnames) in the chosen provider; store credentials outside the repo — DoD: both public URLs reachable from a phone network; nothing tunnel-secret in git [deps: T-1101]
 - [x] **T-1110** (P0) Write failing tests for the `preflight` verb: aggregates named checks into a green/red checklist; process exit code nonzero if any red — DoD: tests fail (RED) [FR-NET-8]
 - [x] **T-1111** (P0) Implement preflight check: tunnel self-call — invoke our own MCP tool via the PUBLIC URL and verify the response — DoD: check green against live tunnel, red when tunnel down [FR-NET-8]
 - [x] **T-1112** (P0) Implement preflight check: config signature + version — locked game.json hash matches contract (when present), config versions supported — DoD: check red on any hash/version mismatch [FR-NEG-1]
-- [~] **T-1113** (P0) Implement preflight check: Gmail token validity — credentials load + token refresh dry-run, NO interactive OAuth, NO send — DoD: check red on expired/revoked token (A6 lesson 6) [FR-REP-3]
+- [x] **T-1113** (P0) Implement preflight check: Gmail token validity — credentials load + token refresh dry-run, NO interactive OAuth, NO send — DoD: check red on expired/revoked token (A6 lesson 6) [FR-REP-3]
 - [x] **T-1114** (P0) Implement preflight checks: LLM provider health (anthropic + deepseek ping via gatekeeper) and clock sanity (skew vs NTP < threshold) — DoD: both checks flip red under mocked failure [FR-LLM-1]
 - [x] **T-1115** (P0) Add preflight integration test: mocked red/green combinations render the correct checklist and exit codes — DoD: test matrix green [deps: T-1111, T-1114]
 - [x] **T-1116** (P0) Complete `docs/runbook-network.md`: tunnel setup, fallback switch procedure, WSL2 port forwarding, second-machine host procedure — DoD: a team member reproduces the setup from the doc alone
@@ -414,25 +414,25 @@
 
 ## E13 — LLM layer (32 tasks)
 
-- [ ] **T-1301** (P0) Write failing tests for `llm/router.py`: ordered chain anthropic → deepseek → template; degradation on error/timeout/budget-stop — DoD: tests fail (RED) [FR-LLM-1 / ADR-003]
-- [ ] **T-1302** (P0) Implement `llm/router.py` (≤120 code lines) — DoD: T-1301 green
-- [ ] **T-1303** (P0) Add recovery tests: health-check success promotes the router back up the chain (template → deepseek → anthropic) — DoD: tests green [FR-LLM-1]
-- [ ] **T-1304** (P0) Implement health tracking + recovery probes in the router — DoD: T-1303 green
-- [ ] **T-1305** (P0) Add active-provider visibility tests: every switch emits a structured event (provider, model, reason); current provider+model queryable for the UI badge and per-message provenance — DoD: tests green [FR-LLM-2]
-- [ ] **T-1306** (P1) Add per-purpose routing tests: banter → cheap model, negotiation prose → stronger model, from config — DoD: tests green [FR-LLM-6 / PLAN §8]
-- [ ] **T-1307** (P0) Write failing tests for `llm/anthropic_provider.py`: request/response mapping, timeout handling, typed error taxonomy; ALL calls via the `anthropic` gatekeeper; provider fully mocked — DoD: tests fail (RED) [FR-LLM-3]
-- [ ] **T-1308** (P0) Implement `llm/anthropic_provider.py` (≤120 code lines) — DoD: T-1307 green; no test touches the real API [guidelines test rule 7]
-- [ ] **T-1309** (P0) Write failing tests for `llm/deepseek_provider.py`: OpenAI-compatible client, same interface, via the `deepseek` gatekeeper; mocked — DoD: tests fail (RED)
-- [ ] **T-1310** (P0) Implement `llm/deepseek_provider.py` (≤120 code lines) — DoD: T-1309 green
-- [ ] **T-1311** (P0) Add provider-contract conformance tests: both providers + template satisfy one shared Provider protocol (same call signature, error taxonomy, token-usage report) — DoD: contract test suite green against all three
-- [ ] **T-1312** (P0) Write failing tests for `llm/template_provider.py`: role-specific sentence banks, landmark vocab keyed by `map_area` from config, deterministic under seed, zero tokens — DoD: tests fail (RED) [FR-LLM-1]
-- [ ] **T-1313** (P0) Implement `llm/template_provider.py` (≤120 code lines) — DoD: T-1312 green
-- [ ] **T-1314** (P1) Add template intent-mix tests: template hints carry a truth/lie verdict distribution from config (never hardcoded 40%) — DoD: tests green [FR-CFG-2]
-- [ ] **T-1315** (P0) Write failing tests for `llm/prompts.py` hint prompt: pins map area, word cap, truth/lie instruction, strict JSON contract `{"message","verdict","reasoning"}` — DoD: tests fail (RED) [FR-LLM-4]
-- [ ] **T-1316** (P0) Implement `llm/prompts.py` builders (hint, parse, negotiate; ≤120 code lines) — DoD: T-1315 green; prompts stored for the prompt book
-- [ ] **T-1317** (P1) Add negotiation/parse prompt tests: negotiate prompt renders playbook position + red lines; parse prompt demands structured claim JSON with confidence — DoD: tests green [FR-NEG-4 / FR-LLM-5]
-- [ ] **T-1318** (P0) Write failing tests for `llm/hint_guard.py`: word cap ≤ `hint_max_words` enforced post-generation (truncate or regenerate policy) — DoD: tests fail (RED) [FR-LLM-4]
-- [ ] **T-1319** (P0) Implement `llm/hint_guard.py` (≤120 code lines) — DoD: T-1318 green
+- [x] **T-1301** (P0) Write failing tests for `llm/router.py`: ordered chain anthropic → deepseek → template; degradation on error/timeout/budget-stop — DoD: tests fail (RED) [FR-LLM-1 / ADR-003]
+- [x] **T-1302** (P0) Implement `llm/router.py` (≤120 code lines) — DoD: T-1301 green
+- [x] **T-1303** (P0) Add recovery tests: health-check success promotes the router back up the chain (template → deepseek → anthropic) — DoD: tests green [FR-LLM-1]
+- [x] **T-1304** (P0) Implement health tracking + recovery probes in the router — DoD: T-1303 green
+- [x] **T-1305** (P0) Add active-provider visibility tests: every switch emits a structured event (provider, model, reason); current provider+model queryable for the UI badge and per-message provenance — DoD: tests green [FR-LLM-2]
+- [~] **T-1306** (P1) Add per-purpose routing tests: banter → cheap model, negotiation prose → stronger model, from config — DoD: tests green [FR-LLM-6 / PLAN §8]
+- [x] **T-1307** (P0) Write failing tests for `llm/anthropic_provider.py`: request/response mapping, timeout handling, typed error taxonomy; ALL calls via the `anthropic` gatekeeper; provider fully mocked — DoD: tests fail (RED) [FR-LLM-3]
+- [x] **T-1308** (P0) Implement `llm/anthropic_provider.py` (≤120 code lines) — DoD: T-1307 green; no test touches the real API [guidelines test rule 7]
+- [x] **T-1309** (P0) Write failing tests for `llm/deepseek_provider.py`: OpenAI-compatible client, same interface, via the `deepseek` gatekeeper; mocked — DoD: tests fail (RED)
+- [x] **T-1310** (P0) Implement `llm/deepseek_provider.py` (≤120 code lines) — DoD: T-1309 green
+- [x] **T-1311** (P0) Add provider-contract conformance tests: both providers + template satisfy one shared Provider protocol (same call signature, error taxonomy, token-usage report) — DoD: contract test suite green against all three
+- [x] **T-1312** (P0) Write failing tests for `llm/template_provider.py`: role-specific sentence banks, landmark vocab keyed by `map_area` from config, deterministic under seed, zero tokens — DoD: tests fail (RED) [FR-LLM-1]
+- [x] **T-1313** (P0) Implement `llm/template_provider.py` (≤120 code lines) — DoD: T-1312 green
+- [x] **T-1314** (P1) Add template intent-mix tests: template hints carry a truth/lie verdict distribution from config (never hardcoded 40%) — DoD: tests green [FR-CFG-2]
+- [~] **T-1315** (P0) Write failing tests for `llm/prompts.py` hint prompt: pins map area, word cap, truth/lie instruction, strict JSON contract `{"message","verdict","reasoning"}` — DoD: tests fail (RED) [FR-LLM-4]
+- [~] **T-1316** (P0) Implement `llm/prompts.py` builders (hint, parse, negotiate; ≤120 code lines) — DoD: T-1315 green; prompts stored for the prompt book
+- [~] **T-1317** (P1) Add negotiation/parse prompt tests: negotiate prompt renders playbook position + red lines; parse prompt demands structured claim JSON with confidence — DoD: tests green [FR-NEG-4 / FR-LLM-5]
+- [x] **T-1318** (P0) Write failing tests for `llm/hint_guard.py`: word cap ≤ `hint_max_words` enforced post-generation (truncate or regenerate policy) — DoD: tests fail (RED) [FR-LLM-4]
+- [x] **T-1319** (P0) Implement `llm/hint_guard.py` (≤120 code lines) — DoD: T-1318 green
 - [ ] **T-1320** (P0) Add coordinate-leak gate tests: regex + validator blocks digit pairs, grid references, and coordinate-like patterns before send; blocked hint falls back to a clean template line — DoD: tests green with adversarial hint fixtures [FR-LLM-4, book rule 27]
 - [ ] **T-1321** (P0) Add single-egress tests: BOTH template and LLM hints pass through the same hint_guard path (no bypass) — DoD: meta-test green
 - [ ] **T-1322** (P0) Write failing tests for `llm/token_meter.py`: per-call, per-mini-game, per-series counters with input/output split per model — DoD: tests fail (RED) [FR-LLM-3]
@@ -769,9 +769,9 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E08 | Game FSM & orchestrator | M3 | 26 | 21 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
 | E10 | MCP networking | M3 | 30 | 29 | 0 |
-| E11 | Tunnel & preflight | M5 | 16 | 14 | 0 |
+| E11 | Tunnel & preflight | M5 | 16 | 16 | 0 |
 | E12 | Negotiation | M5 | 31 | 22 | 0 |
-| E13 | LLM layer | M4 | 32 | 0 | 0 |
+| E13 | LLM layer | M4 | 32 | 15 | 0 |
 | E14 | Cop strategy | M4 | 26 | 0 | 0 |
 | E15 | Thief strategy | M4 | 26 | 0 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 0 | 0 |

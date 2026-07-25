@@ -136,10 +136,28 @@ picture.
       tools listed, `receive_turn` returned `{"accepted": true}`, and the
       server logged `inbox.accepted` — the message reached the game queue, not
       merely the HTTP layer.
-- [ ] **T-1109 (remaining)** — run the same check for
-      `thief.4laboratory.com` once the thief agent runs, and load both URLs
-      **from a phone on mobile data** as an independent confirmation that they
-      are genuinely public rather than resolving locally.
+- [x] **T-1109 complete (2026-07-25)** — both hostnames verified from an
+      external device. A real MCP call succeeded through each public URL (all
+      four tools listed, `receive_turn` accepted, `inbox.accepted` logged), and
+      a browser on a separate device received our server's own JSON-RPC error:
+      `{"error":{"code":-32600,"message":"Not Acceptable: Client must accept
+      text/event-stream"}}` — a Cloudflare error page would look nothing like
+      that, so this is proof the request reached *our agent*.
+
+### Reading the response (match-day triage)
+
+| What you see | Meaning |
+|---|---|
+| JSON-RPC `-32600 … must accept text/event-stream` | **Healthy.** Our MCP server answered. |
+| HTTP 406 (bare) | Healthy — same thing without a JSON body. |
+| **502 Bad Gateway** | The tunnel is up but **the agent is not running**. Start the server. |
+| DNS failure / no such host | The DNS route is missing; re-run `cloudflared tunnel route dns`. |
+
+**The trap we hit twice:** the tunnel and the agent are independent processes.
+A running tunnel proves nothing about the agent — cloudflared happily stays up
+and returns 502 for every request. This is exactly why preflight performs a
+**self-call through the public URL** instead of checking that cloudflared is
+alive.
 
 ### Verified startup sequence (cop)
 
