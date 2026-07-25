@@ -15,9 +15,10 @@ not a code change.
 """
 
 import hashlib
-import json
 import math
 from enum import Enum
+
+from ..protocol.canonical import canonical_json
 
 Cell = tuple[int, int]
 
@@ -114,5 +115,4 @@ def model_fingerprint(model: ScentModel, center: float, decay: float, grid_size:
         "decay_mode": "relative" if model is ScentModel.BOOK else "absolute",
         "example": {f"{row},{col}": value for (row, col), value in sorted(example.items())},
     }
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()

@@ -237,38 +237,38 @@
 
 ## E07 — Commit-reveal crypto, audit & Step-0 (32 tasks)
 
-- [ ] **T-0701** (P0) Write failing tests for the canonical signed record: includes state, move, hint, intent (truth/lie), step, role, sub_game — field-compatible with the reference `sealed_step_record` — DoD: tests fail (RED) [FR-CRY-1]
-- [ ] **T-0702** (P0) Implement record builders in `domain/crypto.py` (≤120 code lines) — DoD: T-0701 green [FR-CRY-1]
-- [ ] **T-0703** (P0) Write failing tests for commit: `H = SHA256(canonical(record) + "|" + nonce)`, `nonce = secrets.token_hex(16)`, fresh nonce per step — DoD: tests fail (RED) [FR-CRY-1]
-- [ ] **T-0704** (P0) Implement `seal()` in crypto.py — DoD: T-0703 green; uses protocol/canonical.py, no local serialization [deps: T-0308]
-- [ ] **T-0705** (P0) Write failing tests for verify: recompute + `secrets.compare_digest`; any tampered field or nonce fails — DoD: tests fail (RED) [FR-CRY-2]
-- [ ] **T-0706** (P0) Implement `verify()` in crypto.py — DoD: T-0705 green; meta-test asserts compare_digest is the only hash-comparison call in the repo
-- [ ] **T-0707** (P0) Add byte-compatibility golden test: sealing records from the reference sample log reproduces the exact stored commit hashes — DoD: golden green [ADR-012; deps: T-0126]
-- [ ] **T-0708** (P1) Add hypothesis property tests: commit-reveal round-trip ∀ generated records (unicode hints, nested payloads); distinct nonces → distinct commits — DoD: property suite green [PLAN §5]
-- [ ] **T-0709** (P0) Write failing tests for the 4-step flow: Commit → Acknowledge → Reveal (nonce withheld) → end-of-game Audit reveal; any request for a nonce pre-audit is refused — DoD: tests fail (RED) [FR-CRY-2]
-- [ ] **T-0710** (P0) Implement the per-game commit ledger (our commits + opponent commits per step, flow-state helpers) — DoD: T-0709 green
-- [ ] **T-0711** (P0) Write failing tests for the nonce vault: nonces encrypted at rest, never present in logs/events/UI payloads before audit — DoD: tests fail (RED) [FR-CRY-5]
-- [ ] **T-0712** (P0) Implement the nonce vault (in-memory + encrypted spill file) — DoD: T-0711 green [FR-CRY-5]
-- [ ] **T-0713** (P0) Add secrecy meta-test: scan the full emitted event stream + log files of a test game for any vault nonce value pre-audit — zero hits — DoD: meta-test green [FR-CRY-5]
-- [ ] **T-0714** (P0) Write failing tests for `domain/audit.py`: given opponent reveal, re-hash every record, produce per-step verdicts + aggregate passed/failed — DoD: tests fail (RED) [FR-CRY-3]
-- [ ] **T-0715** (P0) Implement `domain/audit.py` (≤120 code lines) — DoD: T-0714 green
-- [ ] **T-0716** (P0) Add TAMPERED-verdict tests: any single mismatch → TAMPERED, game technically void, honest peer wins (`tamper_forfeit`) per rule 19 — DoD: tests green [FR-CRY-3]
-- [ ] **T-0717** (P0) Add audit-precondition tests: result agreement is blocked until mutual audit returns Verified OK — DoD: tests green [FR-CRY-3, book rule 36]
-- [ ] **T-0718** (P0) Implement the audit gate on the result flow — DoD: T-0717 green; gate emits an event either way
-- [ ] **T-0719** (P0) Add audit-skip tests: timeout/stopped end reasons skip audit (documented, matches reference `SKIPPED_AUDIT`) — DoD: tests green; skip decision logged
-- [ ] **T-0720** (P0) Write failing tests for `reporting/step_zero.py`: hardware spec + LLM model + code version + team + mini-game number + git commit hash packed, canonicalized, sealed — DoD: tests fail (RED) [FR-CRY-4]
-- [ ] **T-0721** (P0) Implement `reporting/step_zero.py` (≤120 code lines) — DoD: T-0720 green; consumes shared/sysinfo.py [deps: T-0426]
-- [ ] **T-0722** (P0) Add commit-hash capture tests: current HEAD captured at match start and injected into Step-0 and (later) result JSON — DoD: tests green [FR-REP-5, book rule 53]
-- [ ] **T-0723** (P0) Implement commit-hash capture (subprocess arg-list `git rev-parse HEAD`, no shell=True) — DoD: T-0722 green
-- [ ] **T-0724** (P0) Add token-metering-start tests: metering begins at Step-0; per-step token deltas recorded into sealed records — DoD: tests green with a meter fake (real-meter wiring is verified later by T-1325) [FR-LLM-3]
-- [ ] **T-0725** (P0) Wire the token-meter hook interface into sealed step records — DoD: T-0724 green; sealed record carries tokens_step/tokens_total
-- [ ] **T-0726** (P0) Add Step-0 golden test: our sealed spec record shape matches the reference sample log's `system_spec` record — DoD: golden green [ADR-012]
-- [ ] **T-0727** (P1) Add hypothesis tamper-localization tests: over N-step games with random single-record tampering, audit always flags exactly the tampered step — DoD: property suite green
-- [ ] **T-0728** (P0) Add mutual-symmetry tests: both sides auditing the same pair of logs reach identical verdicts — DoD: tests green
-- [ ] **T-0729** (P0) Add in-process integration test: full mini-game record chain → mutual audit → Verified OK — DoD: test green; wired into CI [deps: T-0824]
-- [ ] **T-0730** (P0) Author `docs/PRD_commit_reveal.md`: protocol theory, byte-format contract, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
-- [ ] **T-0731** (P0) Add malformed-audit negative tests: payload missing nonce/commit/records → structured error response, never a crash — DoD: tests green [FR-NET-7]
-- [ ] **T-0732** (P1) Run a crypto security-review checklist (compare_digest everywhere, nonce entropy 16 bytes, no nonce reuse across steps/games, canonicalization pinned) and record it in PRD_commit_reveal — DoD: checklist appended with evidence links
+- [x] **T-0701** (P0) Write failing tests for the canonical signed record: includes state, move, hint, intent (truth/lie), step, role, sub_game — field-compatible with the reference `sealed_step_record` — DoD: tests fail (RED) [FR-CRY-1]
+- [x] **T-0702** (P0) Implement record builders in `domain/crypto.py` (≤120 code lines) — DoD: T-0701 green [FR-CRY-1]
+- [x] **T-0703** (P0) Write failing tests for commit: `H = SHA256(canonical(record) + "|" + nonce)`, `nonce = secrets.token_hex(16)`, fresh nonce per step — DoD: tests fail (RED) [FR-CRY-1]
+- [x] **T-0704** (P0) Implement `seal()` in crypto.py — DoD: T-0703 green; uses protocol/canonical.py, no local serialization [deps: T-0308]
+- [x] **T-0705** (P0) Write failing tests for verify: recompute + `secrets.compare_digest`; any tampered field or nonce fails — DoD: tests fail (RED) [FR-CRY-2]
+- [x] **T-0706** (P0) Implement `verify()` in crypto.py — DoD: T-0705 green; meta-test asserts compare_digest is the only hash-comparison call in the repo
+- [x] **T-0707** (P0) Add byte-compatibility golden test: sealing records from the reference sample log reproduces the exact stored commit hashes — DoD: golden green [ADR-012; deps: T-0126]
+- [x] **T-0708** (P1) Add hypothesis property tests: commit-reveal round-trip ∀ generated records (unicode hints, nested payloads); distinct nonces → distinct commits — DoD: property suite green [PLAN §5]
+- [x] **T-0709** (P0) Write failing tests for the 4-step flow: Commit → Acknowledge → Reveal (nonce withheld) → end-of-game Audit reveal; any request for a nonce pre-audit is refused — DoD: tests fail (RED) [FR-CRY-2]
+- [x] **T-0710** (P0) Implement the per-game commit ledger (our commits + opponent commits per step, flow-state helpers) — DoD: T-0709 green
+- [x] **T-0711** (P0) Write failing tests for the nonce vault: nonces encrypted at rest, never present in logs/events/UI payloads before audit — DoD: tests fail (RED) [FR-CRY-5]
+- [x] **T-0712** (P0) Implement the nonce vault (in-memory + encrypted spill file) — DoD: T-0711 green [FR-CRY-5]
+- [x] **T-0713** (P0) Add secrecy meta-test: scan the full emitted event stream + log files of a test game for any vault nonce value pre-audit — zero hits — DoD: meta-test green [FR-CRY-5]
+- [x] **T-0714** (P0) Write failing tests for `domain/audit.py`: given opponent reveal, re-hash every record, produce per-step verdicts + aggregate passed/failed — DoD: tests fail (RED) [FR-CRY-3]
+- [x] **T-0715** (P0) Implement `domain/audit.py` (≤120 code lines) — DoD: T-0714 green
+- [x] **T-0716** (P0) Add TAMPERED-verdict tests: any single mismatch → TAMPERED, game technically void, honest peer wins (`tamper_forfeit`) per rule 19 — DoD: tests green [FR-CRY-3]
+- [x] **T-0717** (P0) Add audit-precondition tests: result agreement is blocked until mutual audit returns Verified OK — DoD: tests green [FR-CRY-3, book rule 36]
+- [x] **T-0718** (P0) Implement the audit gate on the result flow — DoD: T-0717 green; gate emits an event either way
+- [x] **T-0719** (P0) Add audit-skip tests: timeout/stopped end reasons skip audit (documented, matches reference `SKIPPED_AUDIT`) — DoD: tests green; skip decision logged
+- [x] **T-0720** (P0) Write failing tests for `reporting/step_zero.py`: hardware spec + LLM model + code version + team + mini-game number + git commit hash packed, canonicalized, sealed — DoD: tests fail (RED) [FR-CRY-4]
+- [x] **T-0721** (P0) Implement `reporting/step_zero.py` (≤120 code lines) — DoD: T-0720 green; consumes shared/sysinfo.py [deps: T-0426]
+- [x] **T-0722** (P0) Add commit-hash capture tests: current HEAD captured at match start and injected into Step-0 and (later) result JSON — DoD: tests green [FR-REP-5, book rule 53]
+- [x] **T-0723** (P0) Implement commit-hash capture (subprocess arg-list `git rev-parse HEAD`, no shell=True) — DoD: T-0722 green
+- [x] **T-0724** (P0) Add token-metering-start tests: metering begins at Step-0; per-step token deltas recorded into sealed records — DoD: tests green with a meter fake (real-meter wiring is verified later by T-1325) [FR-LLM-3]
+- [x] **T-0725** (P0) Wire the token-meter hook interface into sealed step records — DoD: T-0724 green; sealed record carries tokens_step/tokens_total
+- [x] **T-0726** (P0) Add Step-0 golden test: our sealed spec record shape matches the reference sample log's `system_spec` record — DoD: golden green [ADR-012]
+- [x] **T-0727** (P1) Add hypothesis tamper-localization tests: over N-step games with random single-record tampering, audit always flags exactly the tampered step — DoD: property suite green
+- [x] **T-0728** (P0) Add mutual-symmetry tests: both sides auditing the same pair of logs reach identical verdicts — DoD: tests green
+- [~] **T-0729** (P0) Add in-process integration test: full mini-game record chain → mutual audit → Verified OK — DoD: test green; wired into CI [deps: T-0824]
+- [x] **T-0730** (P0) Author `docs/PRD_commit_reveal.md`: protocol theory, byte-format contract, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-0731** (P0) Add malformed-audit negative tests: payload missing nonce/commit/records → structured error response, never a crash — DoD: tests green [FR-NET-7]
+- [x] **T-0732** (P1) Run a crypto security-review checklist (compare_digest everywhere, nonce entropy 16 bytes, no nonce reuse across steps/games, canonicalization pinned) and record it in PRD_commit_reveal — DoD: checklist appended with evidence links
 
 ## E08 — Game FSM & orchestrator (26 tasks)
 
@@ -765,7 +765,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E04 | Shared infrastructure | M2 | 28 | 0 | 0 |
 | E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
 | E06 | Scent & belief | M2 | 30 | 30 | 0 |
-| E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 0 | 0 |
+| E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 31 | 0 |
 | E08 | Game FSM & orchestrator | M3 | 26 | 0 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 0 | 0 |
 | E10 | MCP networking | M3 | 30 | 0 | 0 |
