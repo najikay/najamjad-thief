@@ -135,26 +135,26 @@
 
 ## E04 — Shared infrastructure (28 tasks)
 
-- [ ] **T-0401** (P0) Write failing tests for `shared/rate_limits.py`: RateLimitConfig loads per-service limits from rate_limits.json; unknown service falls back to `default`; queue block parsed — DoD: tests fail (RED) [ADR-009]
-- [ ] **T-0402** (P0) Implement `shared/rate_limits.py` loader (≤120 code lines, budget 60) — DoD: T-0401 green; zero hardcoded limits [FR-CFG-2]
-- [ ] **T-0403** (P0) Write failing tests for ApiGatekeeper rate enforcement: limits checked BEFORE every call, sliding window per service, injectable clock — DoD: tests fail (RED)
-- [ ] **T-0404** (P0) Implement `shared/gatekeeper.py` ApiGatekeeper core: `execute(api_call, *args)` with pre-call limit check + injectable clock (≤120 code lines) — DoD: T-0403 green [ADR-009 / guidelines §5]
-- [ ] **T-0405** (P0) Write failing tests for FIFO queue behavior: overflow is queued (never rejected), order preserved, max depth from config — DoD: tests fail (RED)
-- [ ] **T-0406** (P0) Implement FIFO queue + config-driven depth cap in gatekeeper — DoD: T-0405 green; request #101 on a depth-100 queue triggers the backpressure path, not an exception
-- [ ] **T-0407** (P0) Write failing tests for backpressure: queue-full emits a structured backpressure event and applies the configured producer policy (block/shed with event) — DoD: tests fail (RED) [FR-OBS-2]
-- [ ] **T-0408** (P0) Implement backpressure signal + policy — DoD: T-0407 green; event visible on the bus
-- [ ] **T-0409** (P0) Write failing tests for drain: queued requests are processed when the rate window resets, in FIFO order — DoD: tests fail (RED)
-- [ ] **T-0410** (P0) Implement drain mechanism — DoD: T-0409 green; queue empties deterministically under the injectable clock
-- [ ] **T-0411** (P0) Write failing tests for retries: transient failure retried `max_retries` times with `retry_after` backoff from config; permanent failure surfaces a typed error — DoD: tests fail (RED)
-- [ ] **T-0412** (P0) Implement retry/backoff in gatekeeper — DoD: T-0411 green; retry count and reasons emitted as events
-- [ ] **T-0413** (P0) Write failing tests for call logging: every gated call logs service, latency, outcome, queue depth via the event bus — DoD: tests fail (RED) [FR-OBS-1]
-- [ ] **T-0414** (P0) Implement call logging + `get_queue_status()` — DoD: T-0413 green; status query returns live depth/limits
-- [ ] **T-0415** (P0) Write failing tests for per-service instantiation: factory builds `mcp_peer`/`anthropic`/`deepseek`/`gmail` gatekeepers, each with its own limits/queue — DoD: tests fail (RED) [ADR-009]
-- [ ] **T-0416** (P0) Implement gatekeeper factory (per-service instances from RateLimitConfig) — DoD: T-0415 green; no service can borrow another's window
-- [ ] **T-0417** (P0) Add thread-safety test: parallel `execute` calls from multiple threads keep counts exact (locks, no race, no deadlock) — DoD: stress test green under `pytest -x` repetition [guidelines §15]
-- [ ] **T-0418** (P0) Write failing tests for `shared/events.py`: publish/subscribe, JSONL append-only sink, correlation ids (`game_uid`, `step`) on every event — DoD: tests fail (RED) [ADR-008]
-- [ ] **T-0419** (P0) Implement `shared/events.py` event bus + JSONL sink (≤120 code lines) — DoD: T-0418 green; one JSONL stream per match [FR-OBS-1]
-- [ ] **T-0420** (P0) Write failing tests for WS fanout: multiple subscribers each receive every event; a slow/stalled subscriber never blocks the bus or other subscribers — DoD: tests fail (RED) (A6 UI lesson: multi-subscriber, no frame theft)
+- [x] **T-0401** (P0) Write failing tests for `shared/rate_limits.py`: RateLimitConfig loads per-service limits from rate_limits.json; unknown service falls back to `default`; queue block parsed — DoD: tests fail (RED) [ADR-009]
+- [x] **T-0402** (P0) Implement `shared/rate_limits.py` loader (≤120 code lines, budget 60) — DoD: T-0401 green; zero hardcoded limits [FR-CFG-2]
+- [x] **T-0403** (P0) Write failing tests for ApiGatekeeper rate enforcement: limits checked BEFORE every call, sliding window per service, injectable clock — DoD: tests fail (RED)
+- [x] **T-0404** (P0) Implement `shared/gatekeeper.py` ApiGatekeeper core: `execute(api_call, *args)` with pre-call limit check + injectable clock (≤120 code lines) — DoD: T-0403 green [ADR-009 / guidelines §5]
+- [x] **T-0405** (P0) Write failing tests for FIFO queue behavior: overflow is queued (never rejected), order preserved, max depth from config — DoD: tests fail (RED)
+- [x] **T-0406** (P0) Implement FIFO queue + config-driven depth cap in gatekeeper — DoD: T-0405 green; request #101 on a depth-100 queue triggers the backpressure path, not an exception
+- [x] **T-0407** (P0) Write failing tests for backpressure: queue-full emits a structured backpressure event and applies the configured producer policy (block/shed with event) — DoD: tests fail (RED) [FR-OBS-2]
+- [x] **T-0408** (P0) Implement backpressure signal + policy — DoD: T-0407 green; event visible on the bus
+- [x] **T-0409** (P0) Write failing tests for drain: queued requests are processed when the rate window resets, in FIFO order — DoD: tests fail (RED)
+- [x] **T-0410** (P0) Implement drain mechanism — DoD: T-0409 green; queue empties deterministically under the injectable clock
+- [x] **T-0411** (P0) Write failing tests for retries: transient failure retried `max_retries` times with `retry_after` backoff from config; permanent failure surfaces a typed error — DoD: tests fail (RED)
+- [x] **T-0412** (P0) Implement retry/backoff in gatekeeper — DoD: T-0411 green; retry count and reasons emitted as events
+- [x] **T-0413** (P0) Write failing tests for call logging: every gated call logs service, latency, outcome, queue depth via the event bus — DoD: tests fail (RED) [FR-OBS-1]
+- [x] **T-0414** (P0) Implement call logging + `get_queue_status()` — DoD: T-0413 green; status query returns live depth/limits
+- [x] **T-0415** (P0) Write failing tests for per-service instantiation: factory builds `mcp_peer`/`anthropic`/`deepseek`/`gmail` gatekeepers, each with its own limits/queue — DoD: tests fail (RED) [ADR-009]
+- [x] **T-0416** (P0) Implement gatekeeper factory (per-service instances from RateLimitConfig) — DoD: T-0415 green; no service can borrow another's window
+- [x] **T-0417** (P0) Add thread-safety test: parallel `execute` calls from multiple threads keep counts exact (locks, no race, no deadlock) — DoD: stress test green under `pytest -x` repetition [guidelines §15]
+- [x] **T-0418** (P0) Write failing tests for `shared/events.py`: publish/subscribe, JSONL append-only sink, correlation ids (`game_uid`, `step`) on every event — DoD: tests fail (RED) [ADR-008]
+- [x] **T-0419** (P0) Implement `shared/events.py` event bus + JSONL sink (≤120 code lines) — DoD: T-0418 green; one JSONL stream per match [FR-OBS-1]
+- [x] **T-0420** (P0) Write failing tests for WS fanout: multiple subscribers each receive every event; a slow/stalled subscriber never blocks the bus or other subscribers — DoD: tests fail (RED) (A6 UI lesson: multi-subscriber, no frame theft)
 - [ ] **T-0421** (P0) Implement WS fanout adapter (per-subscriber async queue with bounded backlog + drop-with-event policy) — DoD: T-0420 green [ADR-005]
 - [ ] **T-0422** (P0) Write failing test for `shared/logging_setup.py`: after init, `logging.config.dictConfig` has actually been applied (root/subsystem loggers have the configured handlers) — DoD: test fails (RED) (A6 pain: config existed, never wired)
 - [ ] **T-0423** (P0) Implement `shared/logging_setup.py` (≤120 code lines) called at every entrypoint startup — DoD: T-0422 green; a log line from any subsystem lands in the JSONL file [FR-OBS-1]
@@ -289,9 +289,9 @@
 - [~] **T-0815** (P0) Add final-message tests: on being captured, the thief sends the mandatory honest final message before game end (reference flow) — DoD: tests green [FR-ENG-4]
 - [x] **T-0816** (P0) Add role-swap series tests: 6 mini-games with role alternation per negotiated schedule; fresh per-game state (belief/scent/ledger), transport persists across games — DoD: tests fail (RED) [FR-ENG-6]
 - [x] **T-0817** (P0) Implement the series runner (role_for, per-game reset, inbox drain between games, bounded restart handling) — DoD: T-0816 green
-- [~] **T-0818** (P0) Add deadline-integration tests: expiry during COMPUTING/AWAITING → controlled retry then clean technical-loss resolution; NEVER an indefinite wait — DoD: tests green [FR-NET-4; deps: T-1018]
-- [~] **T-0819** (P0) Add watchdog-integration tests: simulated main-loop freeze → persist state + controlled shutdown hook invoked — DoD: tests green [FR-NET-5; deps: T-1021]
-- [~] **T-0820** (P0) Wire deadline tracker + watchdog into the orchestrator lifecycle — DoD: T-0818/T-0819 green through the real orchestrator
+- [x] **T-0818** (P0) Add deadline-integration tests: expiry during COMPUTING/AWAITING → controlled retry then clean technical-loss resolution; NEVER an indefinite wait — DoD: tests green [FR-NET-4; deps: T-1018]
+- [x] **T-0819** (P0) Add watchdog-integration tests: simulated main-loop freeze → persist state + controlled shutdown hook invoked — DoD: tests green [FR-NET-5; deps: T-1021]
+- [x] **T-0820** (P0) Wire deadline tracker + watchdog into the orchestrator lifecycle — DoD: T-0818/T-0819 green through the real orchestrator
 - [~] **T-0821** (P1) Add persistence/resume tests: FSM + game state snapshot persisted per step; process restart either resumes cleanly or declares a documented technical outcome — DoD: tests green (A6 lesson 1)
 - [~] **T-0822** (P1) Implement the persistence snapshot (JSON in match workspace) — DoD: T-0821 green [FR-CFG-3]
 - [~] **T-0823** (P1) Add pause-safe control tests: operator pause/stop honored only at safe points (between commit boundaries); input ignored while LOCKED — DoD: tests green [FR-UI-5]
@@ -328,36 +328,36 @@
 
 ## E10 — MCP networking (30 tasks)
 
-- [ ] **T-1001** (P0) Write failing tests for `net/mcp_server.py`: FastMCP server exposes exactly 4 tools — `negotiate`, `receive_turn`, `submit_audit`, `receive_control` — DoD: tests fail (RED) [FR-NET-1 / ADR-001]
-- [ ] **T-1002** (P0) Implement `net/mcp_server.py` (≤120 code lines): tools do nothing but validate-and-enqueue into inboxes — DoD: T-1001 green
-- [ ] **T-1003** (P0) Add port-preflight tests: server refuses to start with an actionable error when the configured port is taken — DoD: tests green
-- [ ] **T-1004** (P0) Add server lifecycle tests: daemon-thread start/stop clean, host/port from config, restart-safe — DoD: tests green
-- [ ] **T-1005** (P0) Write failing tests for `net/inbox.py`: thread-safe queue per message type (agreements/turns/audits/controls), poll with timeout, drain for series restart — DoD: tests fail (RED)
-- [ ] **T-1006** (P0) Implement `net/inbox.py` (≤120 code lines) — DoD: T-1005 green
-- [ ] **T-1007** (P0) Add tolerant-ingress tests: malformed payload → structured error response + logged event, server keeps running; unknown fields logged + ignored — DoD: tests green [FR-NET-7 / ADR-006; deps: T-0907]
-- [ ] **T-1008** (P0) Wire the pydantic ingress gate (E09 wire schemas) into inbox intake — DoD: T-1007 green through the real intake path
-- [ ] **T-1009** (P0) Write failing tests for the turn-sequence guard: stale step number, duplicate, or out-of-order message detected and rejected with an event; game state untouched — DoD: tests fail (RED)
-- [ ] **T-1010** (P0) Implement the turn-sequence guard — DoD: T-1009 green
-- [ ] **T-1011** (P0) Write failing tests for `net/mcp_client.py`: PERSISTENT client (no per-call event loop / process churn), calls all 4 opponent tools — DoD: tests fail (RED) [FR-NET-2; simulator anti-pattern fix]
-- [ ] **T-1012** (P0) Implement `net/mcp_client.py` persistent client (≤120 code lines) — DoD: T-1011 green
-- [ ] **T-1013** (P0) Add gatekeeper-routing tests: every outbound peer call goes through the `mcp_peer` ApiGatekeeper with retries/backoff from rate_limits.json — DoD: tests green; meta-test finds no direct transport call bypassing the gatekeeper [FR-NET-2 / ADR-009]
-- [ ] **T-1014** (P0) Implement gatekeeper-wrapped transport calls — DoD: T-1013 green
-- [ ] **T-1015** (P0) Add connect-retry tests: opponent server not yet up → bounded retry loop until connect-timeout budget; start order irrelevant — DoD: tests green
-- [ ] **T-1016** (P0) Add best-effort send tests: audit/control send failures are time-capped and surfaced as events (opponent may have exited), never hang or crash — DoD: tests green
-- [ ] **T-1017** (P0) Write failing tests for `net/deadline.py`: every request carries timestamp + expiry; expiry → controlled retry or clean technical-loss resolution, never an indefinite wait — DoD: tests fail (RED) [FR-NET-4]
-- [ ] **T-1018** (P0) Implement `net/deadline.py` (≤120 code lines) — DoD: T-1017 green
-- [ ] **T-1019** (P1) Add timeout-evidence tests: a timeout produces a sealed "no message received by T" evidence record attached to the game log (improves on the reference's unverifiable self-awarded win) — DoD: tests green
-- [ ] **T-1020** (P0) Write failing tests for `net/watchdog.py`: heartbeat monitor; freeze beyond configured threshold → `persist_state()` + `controlled_shutdown()` — DoD: tests fail (RED) [FR-NET-5]
-- [ ] **T-1021** (P0) Implement `net/watchdog.py` (≤120 code lines) — DoD: T-1020 green
-- [ ] **T-1022** (P0) Add watchdog-config tests: threshold read from config (default 60 s, negotiable), never hardcoded — DoD: tests green [FR-CFG-2]
-- [ ] **T-1023** (P0) Add fault-injection test — opponent timeout mid-game: silent fake peer → deadline fires → clean technical-loss flow with events + evidence — DoD: test green [FR-NET-4]
-- [ ] **T-1024** (P0) Add fault-injection test — malformed payload burst: invalid JSON / non-schema payloads at each tool → server stays up, structured errors returned, events logged — DoD: test green [FR-NET-7]
-- [ ] **T-1025** (P0) Add fault-injection test — out-of-order + replayed messages: guard rejects, game state unaffected, opponent gets a structured error — DoD: test green [deps: T-1010]
-- [ ] **T-1026** (P0) Add fault-injection test — mid-turn disconnect: connection drop during send → gatekeeper retries → deadline path on persistent failure; no hang — DoD: test green
-- [ ] **T-1027** (P0) Add in-process two-peer test: full negotiate → turns → audit exchange over real FastMCP HTTP on two localhost ports — DoD: test green in CI (marked slow)
-- [ ] **T-1028** (P0) Add process-separation meta-test: cop and thief use `config/police/` vs `config/thief/`, no shared runtime state, no cross-repo imports — DoD: meta-test green in both repos [FR-NET-6, book rules 1–2]
-- [ ] **T-1029** (P1) Add soak test: 6-game-series message volume through server+inboxes with drain between games; queue sizes return to zero, no leaks — DoD: test green
-- [ ] **T-1030** (P0) Verify net/ observability: every degradation path (retry, timeout, reject, drop) emits an event; docstrings complete — DoD: degradation-branch coverage checklist green [FR-OBS-2]
+- [x] **T-1001** (P0) Write failing tests for `net/mcp_server.py`: FastMCP server exposes exactly 4 tools — `negotiate`, `receive_turn`, `submit_audit`, `receive_control` — DoD: tests fail (RED) [FR-NET-1 / ADR-001]
+- [x] **T-1002** (P0) Implement `net/mcp_server.py` (≤120 code lines): tools do nothing but validate-and-enqueue into inboxes — DoD: T-1001 green
+- [x] **T-1003** (P0) Add port-preflight tests: server refuses to start with an actionable error when the configured port is taken — DoD: tests green
+- [x] **T-1004** (P0) Add server lifecycle tests: daemon-thread start/stop clean, host/port from config, restart-safe — DoD: tests green
+- [x] **T-1005** (P0) Write failing tests for `net/inbox.py`: thread-safe queue per message type (agreements/turns/audits/controls), poll with timeout, drain for series restart — DoD: tests fail (RED)
+- [x] **T-1006** (P0) Implement `net/inbox.py` (≤120 code lines) — DoD: T-1005 green
+- [x] **T-1007** (P0) Add tolerant-ingress tests: malformed payload → structured error response + logged event, server keeps running; unknown fields logged + ignored — DoD: tests green [FR-NET-7 / ADR-006; deps: T-0907]
+- [x] **T-1008** (P0) Wire the pydantic ingress gate (E09 wire schemas) into inbox intake — DoD: T-1007 green through the real intake path
+- [x] **T-1009** (P0) Write failing tests for the turn-sequence guard: stale step number, duplicate, or out-of-order message detected and rejected with an event; game state untouched — DoD: tests fail (RED)
+- [x] **T-1010** (P0) Implement the turn-sequence guard — DoD: T-1009 green
+- [x] **T-1011** (P0) Write failing tests for `net/mcp_client.py`: PERSISTENT client (no per-call event loop / process churn), calls all 4 opponent tools — DoD: tests fail (RED) [FR-NET-2; simulator anti-pattern fix]
+- [x] **T-1012** (P0) Implement `net/mcp_client.py` persistent client (≤120 code lines) — DoD: T-1011 green
+- [x] **T-1013** (P0) Add gatekeeper-routing tests: every outbound peer call goes through the `mcp_peer` ApiGatekeeper with retries/backoff from rate_limits.json — DoD: tests green; meta-test finds no direct transport call bypassing the gatekeeper [FR-NET-2 / ADR-009]
+- [x] **T-1014** (P0) Implement gatekeeper-wrapped transport calls — DoD: T-1013 green
+- [x] **T-1015** (P0) Add connect-retry tests: opponent server not yet up → bounded retry loop until connect-timeout budget; start order irrelevant — DoD: tests green
+- [x] **T-1016** (P0) Add best-effort send tests: audit/control send failures are time-capped and surfaced as events (opponent may have exited), never hang or crash — DoD: tests green
+- [x] **T-1017** (P0) Write failing tests for `net/deadline.py`: every request carries timestamp + expiry; expiry → controlled retry or clean technical-loss resolution, never an indefinite wait — DoD: tests fail (RED) [FR-NET-4]
+- [x] **T-1018** (P0) Implement `net/deadline.py` (≤120 code lines) — DoD: T-1017 green
+- [x] **T-1019** (P1) Add timeout-evidence tests: a timeout produces a sealed "no message received by T" evidence record attached to the game log (improves on the reference's unverifiable self-awarded win) — DoD: tests green
+- [x] **T-1020** (P0) Write failing tests for `net/watchdog.py`: heartbeat monitor; freeze beyond configured threshold → `persist_state()` + `controlled_shutdown()` — DoD: tests fail (RED) [FR-NET-5]
+- [x] **T-1021** (P0) Implement `net/watchdog.py` (≤120 code lines) — DoD: T-1020 green
+- [x] **T-1022** (P0) Add watchdog-config tests: threshold read from config (default 60 s, negotiable), never hardcoded — DoD: tests green [FR-CFG-2]
+- [x] **T-1023** (P0) Add fault-injection test — opponent timeout mid-game: silent fake peer → deadline fires → clean technical-loss flow with events + evidence — DoD: test green [FR-NET-4]
+- [x] **T-1024** (P0) Add fault-injection test — malformed payload burst: invalid JSON / non-schema payloads at each tool → server stays up, structured errors returned, events logged — DoD: test green [FR-NET-7]
+- [x] **T-1025** (P0) Add fault-injection test — out-of-order + replayed messages: guard rejects, game state unaffected, opponent gets a structured error — DoD: test green [deps: T-1010]
+- [x] **T-1026** (P0) Add fault-injection test — mid-turn disconnect: connection drop during send → gatekeeper retries → deadline path on persistent failure; no hang — DoD: test green
+- [~] **T-1027** (P0) Add in-process two-peer test: full negotiate → turns → audit exchange over real FastMCP HTTP on two localhost ports — DoD: test green in CI (marked slow)
+- [x] **T-1028** (P0) Add process-separation meta-test: cop and thief use `config/police/` vs `config/thief/`, no shared runtime state, no cross-repo imports — DoD: meta-test green in both repos [FR-NET-6, book rules 1–2]
+- [x] **T-1029** (P1) Add soak test: 6-game-series message volume through server+inboxes with drain between games; queue sizes return to zero, no leaks — DoD: test green
+- [x] **T-1030** (P0) Verify net/ observability: every degradation path (retry, timeout, reject, drop) emits an event; docstrings complete — DoD: degradation-branch coverage checklist green [FR-OBS-2]
 
 ## E11 — Tunnel & preflight (16 tasks)
 
@@ -762,13 +762,13 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E01 | Workspace & two-repo bootstrap | M1 | 29 | 20 | 2 |
 | E02 | CI compliance gates | M1 | 23 | 7 | 0 |
 | E03 | Config system | M2 | 24 | 0 | 0 |
-| E04 | Shared infrastructure | M2 | 28 | 0 | 0 |
+| E04 | Shared infrastructure | M2 | 28 | 20 | 0 |
 | E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
 | E06 | Scent & belief | M2 | 30 | 30 | 0 |
 | E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 32 | 0 |
-| E08 | Game FSM & orchestrator | M3 | 26 | 18 | 0 |
+| E08 | Game FSM & orchestrator | M3 | 26 | 21 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
-| E10 | MCP networking | M3 | 30 | 0 | 0 |
+| E10 | MCP networking | M3 | 30 | 29 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 0 | 0 |
 | E12 | Negotiation | M5 | 31 | 0 | 0 |
 | E13 | LLM layer | M4 | 32 | 0 | 0 |

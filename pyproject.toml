@@ -52,7 +52,10 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["goldens: validates against the lecturer's reference sample artifacts"]
+markers = [
+    "goldens: validates against the lecturer's reference sample artifacts",
+    "slow: real network or multi-second tests",
+]
 addopts = "--cov=src/najamjad_agent --cov-report=term-missing"
 
 [tool.coverage.run]
