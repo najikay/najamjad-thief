@@ -301,30 +301,30 @@
 
 ## E09 — Protocol schemas & goldens (24 tasks)
 
-- [ ] **T-0901** (P0) Write failing tests for the negotiate wire schema: terms + nonce + signature + identity (incl. 6-field spec) exactly as the reference — DoD: tests fail (RED) [FR-NET-1]
-- [ ] **T-0902** (P0) Implement `protocol/schemas_wire.py` negotiate models (≤120 code lines) — DoD: T-0901 green
-- [ ] **T-0903** (P0) Write failing tests for the TurnMessage schema: step, sender, hint, smell_grid, commit, timestamp, barrier_placed, capture_claim, claim_response, win_claim — DoD: tests fail (RED) [FR-NET-1]
-- [ ] **T-0904** (P0) Implement the TurnMessage model — DoD: T-0903 green
-- [ ] **T-0905** (P0) Write failing tests for AuditPayload (sender, records[payload/nonce/commit], result_claim) and ControlMessage schemas — DoD: tests fail (RED)
-- [ ] **T-0906** (P0) Implement audit + control models (split schemas_wire into a second file ≤120 code lines if over budget; update manifest) — DoD: T-0905 green
-- [ ] **T-0907** (P0) Add tolerant-ingress model config: unknown fields tolerated (captured + logged, ignored), required fields strict — DoD: test with extra foreign fields passes and logs; missing required field fails [FR-NET-7 / ADR-006]
-- [ ] **T-0908** (P0) Add negative wire tests: missing required fields / wrong types → validation error mapped to a structured error response object (never an exception escape) — DoD: tests green [FR-NET-7]
-- [ ] **T-0909** (P0) Add golden round-trip tests: all reference wire payloads (T-0127 goldens) parse; our serialized messages reproduce the reference shapes byte-compatibly (canonical form) — DoD: tests green [ADR-012; deps: T-0127]
-- [ ] **T-0910** (P0) Write failing tests for the declaration artifact schema: both identities, members, 4 repo links, MCP URLs, hardware specs, LLM model, token budget, times, per-group signatures, game_uid — DoD: tests fail (RED) [FR-REP-1]
-- [ ] **T-0911** (P0) Implement `protocol/schemas_artifacts.py` declaration model (≤120 code lines) — DoD: T-0910 green
-- [ ] **T-0912** (P0) Write failing tests for the config artifact: agreed terms + `config_sha256`, filename pattern `config_<game_id>_g<NN>.json` — DoD: tests fail (RED) [FR-REP-1]
-- [ ] **T-0913** (P0) Implement the config artifact model + filename helpers — DoD: T-0912 green
-- [ ] **T-0914** (P0) Write failing tests for the log artifact: step-0 system_spec + sealed steps + summary + audit outcome + mutual_agreement block, filename `log_<game_id>_g<NN>.json` — DoD: tests fail (RED)
-- [ ] **T-0915** (P0) Implement the log artifact model — DoD: T-0914 green
-- [ ] **T-0916** (P0) Write failing tests for the result artifact: per-sub-game rows (roles, result, winner, scores, audit flags), totals, winner/series_tie, per-group tokens, `mutual_agreement.sha256`, filename `result_<game_id>.json` — DoD: tests fail (RED)
-- [ ] **T-0917** (P0) Implement the result artifact model — DoD: T-0916 green
-- [ ] **T-0918** (P0) Add game_uid/filename consistency validator: shared game_uid across all 4 artifacts + filename patterns derived from game_id and NN — DoD: validator test green [FR-REP-1]
-- [ ] **T-0919** (P0) Write failing tests for `protocol/schemas_report.py`: result email payload with required booleans typed `bool` — NOT Optional, no defaults (agreement/confirmed fields) — DoD: tests fail (RED) [FR-REP-2]
-- [ ] **T-0920** (P0) Implement `protocol/schemas_report.py` (≤120 code lines) — DoD: T-0919 green [ADR-006]
-- [ ] **T-0921** (P0) Add negative tests: any null-where-bool payload FAILS validation and is refused (kills A6 pain #5 `agreement: null`) — DoD: tests green [FR-REP-2]
-- [ ] **T-0922** (P0) Implement the egress validation gate: a single `validate_egress()` choke point used by every artifact write and email send; failure blocks the send and emits an operator-alert event — DoD: gate test green; grep confirms no send path bypasses it [FR-REP-2 / ADR-006]
-- [ ] **T-0923** (P0) Add artifact golden tests: all 4 reference sample artifacts (T-0126 goldens) validate against our schemas; our builders' output round-trips to equivalent shapes — DoD: `pytest -m goldens` green [ADR-012; deps: T-0126]
-- [ ] **T-0924** (P1) Document the schema-versioning policy (schema_version tracking, deviation log vs reference) in docs/CONFIG.md or a schema README — DoD: policy written; tests reference it
+- [x] **T-0901** (P0) Write failing tests for the negotiate wire schema: terms + nonce + signature + identity (incl. 6-field spec) exactly as the reference — DoD: tests fail (RED) [FR-NET-1]
+- [x] **T-0902** (P0) Implement `protocol/schemas_wire.py` negotiate models (≤120 code lines) — DoD: T-0901 green
+- [x] **T-0903** (P0) Write failing tests for the TurnMessage schema: step, sender, hint, smell_grid, commit, timestamp, barrier_placed, capture_claim, claim_response, win_claim — DoD: tests fail (RED) [FR-NET-1]
+- [x] **T-0904** (P0) Implement the TurnMessage model — DoD: T-0903 green
+- [x] **T-0905** (P0) Write failing tests for AuditPayload (sender, records[payload/nonce/commit], result_claim) and ControlMessage schemas — DoD: tests fail (RED)
+- [x] **T-0906** (P0) Implement audit + control models (split schemas_wire into a second file ≤120 code lines if over budget; update manifest) — DoD: T-0905 green
+- [x] **T-0907** (P0) Add tolerant-ingress model config: unknown fields tolerated (captured + logged, ignored), required fields strict — DoD: test with extra foreign fields passes and logs; missing required field fails [FR-NET-7 / ADR-006]
+- [x] **T-0908** (P0) Add negative wire tests: missing required fields / wrong types → validation error mapped to a structured error response object (never an exception escape) — DoD: tests green [FR-NET-7]
+- [x] **T-0909** (P0) Add golden round-trip tests: all reference wire payloads (T-0127 goldens) parse; our serialized messages reproduce the reference shapes byte-compatibly (canonical form) — DoD: tests green [ADR-012; deps: T-0127]
+- [x] **T-0910** (P0) Write failing tests for the declaration artifact schema: both identities, members, 4 repo links, MCP URLs, hardware specs, LLM model, token budget, times, per-group signatures, game_uid — DoD: tests fail (RED) [FR-REP-1]
+- [x] **T-0911** (P0) Implement `protocol/schemas_artifacts.py` declaration model (≤120 code lines) — DoD: T-0910 green
+- [x] **T-0912** (P0) Write failing tests for the config artifact: agreed terms + `config_sha256`, filename pattern `config_<game_id>_g<NN>.json` — DoD: tests fail (RED) [FR-REP-1]
+- [x] **T-0913** (P0) Implement the config artifact model + filename helpers — DoD: T-0912 green
+- [x] **T-0914** (P0) Write failing tests for the log artifact: step-0 system_spec + sealed steps + summary + audit outcome + mutual_agreement block, filename `log_<game_id>_g<NN>.json` — DoD: tests fail (RED)
+- [x] **T-0915** (P0) Implement the log artifact model — DoD: T-0914 green
+- [x] **T-0916** (P0) Write failing tests for the result artifact: per-sub-game rows (roles, result, winner, scores, audit flags), totals, winner/series_tie, per-group tokens, `mutual_agreement.sha256`, filename `result_<game_id>.json` — DoD: tests fail (RED)
+- [x] **T-0917** (P0) Implement the result artifact model — DoD: T-0916 green
+- [~] **T-0918** (P0) Add game_uid/filename consistency validator: shared game_uid across all 4 artifacts + filename patterns derived from game_id and NN — DoD: validator test green [FR-REP-1]
+- [x] **T-0919** (P0) Write failing tests for `protocol/schemas_report.py`: result email payload with required booleans typed `bool` — NOT Optional, no defaults (agreement/confirmed fields) — DoD: tests fail (RED) [FR-REP-2]
+- [x] **T-0920** (P0) Implement `protocol/schemas_report.py` (≤120 code lines) — DoD: T-0919 green [ADR-006]
+- [x] **T-0921** (P0) Add negative tests: any null-where-bool payload FAILS validation and is refused (kills A6 pain #5 `agreement: null`) — DoD: tests green [FR-REP-2]
+- [x] **T-0922** (P0) Implement the egress validation gate: a single `validate_egress()` choke point used by every artifact write and email send; failure blocks the send and emits an operator-alert event — DoD: gate test green; grep confirms no send path bypasses it [FR-REP-2 / ADR-006]
+- [x] **T-0923** (P0) Add artifact golden tests: all 4 reference sample artifacts (T-0126 goldens) validate against our schemas; our builders' output round-trips to equivalent shapes — DoD: `pytest -m goldens` green [ADR-012; deps: T-0126]
+- [x] **T-0924** (P1) Document the schema-versioning policy (schema_version tracking, deviation log vs reference) in docs/CONFIG.md or a schema README — DoD: policy written; tests reference it
 
 ## E10 — MCP networking (30 tasks)
 
@@ -767,7 +767,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E06 | Scent & belief | M2 | 30 | 30 | 0 |
 | E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 32 | 0 |
 | E08 | Game FSM & orchestrator | M3 | 26 | 18 | 0 |
-| E09 | Protocol schemas & goldens | M3 | 24 | 0 | 0 |
+| E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
 | E10 | MCP networking | M3 | 30 | 0 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 0 | 0 |
 | E12 | Negotiation | M5 | 31 | 0 | 0 |
