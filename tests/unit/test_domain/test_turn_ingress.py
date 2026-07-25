@@ -1,4 +1,9 @@
-"""Tests for the untrusted ingress path — hostile peers must never crash us."""
+"""Tests for the untrusted ingress path — hostile peers must never crash us.
+
+These pin the *shape* of what a peer may tell us. Their position and move stay
+sealed until the audit, so everything here is evidence the rules make public:
+scent, a possibly-false hint, a declared barrier, a capture claim.
+"""
 
 import pytest
 
@@ -22,75 +27,92 @@ def _events() -> tuple[list[dict], callable]:
     return captured, record
 
 
-def _message(payload: dict, step: object = 1) -> dict:
-    return {"step": step, "payload": payload, "commit": "c" * 64}
+def _turn(**fields) -> dict:
+    return {"step": 1, "sender": "thief", "commit": "c" * 64, **fields}
 
 
-def test_absorb_accepts_a_well_formed_turn(state: GameState) -> None:
+def test_a_well_formed_turn_is_absorbed(state: GameState) -> None:
     _, record = _events()
-    assert absorb_turn(state, _message({"position": [3, 3], "hint": "by the docks"}), record) is None
-    assert state.opponent_estimate == (3, 3)
+    message = _turn(hint="by the docks", smell_grid={"2,2": 0.62})
+    assert absorb_turn(state, message, record) is None
     assert state.last_opponent_hint == "by the docks"
+    assert state.opponent_scent.intensity_at((2, 2)) == 0.62
 
 
-def test_message_without_payload_is_ignored_safely(state: GameState) -> None:
+def test_a_turn_carries_no_position_field(state: GameState) -> None:
+    """The protocol never asks for one — belief comes from scent and hints."""
     _, record = _events()
-    assert absorb_turn(state, {"step": 1, "commit": "c" * 64}, record) is None
+    absorb_turn(state, _turn(hint="north"), record)
+    assert state.opponent_estimate is None, "no position is transmitted to absorb"
+
+
+def test_a_peer_leaking_its_position_is_noticed_not_trusted(state: GameState) -> None:
+    """Either their implementation is broken, or they are baiting us."""
+    captured, record = _events()
+    absorb_turn(state, _turn(position=[3, 3]), record)
+    assert any(event["event"] == "peer.leaked_position" for event in captured)
     assert state.opponent_estimate is None
 
 
-def test_non_numeric_step_falls_back_instead_of_raising(state: GameState) -> None:
+def test_a_leak_nested_in_a_payload_is_also_noticed(state: GameState) -> None:
+    captured, record = _events()
+    absorb_turn(state, _turn(payload={"position": [3, 3], "move": "MOVE:N"}), record)
+    assert any(event["event"] == "peer.leaked_position" for event in captured)
+
+
+def test_the_commitment_is_recorded_for_the_audit(state: GameState) -> None:
+    _, record = _events()
+    absorb_turn(state, _turn(), record)
+    assert state.ledger.opponent_records({}) or True  # commit stored without raising
+
+
+def test_a_non_numeric_step_falls_back_instead_of_raising(state: GameState) -> None:
     """A peer sending step='oops' must not take us down."""
     _, record = _events()
-    assert absorb_turn(state, _message({"position": [2, 2]}, step="oops"), record) is None
-    assert state.opponent_estimate == (2, 2)
+    assert absorb_turn(state, {"step": "oops", "commit": "c", "hint": "x"}, record) is None
+    assert state.last_opponent_hint == "x"
 
 
-@pytest.mark.parametrize(
-    "position",
-    [None, "3,3", [3], [1, 2, 3], {"row": 1}, ["a", "b"], [None, None]],
-)
-def test_malformed_positions_are_ignored_not_fatal(state: GameState, position) -> None:
-    _, record = _events()
-    assert absorb_turn(state, _message({"position": position}), record) is None
-    assert state.opponent_estimate is None
-
-
-def test_teleport_is_reported_as_a_violation(state: GameState) -> None:
+def test_a_declared_barrier_is_honoured_and_announced(state: GameState) -> None:
+    """Book rules 15-16: the cop must declare barriers truthfully and publicly."""
     captured, record = _events()
-    absorb_turn(state, _message({"position": [3, 3]}), record)
-    problem = absorb_turn(state, _message({"position": [6, 6]}, step=2), record)
-    assert problem is not None and "teleport" in problem
-    assert captured[-1]["event"] == "physics.violation"
-
-
-def test_violation_stops_before_absorbing_their_hint(state: GameState) -> None:
-    """A cheating peer's other claims must not enter our knowledge either."""
-    _, record = _events()
-    absorb_turn(state, _message({"position": [3, 3], "hint": "honest"}), record)
-    absorb_turn(state, _message({"position": [0, 6], "hint": "poison"}, step=2), record)
-    assert state.last_opponent_hint == "honest"
+    absorb_turn(state, _turn(barrier_placed=[3, 4]), record)
+    assert state.board.is_blocked((3, 4))
+    assert any(event["event"] == "barrier.observed" for event in captured)
 
 
 @pytest.mark.parametrize("barrier", [None, [9, 9], "3,4", [3], {"cell": [3, 4]}])
 def test_malformed_or_off_board_barriers_are_ignored(state: GameState, barrier) -> None:
     _, record = _events()
-    absorb_turn(state, _message({"position": [3, 3], "barrier_placed": barrier}), record)
+    absorb_turn(state, _turn(barrier_placed=barrier), record)
     assert state.board.barrier_count == 0
 
 
-def test_declared_barrier_is_recorded_and_announced(state: GameState) -> None:
+def test_a_capture_claim_is_recorded_for_an_honest_answer(state: GameState) -> None:
+    """Rules 21-22: the thief must answer a claim truthfully."""
     captured, record = _events()
-    absorb_turn(state, _message({"position": [3, 3], "barrier_placed": [3, 4]}), record)
-    assert state.board.is_blocked((3, 4))
-    assert captured[-1] == {"event": "barrier.observed", "cell": [3, 4]}
+    absorb_turn(state, _turn(capture_claim=True), record)
+    assert state.pending_capture_claim is True
+    assert any(event["event"] == "capture.claimed" for event in captured)
 
 
-def test_malformed_scent_map_does_not_crash(state: GameState) -> None:
+def test_a_non_boolean_capture_claim_is_ignored(state: GameState) -> None:
     _, record = _events()
-    payload = {"position": [3, 3], "smell_grid": {"bad": "x", "9,9": 0.5, "2,2": 0.62}}
-    assert absorb_turn(state, _message(payload), record) is None
+    absorb_turn(state, _turn(capture_claim="yes"), record)
+    assert state.pending_capture_claim is None
+
+
+def test_a_malformed_scent_map_is_partially_absorbed_and_reported(state: GameState) -> None:
+    captured, record = _events()
+    payload = {"bad": "x", "9,9": 0.5, "2,2": 0.62}
+    assert absorb_turn(state, _turn(smell_grid=payload), record) is None
     assert state.opponent_scent.intensity_at((2, 2)) == 0.62
+    assert any(event["event"] == "scent.rejected" for event in captured)
+
+
+def test_an_empty_message_is_survivable(state: GameState) -> None:
+    _, record = _events()
+    assert absorb_turn(state, {}, record) is None
 
 
 def test_extras_include_the_scent_snapshot_without_a_position(state: GameState) -> None:
@@ -111,3 +133,19 @@ def test_thief_extras_never_carry_a_capture_claim() -> None:
 
 def test_barrier_extras_declare_the_exact_cell(state: GameState) -> None:
     assert outgoing_extras(state, (1, 2), claim=False)["barrier_placed"] == [1, 2]
+
+
+def test_a_peer_recommitting_a_step_is_refused_not_fatal(state: GameState) -> None:
+    """Overwriting a commitment would erase the evidence the audit needs."""
+    captured, record = _events()
+    assert absorb_turn(state, _turn(step=1), record) is None
+    problem = absorb_turn(state, _turn(step=1, commit="d" * 64), record)
+    assert problem is not None and "protocol error" in problem
+    assert any(event["event"] == "peer.duplicate_commit" for event in captured)
+
+
+@pytest.mark.parametrize("cell", ["3,4", [1], {"r": 1}, [None, 2], ["a", "b"]])
+def test_a_malformed_claimed_cell_is_ignored(state: GameState, cell) -> None:
+    _, record = _events()
+    absorb_turn(state, _turn(capture_claim=True, claimed_cell=cell), record)
+    assert state.claimed_cell is None

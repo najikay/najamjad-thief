@@ -47,6 +47,8 @@ class GameState:
     full_turns: int = 0
     last_opponent_hint: str = ""
     opponent_estimate: Position | None = None
+    pending_capture_claim: bool | None = None
+    claimed_cell: Position | None = None
     barriers_used: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
 

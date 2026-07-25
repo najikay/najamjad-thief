@@ -1,17 +1,28 @@
 """Absorbing the opponent's turn — the untrusted half of the loop.
 
 Split out of the orchestrator because it has a distinct job and a distinct
-threat model: everything here arrives from a competitor over the internet. It
-validates their declared step against the agreed physics (there is no referee,
-so each peer polices the other), folds the trustworthy parts into our knowledge,
-and returns a reason string when the opponent has broken the rules.
+threat model: everything here arrives from a competitor over the internet.
+
+What a peer legitimately sends us is deliberately thin. Their position and move
+stay sealed inside their commitment until the end-of-game audit, so we learn
+where they are only from evidence the rules make public:
+
+* the **scent field** they emit involuntarily and cannot fake (book PAGE 22);
+* a **free-language hint** that may be a lie;
+* any **barrier** the cop placed, which must be declared truthfully (rule 15);
+* a **capture claim**, which the thief must answer honestly (rules 21-22).
+
+Because positions are not transmitted, per-turn physics policing is impossible
+by design — an illegal move is caught at the audit, where the full sealed
+record is finally revealed and re-hashed. That is the book's own trade-off:
+hidden information now, verifiable honesty later.
 """
 
 from collections.abc import Callable
 from typing import Any
 
 from .game_state import GameState
-from .movement import validate_opponent_step
+from .ledger import ProtocolOrderError
 
 
 def absorb_turn(
@@ -20,20 +31,29 @@ def absorb_turn(
     event: Callable[..., None],
 ) -> str | None:
     """Fold one opponent message into `state`; return a violation reason or None."""
-    payload = message.get("payload") or {}
-    commit = message.get("commit")
     step = _step_of(message, state.step)
+    commit = message.get("commit")
     if commit:
-        state.ledger.record_opponent_commit(step, str(commit))
-    if not payload:
-        return None
-    state.ledger.record_opponent_reveal(step, payload)
-    violation = _absorb_position(state, payload, event)
-    if violation:
-        return violation
-    state.last_opponent_hint = str(payload.get("hint", ""))
-    state.opponent_scent.absorb(payload.get("smell_grid") or {})
-    _absorb_barrier(state, payload, event)
+        try:
+            state.ledger.record_opponent_commit(step, str(commit))
+        except ProtocolOrderError as error:
+            # A peer re-committing a step it already committed is either buggy
+            # or trying to overwrite history. Either way it is their protocol
+            # error, reported rather than allowed to crash our turn loop.
+            event("peer.duplicate_commit", step=step, reason=str(error))
+            return f"opponent protocol error: {error}"
+
+    # A peer that leaks its own position is not a threat to us, but it is worth
+    # noticing: either they are running a broken implementation, or baiting us.
+    if _has_position(message):
+        event("peer.leaked_position", step=step)
+
+    state.last_opponent_hint = str(message.get("hint", "") or "")
+    problems = state.opponent_scent.absorb(message.get("smell_grid") or {})
+    for problem in problems:
+        event("scent.rejected", reason=problem)
+    _absorb_barrier(state, message, event)
+    _absorb_capture_claim(state, message, event)
     return None
 
 
@@ -43,6 +63,14 @@ def _step_of(message: dict[str, Any], fallback: int) -> int:
         return int(message.get("step", fallback))
     except (TypeError, ValueError):
         return fallback
+
+
+def _has_position(message: dict[str, Any]) -> bool:
+    """True when a peer sent coordinates the protocol does not ask for."""
+    payload = message.get("payload")
+    if isinstance(payload, dict) and "position" in payload:
+        return True
+    return "position" in message
 
 
 def _parse_cell(raw: Any) -> tuple[int, int] | None:
@@ -55,34 +83,36 @@ def _parse_cell(raw: Any) -> tuple[int, int] | None:
         return None
 
 
-def _absorb_position(
-    state: GameState,
-    payload: dict[str, Any],
-    event: Callable[..., None],
-) -> str | None:
-    """Police the declared move: one orthogonal step, no walls, no teleports."""
-    target = _parse_cell(payload.get("position"))
-    if target is None:
-        return None
-    if state.opponent_estimate is not None:
-        violation = validate_opponent_step(state.board, state.opponent_estimate, target)
-        if violation:
-            event("physics.violation", reason=violation)
-            return f"opponent physics violation: {violation}"
-    state.opponent_estimate = target
-    return None
-
-
 def _absorb_barrier(
     state: GameState,
-    payload: dict[str, Any],
+    message: dict[str, Any],
     event: Callable[..., None],
 ) -> None:
     """Honour a truthfully declared barrier placement (book rules 15-16)."""
-    cell = _parse_cell(payload.get("barrier_placed"))
+    cell = _parse_cell(message.get("barrier_placed"))
     if cell is not None and state.board.in_bounds(cell):
         state.board = state.board.with_barrier(cell)
         event("barrier.observed", cell=list(cell))
+
+
+def _absorb_capture_claim(
+    state: GameState,
+    message: dict[str, Any],
+    event: Callable[..., None],
+) -> None:
+    """Record a cop's capture claim so the thief can answer it truthfully.
+
+    A claim must name the cell it asserts, because otherwise the thief — who
+    does not know where the cop is — could not answer honestly at all. That
+    disclosure is the price of claiming: a false claim hands us the cop's exact
+    position for nothing, which is what makes bluffed claims expensive.
+    """
+    claim = message.get("capture_claim")
+    if not isinstance(claim, bool) or not claim:
+        return
+    state.pending_capture_claim = True
+    state.claimed_cell = _parse_cell(message.get("claimed_cell"))
+    event("capture.claimed", step=state.step, cell=list(state.claimed_cell or ()))
 
 
 def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, Any]:
@@ -100,6 +130,34 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
     return extras
 
 
+def build_turn_message(
+    state: GameState, commit: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """What a peer is entitled to see: the commitment and public evidence.
+
+    Deliberately the mirror image of `absorb_turn`. Position, move and intent
+    stay sealed until the audit; everything included here is either unfakeable
+    (scent), free-language (the hint), or mandatory to declare (a barrier, a
+    capture claim naming the cell it asserts).
+    """
+    message: dict[str, Any] = {
+        "step": state.step,
+        "sender": state.role.value,
+        "commit": commit,
+        "hint": payload.get("hint", ""),
+        "smell_grid": payload.get("smell_grid", {}),
+    }
+    if "barrier_placed" in payload:
+        message["barrier_placed"] = payload["barrier_placed"]
+    if "capture_claim" in payload:
+        message["capture_claim"] = payload["capture_claim"]
+        if payload["capture_claim"]:
+            # Claiming necessarily discloses where we stand; that cost is what
+            # stops a cop claiming speculatively every turn.
+            message["claimed_cell"] = list(state.own_position)
+    return message
+
+
 def decay_after_full_turn(state: GameState) -> None:
     """Advance the world once both agents have moved (FR-ENG-7).
 
@@ -113,3 +171,5 @@ def decay_after_full_turn(state: GameState) -> None:
     observed = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}
     state.belief.update_scent(observed)
     state.belief.exclude((state.own_position,))
+    # With no transmitted position, our estimate of them IS our belief peak.
+    state.opponent_estimate = state.belief.peak()

@@ -45,12 +45,13 @@ def test_reveal_before_acknowledge_is_refused(ledger: CommitLedger) -> None:
         ledger.reveal(1)
 
 
-def test_reveal_after_acknowledge_returns_payload_without_nonce(ledger: CommitLedger) -> None:
+def test_reveal_marks_the_step_without_exposing_the_payload(ledger: CommitLedger) -> None:
+    """Our move stays sealed until the audit; reveal only unlocks the flow."""
     ledger.commit(1, _payload(1))
     ledger.acknowledge(1)
     revealed = ledger.reveal(1)
+    assert set(revealed) == {"commit"}
     assert "nonce" not in revealed
-    assert revealed["payload"]["move"] == "MOVE:E"
 
 
 def test_acknowledging_an_uncommitted_step_is_refused(ledger: CommitLedger) -> None:

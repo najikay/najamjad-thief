@@ -105,11 +105,16 @@ def test_require_match_is_silent_on_a_good_record(payload: dict) -> None:
     assert require_match(record.payload, record.nonce, record.commit) is None
 
 
-def test_public_view_never_exposes_the_nonce(payload: dict) -> None:
-    """Pre-audit secrecy: the nonce must not reach the wire (book rule 18)."""
+def test_public_view_exposes_only_the_commitment(payload: dict) -> None:
+    """Pre-audit secrecy: neither the nonce NOR the payload reaches a peer.
+
+    The payload holds our position, move and intent. Sending it would hand the
+    opponent perfect information and leave nothing to reveal at audit.
+    """
     view = seal(payload).public_view()
+    assert set(view) == {"commit"}
     assert "nonce" not in view
-    assert set(view) == {"payload", "commit"}
+    assert "position" not in str(view)
 
 
 def test_audit_view_reveals_the_nonce(payload: dict) -> None:

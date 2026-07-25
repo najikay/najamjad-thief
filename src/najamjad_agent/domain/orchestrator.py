@@ -14,14 +14,19 @@ from collections.abc import Callable
 from typing import Any
 
 from ..constants import EndReason, Move, Phase, Role
-from .capture import evaluate_barrier_capture, evaluate_capture, resolve_survival
 from .crypto import step_payload
+from .endings import opponent_end_reason, own_barrier_capture
 from .fsm import GameStateMachine
 from .game_state import GameState, TurnFacts
 from .movement import apply_move, legal_moves, place_barrier
 from .params import Position
 from .ports import Brain, Clock, Speaker, Transport
-from .turn_ingress import absorb_turn, decay_after_full_turn, outgoing_extras
+from .turn_ingress import (
+    absorb_turn,
+    build_turn_message,
+    decay_after_full_turn,
+    outgoing_extras,
+)
 
 THIEF_MOVES_FIRST = True
 
@@ -84,7 +89,7 @@ class Orchestrator:
             extra=outgoing_extras(self.state, barrier, self._capture_claim()),
         )
         self._commit_and_send(payload)
-        return self._own_end_reason(barrier)
+        return self._resolve(own_barrier_capture(self.state, barrier))
 
     def receive_turn(self) -> EndReason | None:
         """Await, validate and absorb the opponent's turn."""
@@ -101,7 +106,7 @@ class Orchestrator:
             return self.end_reason
         self.state.full_turns += 1
         decay_after_full_turn(self.state)
-        ended = self._opponent_end_reason(message)
+        ended = self._resolve(opponent_end_reason(self.state, message))
         if ended is None:
             self.fsm.to(Phase.WAITING_FOR_OPPONENT)
         return ended
@@ -140,13 +145,20 @@ class Orchestrator:
         return self.state.opponent_estimate == self.state.own_position
 
     def _commit_and_send(self, payload: dict[str, Any]) -> None:
-        """Seal the step and transmit commit + reveal in protocol order."""
+        """Seal the step and transmit only what a peer is entitled to see.
+
+        Our position, move and intent stay sealed until the end-of-game audit.
+        What crosses the wire is the commitment plus the evidence the rules make
+        public: the scent field we emit involuntarily, our free-language hint,
+        any barrier we placed (rule 15 makes declaration mandatory) and a
+        capture claim.
+        """
         self.fsm.to(Phase.COMMITTING)
         commit = self.state.ledger.commit(self.state.step, payload)
-        self._transport.send_turn({"step": self.state.step, "commit": commit})
+        message = build_turn_message(self.state, commit, payload)
+        self._transport.send_turn(message)
         self.state.ledger.acknowledge(self.state.step)
-        revealed = self.state.ledger.reveal(self.state.step)
-        self._transport.send_turn({"step": self.state.step, **revealed})
+        self.state.ledger.reveal(self.state.step)
         self.fsm.to(Phase.AWAITING_REVEAL)
         self.event("turn.sent", commit=commit[:16])
 
@@ -159,29 +171,9 @@ class Orchestrator:
             self.event("turn.timeout", attempt=attempt + 1, waited=self._timeout)
         return None
 
-    def _own_end_reason(self, barrier: Position | None) -> EndReason | None:
-        """Did our own move end the mini-game?"""
-        target = self.state.opponent_estimate
-        if not (self.state.role is Role.COP and barrier and target):
-            return None
-        captured = evaluate_barrier_capture(barrier, target).captured
-        return self._end(EndReason.CAPTURE) if captured else None
-
-    def _opponent_end_reason(self, message: dict[str, Any]) -> EndReason | None:
-        """Did their move (or the clock) end the mini-game?"""
-        payload = message.get("payload") or {}
-        claimed_us = self.state.opponent_estimate == self.state.own_position
-        if self.state.role is Role.THIEF and payload.get("capture_claim") and claimed_us:
-            return self._end(EndReason.CAPTURE)
-        if self.state.role is Role.COP and self.state.opponent_estimate:
-            verdict = evaluate_capture(
-                self.state.board, self.state.own_position, self.state.opponent_estimate, True
-            )
-            if verdict.captured and verdict.reason == "immobilised":
-                return self._end(EndReason.CAPTURE)
-        params = self.state.board.params
-        ended = resolve_survival(self.state.full_turns, params.survival_threshold, params.max_moves)
-        return self._end(ended) if ended else None
+    def _resolve(self, reason: EndReason | None) -> EndReason | None:
+        """Close the mini-game when an end condition fired."""
+        return self._end(reason) if reason is not None else None
 
     def _end(self, reason: EndReason) -> EndReason:
         """Close the mini-game cleanly and open the audit phase."""

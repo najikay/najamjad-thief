@@ -37,8 +37,14 @@ class SealedRecord:
     commit: str
 
     def public_view(self) -> dict[str, Any]:
-        """Wire/log form *before* audit — deliberately without the nonce."""
-        return {"payload": self.payload, "commit": self.commit}
+        """What a peer may see before the audit: the commitment, nothing else.
+
+        The sealed payload holds our position, move and intent. Transmitting it
+        would hand the opponent perfect information and make the whole
+        hidden-state game — scent, belief, bluffing — pointless, while also
+        leaving nothing to reveal at audit. Only the hash goes out.
+        """
+        return {"commit": self.commit}
 
     def audit_view(self) -> dict[str, Any]:
         """Full form for the end-of-game audit, nonce included."""

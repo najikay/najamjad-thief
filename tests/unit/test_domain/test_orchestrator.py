@@ -1,24 +1,14 @@
-"""Tests for the orchestrator: turn loop, physics policing, end conditions."""
+"""Tests for the orchestrator: turn loop, information discipline, end conditions."""
 
 import pytest
 
 from najamjad_agent.constants import EndReason, Move, Phase, Role
-from najamjad_agent.domain.crypto import commit_of
 from tests.fakes.orchestration import build_orchestrator
 
 
-def _turn(step: int, position: list[int], **extra) -> dict:
-    payload = {
-        "step": step,
-        "role": "thief",
-        "position": position,
-        "move": "MOVE:S",
-        "intent": "truth",
-        "hint": "near the river",
-        "state": "s",
-        **extra,
-    }
-    return {"step": step, "payload": payload, "commit": commit_of(payload, "n" * 32)}
+def _turn(step: int = 1, **fields) -> dict:
+    """A message shaped as a peer may legitimately send it."""
+    return {"step": step, "sender": "thief", "commit": "a" * 64, "hint": "near the river", **fields}
 
 
 def test_thief_moves_first() -> None:
@@ -28,14 +18,32 @@ def test_thief_moves_first() -> None:
     assert not cop.moves_first
 
 
-def test_take_turn_walks_the_fsm_and_sends_commit_then_reveal() -> None:
+def test_a_turn_sends_the_commitment_and_public_evidence_only() -> None:
+    """The core information rule: position and move stay sealed until audit."""
     orchestrator, transport, _ = build_orchestrator(role=Role.COP, moves=[Move.SOUTH])
     orchestrator.take_turn()
     assert orchestrator.fsm.phase is Phase.AWAITING_REVEAL
-    assert len(transport.sent) == 2
-    assert set(transport.sent[0]) == {"step", "commit"}
-    assert "payload" in transport.sent[1]
-    assert "nonce" not in transport.sent[1], "nonce must not reach the wire pre-audit"
+    assert len(transport.sent) == 1
+    message = transport.sent[0]
+    assert set(message) >= {"step", "sender", "commit", "hint", "smell_grid"}
+    assert "position" not in message
+    assert "move" not in message
+    assert "payload" not in message
+    assert "nonce" not in message
+
+
+def test_nothing_we_transmit_ever_reveals_our_position() -> None:
+    """Regression guard for the leak: scan every byte we would send."""
+    orchestrator, transport, _ = build_orchestrator(
+        role=Role.COP, moves=[Move.SOUTH, Move.EAST], inbox=[_turn(1), _turn(2)]
+    )
+    for _ in range(2):
+        orchestrator.take_turn()
+        orchestrator.receive_turn()
+    wire = str(transport.sent)
+    assert "position" not in wire
+    assert "MOVE:" not in wire
+    assert "intent" not in wire
 
 
 def test_move_updates_position_and_lays_scent() -> None:
@@ -43,6 +51,15 @@ def test_move_updates_position_and_lays_scent() -> None:
     orchestrator.take_turn()
     assert orchestrator.state.own_position == (1, 0)
     assert orchestrator.state.own_scent.intensity_at((1, 0)) == 0.9
+
+
+def test_the_scent_snapshot_we_publish_carries_no_coordinates_of_ours() -> None:
+    """Scent is evidence, not a position: it is a map of intensities only."""
+    orchestrator, transport, _ = build_orchestrator(role=Role.COP, moves=[Move.SOUTH])
+    orchestrator.take_turn()
+    grid = transport.sent[0]["smell_grid"]
+    assert grid, "we do emit scent"
+    assert all(isinstance(key, str) and "," in key for key in grid)
 
 
 def test_illegal_brain_move_is_replaced_not_transmitted() -> None:
@@ -54,16 +71,16 @@ def test_illegal_brain_move_is_replaced_not_transmitted() -> None:
     orchestrator.take_turn()
     assert orchestrator.state.own_position == (0, 0), "stayed instead of walking off-board"
     assert any(event.get("event") == "move.illegal_rejected" for event in events)
-    assert transport.sent[1]["payload"]["move"] == "MOVE:STAY"
+    assert transport.sent[0]["commit"]
 
 
-def test_cop_barrier_placement_is_declared_and_budgeted() -> None:
+def test_cop_barrier_placement_is_declared_publicly():
+    """Book rules 15-16: barriers are the one action we must announce."""
     orchestrator, transport, _ = build_orchestrator(
         role=Role.COP, moves=[Move.STAY], barriers=[(0, 1)]
     )
     orchestrator.take_turn()
-    payload = transport.sent[1]["payload"]
-    assert payload["barrier_placed"] == [0, 1]
+    assert transport.sent[0]["barrier_placed"] == [0, 1]
     assert orchestrator.state.board.is_blocked((0, 1))
     assert orchestrator.state.barriers_left == 13
 
@@ -73,7 +90,7 @@ def test_thief_never_places_a_barrier() -> None:
         role=Role.THIEF, moves=[Move.SOUTH], barriers=[(3, 4)]
     )
     orchestrator.take_turn()
-    assert "barrier_placed" not in transport.sent[1]["payload"]
+    assert "barrier_placed" not in transport.sent[0]
 
 
 def test_capture_claim_is_only_made_from_our_own_cell() -> None:
@@ -81,42 +98,26 @@ def test_capture_claim_is_only_made_from_our_own_cell() -> None:
     orchestrator, transport, _ = build_orchestrator(role=Role.COP, moves=[Move.STAY])
     orchestrator.state.opponent_estimate = (5, 5)
     orchestrator.take_turn()
-    assert transport.sent[1]["payload"]["capture_claim"] is False
+    assert transport.sent[0]["capture_claim"] is False
 
 
-def test_receive_turn_absorbs_hint_scent_and_position() -> None:
-    message = _turn(1, [3, 3], smell_grid={"3,3": 0.9})
+def test_receive_turn_absorbs_hint_and_scent() -> None:
+    message = _turn(smell_grid={"3,3": 0.9})
     orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[message])
-    orchestrator.state.ledger.record_opponent_commit(0, "seed")
     orchestrator.receive_turn()
-    assert orchestrator.state.opponent_estimate == (3, 3)
     assert orchestrator.state.last_opponent_hint == "near the river"
     assert orchestrator.state.opponent_scent.intensity_at((3, 3)) > 0
 
 
-def test_opponent_teleport_is_caught_and_forfeits() -> None:
-    """No referee: we police their physics ourselves (book rules 13-14)."""
-    events: list[dict] = []
-    orchestrator, _, _ = build_orchestrator(
-        role=Role.COP, inbox=[_turn(1, [3, 3]), _turn(2, [6, 6])], events=events
-    )
+def test_our_estimate_of_them_comes_from_belief_not_from_a_message() -> None:
+    """No position is transmitted, so belief is the only source."""
+    orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn(smell_grid={"5,5": 0.9})])
     orchestrator.receive_turn()
-    assert orchestrator.receive_turn() is EndReason.TAMPER_FORFEIT
-    assert orchestrator.fsm.phase is Phase.TECHNICAL_LOSS
-    assert any(event.get("event") == "physics.violation" for event in events)
-
-
-def test_opponent_diagonal_step_is_caught() -> None:
-    orchestrator, _, _ = build_orchestrator(
-        role=Role.COP, inbox=[_turn(1, [3, 3]), _turn(2, [4, 4])]
-    )
-    orchestrator.receive_turn()
-    assert orchestrator.receive_turn() is EndReason.TAMPER_FORFEIT
+    assert orchestrator.state.opponent_estimate == orchestrator.state.belief.peak()
 
 
 def test_declared_opponent_barrier_is_honoured() -> None:
-    message = _turn(1, [3, 3], barrier_placed=[3, 4])
-    orchestrator, _, _ = build_orchestrator(role=Role.THIEF, inbox=[message])
+    orchestrator, _, _ = build_orchestrator(role=Role.THIEF, inbox=[_turn(barrier_placed=[3, 4])])
     orchestrator.receive_turn()
     assert orchestrator.state.board.is_blocked((3, 4))
 
@@ -131,7 +132,7 @@ def test_timeout_resolves_to_a_clean_technical_loss() -> None:
 
 def test_scent_decays_once_per_full_turn_only() -> None:
     orchestrator, _, _ = build_orchestrator(
-        role=Role.COP, moves=[Move.SOUTH], inbox=[_turn(1, [3, 3])]
+        role=Role.COP, moves=[Move.SOUTH], inbox=[_turn()]
     )
     orchestrator.take_turn()
     assert orchestrator.state.own_scent.intensity_at((1, 0)) == 0.9, "no decay mid-turn"
@@ -140,19 +141,17 @@ def test_scent_decays_once_per_full_turn_only() -> None:
     assert orchestrator.state.full_turns == 1
 
 
-def test_thief_accepts_a_true_capture_claim() -> None:
+def test_the_thief_answers_a_landing_capture_claim_honestly() -> None:
+    """Rules 21-22: the claim settles only if the cop is truly on our cell."""
     orchestrator, _, _ = build_orchestrator(role=Role.THIEF, position=(3, 3))
-    orchestrator.state.opponent_estimate = (3, 3)
-    message = _turn(1, [3, 3], capture_claim=True)
-    orchestrator._transport.inbox.append(message)
+    orchestrator._transport.inbox.append(_turn(capture_claim=True, claimed_cell=[3, 3]))
     assert orchestrator.receive_turn() is EndReason.CAPTURE
     assert orchestrator.fsm.phase is Phase.GAME_END
 
 
-def test_thief_ignores_a_capture_claim_on_the_wrong_cell() -> None:
+def test_a_capture_claim_from_elsewhere_does_not_end_the_game() -> None:
     orchestrator, _, _ = build_orchestrator(role=Role.THIEF, position=(3, 3))
-    orchestrator.state.opponent_estimate = (0, 0)
-    orchestrator._transport.inbox.append(_turn(1, [0, 0], capture_claim=True))
+    orchestrator._transport.inbox.append(_turn(capture_claim=True, claimed_cell=[0, 0]))
     assert orchestrator.receive_turn() is None
 
 
@@ -165,19 +164,8 @@ def test_barrier_capture_ends_the_game() -> None:
     assert orchestrator.state.ledger.vault.audit_open, "audit opens on game end"
 
 
-def test_cop_wins_when_the_thief_walls_itself_in() -> None:
-    """Book rule 47: a thief with no move that changes its cell is captured."""
-    orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn(1, [0, 0])])
-    orchestrator.state.board = (
-        orchestrator.state.board.with_barrier((1, 0)).with_barrier((0, 1))
-    )
-    orchestrator.state.own_position = (6, 6)
-    assert orchestrator.receive_turn() is EndReason.CAPTURE
-    assert orchestrator.fsm.phase is Phase.GAME_END
-
-
 def test_survival_threshold_ends_the_game() -> None:
-    orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn(1, [3, 3])])
+    orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn()])
     orchestrator.state.full_turns = 34
     assert orchestrator.receive_turn() is EndReason.SURVIVAL
 
@@ -188,3 +176,11 @@ def test_events_carry_step_correlation() -> None:
     orchestrator.take_turn()
     sent = [event for event in events if event.get("event") == "turn.sent"]
     assert sent and sent[0]["step"] == 1
+
+
+def test_a_peer_protocol_error_forfeits_cleanly() -> None:
+    """Their broken protocol must resolve our game, not crash it."""
+    orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn(1), _turn(1)])
+    orchestrator.receive_turn()
+    assert orchestrator.receive_turn() is EndReason.TAMPER_FORFEIT
+    assert orchestrator.fsm.phase is Phase.TECHNICAL_LOSS

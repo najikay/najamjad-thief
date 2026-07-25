@@ -96,12 +96,14 @@ def test_replayed_turns_leave_the_game_state_untouched() -> None:
     )
     orchestrator._transport = transport
 
-    inboxes.accept("turn", {**TURN, "payload": {"position": [3, 3]}})
+    inboxes.accept("turn", {**TURN, "hint": "by the river", "smell_grid": {"3,3": 0.9}})
     for _ in range(3):
-        assert not inboxes.accept("turn", {**TURN, "payload": {"position": [0, 0]}}).ok
+        replay = {**TURN, "hint": "POISONED", "smell_grid": {"0,0": 0.9}}
+        assert not inboxes.accept("turn", replay).ok
 
     orchestrator.receive_turn()
-    assert orchestrator.state.opponent_estimate == (3, 3), "replay did not move our estimate"
+    assert orchestrator.state.last_opponent_hint == "by the river", "replay never reached us"
+    assert orchestrator.state.opponent_scent.intensity_at((0, 0)) == 0.0
 
 
 def test_out_of_order_turn_is_refused_with_a_reason() -> None:

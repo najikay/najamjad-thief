@@ -10,6 +10,7 @@ import pytest
 
 from najamjad_agent.constants import EndReason, Move, Phase, Role
 from najamjad_agent.domain.audit import audit_records, may_agree_result
+from najamjad_agent.domain.board import Board
 from najamjad_agent.domain.fsm import GameStateMachine
 from najamjad_agent.domain.orchestrator import Orchestrator
 from najamjad_agent.domain.scoring import ScoreTable
@@ -44,13 +45,8 @@ class LinkedTransport:
         self.peer.outbox.append(message)
 
     def receive_turn(self, timeout: float) -> dict | None:
-        # Commit and reveal arrive as two messages; the reveal is the one the
-        # turn loop acts on, mirroring how a real peer batches its send.
-        while self.outbox:
-            message = self.outbox.pop(0)
-            if "payload" in message:
-                return message
-        return None
+        """One message per turn now: the commitment plus public evidence."""
+        return self.outbox.pop(0) if self.outbox else None
 
     def send_audit(self, payload: dict) -> None:
         assert self.peer is not None
@@ -107,16 +103,18 @@ def test_two_peers_play_a_clean_mini_game(link) -> None:
     assert thief.state.own_position == (6, 3)
 
 
-def test_each_peer_tracks_the_other_from_transmitted_evidence(link) -> None:
+def test_each_peer_tracks_the_other_from_scent_alone(link) -> None:
+    """No position is transmitted, so tracking must come from the trail."""
     cop_link, thief_link = link
     cop = _peer(Role.COP, [Move.SOUTH] * 4, cop_link)
     thief = _peer(Role.THIEF, [Move.EAST] * 4, thief_link)
 
     _play(cop, thief, turns=3)
 
-    assert cop.state.opponent_estimate == thief.state.own_position
     assert cop.state.opponent_scent.intensity_at(thief.state.own_position) > 0
     assert cop.state.belief.peak() is not None
+    assert cop.state.opponent_estimate == cop.state.belief.peak()
+    assert Board.manhattan(cop.state.belief.peak(), thief.state.own_position) <= 2
 
 
 def test_full_game_audits_clean_on_both_sides(link) -> None:
@@ -148,15 +146,16 @@ def test_scent_decay_stays_in_step_between_peers(link) -> None:
 
 
 def test_capture_ends_the_game_and_scores_the_series(link) -> None:
+    """The cop claims the cell it stands on; the thief answers honestly."""
     cop_link, thief_link = link
     cop = _peer(Role.COP, [Move.STAY], cop_link, position=(3, 2))
     thief = _peer(Role.THIEF, [Move.STAY], thief_link, position=(3, 3))
     cop.state.opponent_estimate = (3, 3)
-    thief.state.opponent_estimate = (3, 2)
 
     cop._brain = ScriptedBrain([Move.EAST])
     thief.take_turn()
     cop.receive_turn()
+    cop.state.opponent_estimate = (3, 3)
     cop.take_turn()
     ended = thief.receive_turn()
 

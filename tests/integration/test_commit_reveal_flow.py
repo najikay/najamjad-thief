@@ -32,8 +32,15 @@ def _play(cop: CommitLedger, thief: CommitLedger, tamper_step: int | None = None
         cop.acknowledge(step)
         thief.acknowledge(step)
 
-        revealed_cop = cop.reveal(step)["payload"]
-        revealed_thief = thief.reveal(step)["payload"]
+        # Reveal unlocks the flow but transmits nothing: the payloads stay
+        # sealed until the audit, which is when each side finally learns what
+        # the other actually did.
+        cop.reveal(step)
+        thief.reveal(step)
+
+    for step in range(1, STEPS + 1):
+        revealed_cop = dict(cop._ours[step].record.payload)
+        revealed_thief = dict(thief._ours[step].record.payload)
         if tamper_step == step:
             revealed_thief = {**revealed_thief, "position": [0, 0]}
         thief.record_opponent_reveal(step, revealed_cop)
@@ -83,6 +90,8 @@ def test_no_nonce_is_observable_before_the_audit_opens(peers) -> None:
         transmitted.append({"commit": commit})
         cop.acknowledge(step)
         transmitted.append(cop.reveal(step))
+        # Nothing beyond the commitment is transmitted mid-game.
+        assert set(transmitted[-1]) == {"commit"}
 
     wire = json.dumps(transmitted)
     cop.open_audit()
