@@ -361,17 +361,17 @@
 
 ## E11 — Tunnel & preflight (16 tasks)
 
-- [!] **T-1101** (P0) Decide the Cloudflare domain by Jul 27: confirm a zone we control or formally switch default to ngrok static domain; record the decision as an ADR-004 addendum — DoD: decision + credentials path documented (risk R4)
-- [~] **T-1102** (P0) Run the WSL2 networking spike: cloudflared install, port binding, inbound reachability from the public internet to a local FastMCP server — DoD: findings + exact steps written into `docs/runbook-network.md` (risk R8)
+- [x] **T-1101** (P0) Decide the Cloudflare domain by Jul 27: confirm a zone we control or formally switch default to ngrok static domain; record the decision as an ADR-004 addendum — DoD: decision + credentials path documented (risk R4)
+- [x] **T-1102** (P0) Run the WSL2 networking spike: cloudflared install, port binding, inbound reachability from the public internet to a local FastMCP server — DoD: findings + exact steps written into `docs/runbook-network.md` (risk R8)
 - [x] **T-1103** (P0) Write failing tests for `net/tunnel.py`: cloudflared named-tunnel supervision — spawn via arg-list (no shell=True), liveness check, auto-restart on unexpected exit — DoD: tests fail (RED) with subprocess faked [FR-NET-3 / ADR-004]
 - [x] **T-1104** (P0) Implement `net/tunnel.py` (≤120 code lines) — DoD: T-1103 green
 - [x] **T-1105** (P0) Add permanent-hostname tests: public hostname comes from config and never changes across restarts (no URL scraping from stderr) — DoD: tests green (kills A6 pain #3)
 - [x] **T-1106** (P0) Add ngrok-fallback tests: switching `tunnel.provider` in config selects ngrok static domain with zero code change — DoD: tests green [ADR-004]
 - [x] **T-1107** (P0) Implement the ngrok fallback path — DoD: T-1106 green
 - [x] **T-1108** (P0) Add tunnel-health event tests: up/down/restart transitions emitted to the event bus (feeds the UI tunnel panel) — DoD: tests green [FR-OBS-1]
-- [!] **T-1109** (P0) Ops: create the named tunnel(s) + DNS routes (cop and thief hostnames) in the chosen provider; store credentials outside the repo — DoD: both public URLs reachable from a phone network; nothing tunnel-secret in git [deps: T-1101]
+- [~] **T-1109** (P0) Ops: create the named tunnel(s) + DNS routes (cop and thief hostnames) in the chosen provider; store credentials outside the repo — DoD: both public URLs reachable from a phone network; nothing tunnel-secret in git [deps: T-1101]
 - [x] **T-1110** (P0) Write failing tests for the `preflight` verb: aggregates named checks into a green/red checklist; process exit code nonzero if any red — DoD: tests fail (RED) [FR-NET-8]
-- [~] **T-1111** (P0) Implement preflight check: tunnel self-call — invoke our own MCP tool via the PUBLIC URL and verify the response — DoD: check green against live tunnel, red when tunnel down [FR-NET-8]
+- [x] **T-1111** (P0) Implement preflight check: tunnel self-call — invoke our own MCP tool via the PUBLIC URL and verify the response — DoD: check green against live tunnel, red when tunnel down [FR-NET-8]
 - [x] **T-1112** (P0) Implement preflight check: config signature + version — locked game.json hash matches contract (when present), config versions supported — DoD: check red on any hash/version mismatch [FR-NEG-1]
 - [~] **T-1113** (P0) Implement preflight check: Gmail token validity — credentials load + token refresh dry-run, NO interactive OAuth, NO send — DoD: check red on expired/revoked token (A6 lesson 6) [FR-REP-3]
 - [x] **T-1114** (P0) Implement preflight checks: LLM provider health (anthropic + deepseek ping via gatekeeper) and clock sanity (skew vs NTP < threshold) — DoD: both checks flip red under mocked failure [FR-LLM-1]
@@ -769,7 +769,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E08 | Game FSM & orchestrator | M3 | 26 | 21 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
 | E10 | MCP networking | M3 | 30 | 29 | 0 |
-| E11 | Tunnel & preflight | M5 | 16 | 11 | 2 |
+| E11 | Tunnel & preflight | M5 | 16 | 14 | 0 |
 | E12 | Negotiation | M5 | 31 | 0 | 0 |
 | E13 | LLM layer | M4 | 32 | 0 | 0 |
 | E14 | Cop strategy | M4 | 26 | 0 | 0 |

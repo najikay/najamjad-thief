@@ -1,0 +1,62 @@
+# Private per-peer configuration for the THIEF agent.
+#
+# This file is ours alone: it never crosses the network and is never signed.
+# Anything the opponent must agree to lives in the shared, SHA-256-locked
+# config/game.json, which OVERLAYS this file (book PAGE 127) — a private
+# setting can never weaken an agreed term.
+#
+# Secrets belong in .env, never here.
+
+version = "1.00"
+
+[game]
+group_name = "NajAmjad"
+group_id = "najamjad"
+members = ["Naji Kayal", "Amjad Abed"]
+
+[game.repos]
+cop = "https://github.com/najikay/najamjad-cop"
+thief = "https://github.com/najikay/najamjad-thief"
+
+[network]
+# Our own MCP server port. The thief agent uses 8801 so both can run locally.
+my_port = 8801
+# Set per match from the opponent's public URL, exchanged during negotiation.
+opponent_url = ""
+# Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
+response_timeout_seconds = 30
+watchdog_threshold_seconds = 60
+max_retries = 3
+
+[tunnel]
+# A PERMANENT hostname — this is the whole point. Cloudflare named tunnels do
+# not mint a new URL on restart, so an opponent's saved address keeps working
+# (ADR-004; the defect that cost Assignment 6 the most time).
+provider = "cloudflare"
+hostname = "thief.4laboratory.com"
+name = "najamjad-thief"
+
+[llm]
+# Provider chain: anthropic -> deepseek -> template (ADR-003). The active
+# provider is always visible in the logs and the dashboard badge.
+primary = "anthropic"
+fallback = "deepseek"
+model = "claude-haiku-4-5-20251001"
+negotiation_model = "claude-sonnet-5"
+step_deadline_seconds = 30
+# Hint cadence. This is a QUALITY dial, not a savings dial — the budget has
+# room (see docs/TOKEN_BUDGET.md).
+every_n_steps = 2
+series_token_budget = 200000
+project_token_budget = 5000000
+
+[email]
+# Book Appendix F Table 20: the ONLY permitted destination for agent reports.
+recipient = "rmisegal+uoh26finalgame@gmail.com"
+# "draft" while developing; the league requires "send".
+mode = "draft"
+
+[strategy]
+# Empty means the shipped brains. Point these at a subclass to experiment.
+cop_class = ""
+thief_class = ""

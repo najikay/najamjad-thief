@@ -17,7 +17,7 @@ proving it works *before* a match rather than during one.
 
 | Provider | What it needs | Result |
 |---|---|---|
-| **Cloudflare named tunnel** (default) | a domain on a free Cloudflare zone | `https://cop.<domain>/mcp`, stable forever |
+| **Cloudflare named tunnel** (default, CHOSEN) | `4laboratory.com`, registered via Cloudflare 2026-07-25 | `https://cop.4laboratory.com/mcp`, stable forever |
 | **ngrok reserved domain** (fallback) | free ngrok account (1 static domain) | `https://<name>.ngrok.app/mcp`, stable |
 
 Switching between them is a **config change only** — `tunnel.provider` — with no
@@ -41,8 +41,8 @@ cloudflared tunnel create najamjad-cop
 cloudflared tunnel create najamjad-thief
 
 # 4. route a stable hostname to each
-cloudflared tunnel route dns najamjad-cop   cop.<your-domain>
-cloudflared tunnel route dns najamjad-thief thief.<your-domain>
+cloudflared tunnel route dns najamjad-cop   cop.4laboratory.com
+cloudflared tunnel route dns najamjad-thief thief.4laboratory.com
 ```
 
 Credentials land in `~/.cloudflared/<uuid>.json`. **They never enter the repo**
@@ -54,7 +54,7 @@ Then set, in `config/police/game.toml`:
 ```toml
 [tunnel]
 provider = "cloudflare"
-hostname = "cop.<your-domain>"
+hostname = "cop.4laboratory.com"
 name     = "najamjad-cop"
 ```
 
@@ -128,7 +128,47 @@ picture.
 
 ## 8. Outstanding operator tasks
 
-- [ ] **T-1101** — decide the Cloudflare domain (or formally switch to ngrok)
-- [ ] **T-1109** — create both named tunnels + DNS routes; verify each public
-      URL from a phone on mobile data (proves it is genuinely public, not just
-      reachable on the LAN)
+- [x] **T-1101** — domain decided: **`4laboratory.com`** on Cloudflare
+      (registrar + DNS), recorded as the ADR-004 addendum below.
+- [x] **T-1109 (cop side verified 2026-07-25)** — both named tunnels created
+      (`najamjad-cop`, `najamjad-thief`) with DNS routes. A real MCP call was
+      made through `https://cop.4laboratory.com/mcp` from outside: all four
+      tools listed, `receive_turn` returned `{"accepted": true}`, and the
+      server logged `inbox.accepted` — the message reached the game queue, not
+      merely the HTTP layer.
+- [ ] **T-1109 (remaining)** — run the same check for
+      `thief.4laboratory.com` once the thief agent runs, and load both URLs
+      **from a phone on mobile data** as an independent confirmation that they
+      are genuinely public rather than resolving locally.
+
+### Verified startup sequence (cop)
+
+```bash
+# terminal 1 — the agent's MCP server
+uv run python -c "from najamjad_agent.net.inbox import Inboxes; \
+from najamjad_agent.net.mcp_server import PeerServer; import time; \
+s=PeerServer(Inboxes(), port=8802); s.start(); time.sleep(3600)"
+
+# terminal 2 — the tunnel (URL never changes)
+cloudflared tunnel run --url http://127.0.0.1:8802 najamjad-cop
+```
+
+A bare `curl https://cop.4laboratory.com/mcp` returns **HTTP 406**, and that is
+the healthy answer: MCP requires specific headers, so 406 proves our server —
+not Cloudflare — replied.
+
+## 9. ADR-004 addendum — provider decision (2026-07-25)
+
+**Decision:** Cloudflare named tunnels on `4laboratory.com`, registered through
+Cloudflare Registrar (at-cost, no markup, and the zone is already there).
+
+**Hostnames:** `cop.4laboratory.com` and `thief.4laboratory.com`, one named
+tunnel each, set in `config/<role>/game.toml` under `[tunnel]`.
+
+**Why not ngrok:** the free tier gives one reserved domain per account, and we
+need two simultaneous public hostnames. It stays wired as the fallback — a
+`tunnel.provider` change, no code — if Cloudflare is unavailable on match day.
+
+**Why a paid domain at all:** a hostname that can change (quick tunnels) or
+disappear (free TLDs) is the exact failure that cost Assignment 6 the most
+time. The domain outlives the course and is reusable for other projects.
