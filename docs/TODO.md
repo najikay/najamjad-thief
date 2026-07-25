@@ -265,39 +265,39 @@
 - [x] **T-0726** (P0) Add Step-0 golden test: our sealed spec record shape matches the reference sample log's `system_spec` record — DoD: golden green [ADR-012]
 - [x] **T-0727** (P1) Add hypothesis tamper-localization tests: over N-step games with random single-record tampering, audit always flags exactly the tampered step — DoD: property suite green
 - [x] **T-0728** (P0) Add mutual-symmetry tests: both sides auditing the same pair of logs reach identical verdicts — DoD: tests green
-- [~] **T-0729** (P0) Add in-process integration test: full mini-game record chain → mutual audit → Verified OK — DoD: test green; wired into CI [deps: T-0824]
+- [x] **T-0729** (P0) Add in-process integration test: full mini-game record chain → mutual audit → Verified OK — DoD: test green; wired into CI [deps: T-0824]
 - [x] **T-0730** (P0) Author `docs/PRD_commit_reveal.md`: protocol theory, byte-format contract, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 - [x] **T-0731** (P0) Add malformed-audit negative tests: payload missing nonce/commit/records → structured error response, never a crash — DoD: tests green [FR-NET-7]
 - [x] **T-0732** (P1) Run a crypto security-review checklist (compare_digest everywhere, nonce entropy 16 bytes, no nonce reuse across steps/games, canonicalization pinned) and record it in PRD_commit_reveal — DoD: checklist appended with evidence links
 
 ## E08 — Game FSM & orchestrator (26 tasks)
 
-- [ ] **T-0801** (P0) Write failing tests for `domain/fsm.py`: full legal transition table per PLAN §2.1 (NEGOTIATING → … → REPORTING); every illegal transition raises immediately — DoD: tests fail (RED) [book rules 4–5]
-- [ ] **T-0802** (P0) Implement `domain/fsm.py` (≤120 code lines) — DoD: T-0801 green
-- [ ] **T-0803** (P0) Add terminal-state tests: TECHNICAL_LOSS reachable from COMPUTING_MOVE and AWAITING_REVEAL (deadline/watchdog); GAME_END → AUDITING → REPORTING; AUDITING → TECHNICAL_LOSS on TAMPERED — DoD: tests green
-- [ ] **T-0804** (P0) Add transition-event tests: every FSM transition emits an event with `game_uid`/`step` correlation ids — DoD: tests green [FR-OBS-1 / ADR-008]
-- [ ] **T-0805** (P1) Add hypothesis property test: random event walks over the transition function never reach an undeclared state and never bypass raise-on-illegal — DoD: property suite green
-- [ ] **T-0806** (P0) Write failing tests for the orchestrator as sole gateway: peripheral modules (domain/strategy/net/reporting) are invoked only via the orchestrator; direct cross-module calls forbidden by an import-graph meta-test — DoD: tests fail (RED) [book rule 3]
-- [ ] **T-0807** (P0) Implement `src/najamjad_agent/domain/orchestrator.py` per PLAN §1.3 (gateway conductor over all subsystems, ≤120 code lines) — DoD: T-0806 green [book rule 3]
-- [ ] **T-0808** (P0) Write failing tests for the turn loop against a fake transport: WAITING → receive+verify → COMPUTING → decide → COMMITTING → reveal handling, strict ping-pong — DoD: tests fail (RED)
-- [ ] **T-0809** (P0) Implement the turn loop in the orchestrator (delegating to fsm, movement, crypto, strategy, net interfaces) — DoD: T-0808 green
-- [ ] **T-0810** (P0) Add turn-order tests: thief moves first (reference-compatible); role-aware start behavior on both sides — DoD: tests green [simulator digest §5]
-- [ ] **T-0811** (P0) Add scent-decay-timing tests: decay applied exactly once after each FULL turn (both agents moved), never per half-turn — DoD: tests green [FR-ENG-7]
-- [ ] **T-0812** (P0) Implement the full-turn decay trigger in the orchestrator — DoD: T-0811 green [deps: T-0604]
-- [ ] **T-0813** (P0) Add end-condition tests: capture-claim confirmed, survival threshold, step cap, timeout, stopped, tamper — each maps to the correct EndReason and FSM path — DoD: tests green [FR-ENG-4/5]
-- [ ] **T-0814** (P0) Implement end-condition evaluation in the orchestrator — DoD: T-0813 green
-- [ ] **T-0815** (P0) Add final-message tests: on being captured, the thief sends the mandatory honest final message before game end (reference flow) — DoD: tests green [FR-ENG-4]
-- [ ] **T-0816** (P0) Add role-swap series tests: 6 mini-games with role alternation per negotiated schedule; fresh per-game state (belief/scent/ledger), transport persists across games — DoD: tests fail (RED) [FR-ENG-6]
-- [ ] **T-0817** (P0) Implement the series runner (role_for, per-game reset, inbox drain between games, bounded restart handling) — DoD: T-0816 green
-- [ ] **T-0818** (P0) Add deadline-integration tests: expiry during COMPUTING/AWAITING → controlled retry then clean technical-loss resolution; NEVER an indefinite wait — DoD: tests green [FR-NET-4; deps: T-1018]
-- [ ] **T-0819** (P0) Add watchdog-integration tests: simulated main-loop freeze → persist state + controlled shutdown hook invoked — DoD: tests green [FR-NET-5; deps: T-1021]
-- [ ] **T-0820** (P0) Wire deadline tracker + watchdog into the orchestrator lifecycle — DoD: T-0818/T-0819 green through the real orchestrator
-- [ ] **T-0821** (P1) Add persistence/resume tests: FSM + game state snapshot persisted per step; process restart either resumes cleanly or declares a documented technical outcome — DoD: tests green (A6 lesson 1)
-- [ ] **T-0822** (P1) Implement the persistence snapshot (JSON in match workspace) — DoD: T-0821 green [FR-CFG-3]
-- [ ] **T-0823** (P1) Add pause-safe control tests: operator pause/stop honored only at safe points (between commit boundaries); input ignored while LOCKED — DoD: tests green [FR-UI-5]
-- [ ] **T-0824** (P0) Add headless integration test: full mini-game in one process via orchestrator + fake transport ends with the correct EndReason and score (M2 exit criterion) — DoD: test green in CI
-- [ ] **T-0825** (P0) Add headless series integration test: full 6-game series, alternating roles, aggregate scoring + tie rule exercised — DoD: test green in CI [deps: T-0530]
-- [ ] **T-0826** (P0) Complete docstrings on fsm/orchestrator and add `domain/orchestrator.py` to the core-manifest file list — DoD: cross-repo manifest CI green [ADR-002]
+- [x] **T-0801** (P0) Write failing tests for `domain/fsm.py`: full legal transition table per PLAN §2.1 (NEGOTIATING → … → REPORTING); every illegal transition raises immediately — DoD: tests fail (RED) [book rules 4–5]
+- [x] **T-0802** (P0) Implement `domain/fsm.py` (≤120 code lines) — DoD: T-0801 green
+- [x] **T-0803** (P0) Add terminal-state tests: TECHNICAL_LOSS reachable from COMPUTING_MOVE and AWAITING_REVEAL (deadline/watchdog); GAME_END → AUDITING → REPORTING; AUDITING → TECHNICAL_LOSS on TAMPERED — DoD: tests green
+- [x] **T-0804** (P0) Add transition-event tests: every FSM transition emits an event with `game_uid`/`step` correlation ids — DoD: tests green [FR-OBS-1 / ADR-008]
+- [~] **T-0805** (P1) Add hypothesis property test: random event walks over the transition function never reach an undeclared state and never bypass raise-on-illegal — DoD: property suite green
+- [x] **T-0806** (P0) Write failing tests for the orchestrator as sole gateway: peripheral modules (domain/strategy/net/reporting) are invoked only via the orchestrator; direct cross-module calls forbidden by an import-graph meta-test — DoD: tests fail (RED) [book rule 3]
+- [x] **T-0807** (P0) Implement `src/najamjad_agent/domain/orchestrator.py` per PLAN §1.3 (gateway conductor over all subsystems, ≤120 code lines) — DoD: T-0806 green [book rule 3]
+- [x] **T-0808** (P0) Write failing tests for the turn loop against a fake transport: WAITING → receive+verify → COMPUTING → decide → COMMITTING → reveal handling, strict ping-pong — DoD: tests fail (RED)
+- [x] **T-0809** (P0) Implement the turn loop in the orchestrator (delegating to fsm, movement, crypto, strategy, net interfaces) — DoD: T-0808 green
+- [x] **T-0810** (P0) Add turn-order tests: thief moves first (reference-compatible); role-aware start behavior on both sides — DoD: tests green [simulator digest §5]
+- [x] **T-0811** (P0) Add scent-decay-timing tests: decay applied exactly once after each FULL turn (both agents moved), never per half-turn — DoD: tests green [FR-ENG-7]
+- [x] **T-0812** (P0) Implement the full-turn decay trigger in the orchestrator — DoD: T-0811 green [deps: T-0604]
+- [x] **T-0813** (P0) Add end-condition tests: capture-claim confirmed, survival threshold, step cap, timeout, stopped, tamper — each maps to the correct EndReason and FSM path — DoD: tests green [FR-ENG-4/5]
+- [x] **T-0814** (P0) Implement end-condition evaluation in the orchestrator — DoD: T-0813 green
+- [~] **T-0815** (P0) Add final-message tests: on being captured, the thief sends the mandatory honest final message before game end (reference flow) — DoD: tests green [FR-ENG-4]
+- [x] **T-0816** (P0) Add role-swap series tests: 6 mini-games with role alternation per negotiated schedule; fresh per-game state (belief/scent/ledger), transport persists across games — DoD: tests fail (RED) [FR-ENG-6]
+- [x] **T-0817** (P0) Implement the series runner (role_for, per-game reset, inbox drain between games, bounded restart handling) — DoD: T-0816 green
+- [~] **T-0818** (P0) Add deadline-integration tests: expiry during COMPUTING/AWAITING → controlled retry then clean technical-loss resolution; NEVER an indefinite wait — DoD: tests green [FR-NET-4; deps: T-1018]
+- [~] **T-0819** (P0) Add watchdog-integration tests: simulated main-loop freeze → persist state + controlled shutdown hook invoked — DoD: tests green [FR-NET-5; deps: T-1021]
+- [~] **T-0820** (P0) Wire deadline tracker + watchdog into the orchestrator lifecycle — DoD: T-0818/T-0819 green through the real orchestrator
+- [~] **T-0821** (P1) Add persistence/resume tests: FSM + game state snapshot persisted per step; process restart either resumes cleanly or declares a documented technical outcome — DoD: tests green (A6 lesson 1)
+- [~] **T-0822** (P1) Implement the persistence snapshot (JSON in match workspace) — DoD: T-0821 green [FR-CFG-3]
+- [~] **T-0823** (P1) Add pause-safe control tests: operator pause/stop honored only at safe points (between commit boundaries); input ignored while LOCKED — DoD: tests green [FR-UI-5]
+- [x] **T-0824** (P0) Add headless integration test: full mini-game in one process via orchestrator + fake transport ends with the correct EndReason and score (M2 exit criterion) — DoD: test green in CI
+- [x] **T-0825** (P0) Add headless series integration test: full 6-game series, alternating roles, aggregate scoring + tie rule exercised — DoD: test green in CI [deps: T-0530]
+- [x] **T-0826** (P0) Complete docstrings on fsm/orchestrator and add `domain/orchestrator.py` to the core-manifest file list — DoD: cross-repo manifest CI green [ADR-002]
 
 ## E09 — Protocol schemas & goldens (24 tasks)
 
@@ -765,8 +765,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E04 | Shared infrastructure | M2 | 28 | 0 | 0 |
 | E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
 | E06 | Scent & belief | M2 | 30 | 30 | 0 |
-| E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 31 | 0 |
-| E08 | Game FSM & orchestrator | M3 | 26 | 0 | 0 |
+| E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 32 | 0 |
+| E08 | Game FSM & orchestrator | M3 | 26 | 18 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 0 | 0 |
 | E10 | MCP networking | M3 | 30 | 0 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 0 | 0 |

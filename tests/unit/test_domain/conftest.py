@@ -39,3 +39,15 @@ def params(game_config: dict) -> GameParams:
 def board(params: GameParams) -> Board:
     """An empty 7x7 board under default axis conventions."""
     return Board(params)
+
+
+@pytest.fixture()
+def state_with_scent():
+    """A cop state that has already sensed the opponent, for snapshot tests."""
+    from najamjad_agent.constants import Role
+    from tests.fakes.orchestration import build_state
+
+    state = build_state(Role.COP)
+    state.opponent_scent.deposit((5, 5))
+    state.belief.update_scent({(5, 5): 0.9})
+    return state
