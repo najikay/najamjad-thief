@@ -559,34 +559,34 @@
 
 ## E18 — UI dashboard (28 tasks)
 
-- [ ] **T-1801** (P0) Write failing tests for `ui/app.py`: FastAPI app boots, WS endpoint accepts connections, app contains zero business logic (SDK calls only) — DoD: tests fail (RED) [FR-UI-2 / FR-UI-4]
-- [ ] **T-1802** (P0) Implement `ui/app.py` (≤120 code lines) — DoD: T-1801 green [ADR-005]
-- [ ] **T-1803** (P0) Add forbidden-import meta-test: `ui/*` may import ONLY the sdk package (never domain/strategy/net/reporting directly) — DoD: meta-test green in CI [FR-UI-4]
-- [ ] **T-1804** (P0) Implement `ui/views.py` route handlers delegating to SDK queries (≤120 code lines) — DoD: handler tests green; T-1803 still green
-- [ ] **T-1805** (P0) Wire event bus → WS push (no polling anywhere); client JS reconnects with backoff on drop — DoD: WS test green; grep finds no `setInterval` polling of REST status (A6 UI lesson) [FR-UI-2]
-- [ ] **T-1806** (P0) Add multi-client tests: two WS subscribers both receive all events; a slow client never stalls the bus or steals frames — DoD: tests green [deps: T-0421]
-- [ ] **T-1807** (P0) Build the static dashboard shell (`ui/static/` single page: layout grid, panel containers, WS client) — DoD: page loads, connects, renders raw event feed
-- [ ] **T-1808** (P0) Build the board + belief heatmap panel: own position, barriers, opponent scent overlay, belief heatmap (deeper color = higher probability) — DoD: renders live during a headless test game [FR-UI-1]
-- [ ] **T-1809** (P0) Add the local-truth-only enforcement test: SDK query payloads and WS frames NEVER contain the opponent's true position; schema-level exclusion asserted — DoD: test green (book rules 8–9, disqualification risk) [FR-UI-1]
-- [ ] **T-1810** (P0) Build the turn banner panel: green YOUR TURN / gray LOCKED driven by FSM events; controls disabled while LOCKED — DoD: banner follows FSM in a scripted game [FR-UI-2]
-- [ ] **T-1811** (P0) Build the dialogue transcript panel: hints in/out with per-message provider+model provenance tag — DoD: provenance visible per message in a mocked-LLM game [FR-LLM-2]
-- [ ] **T-1812** (P0) Build the negotiation timeline panel: every propose/counter/lock step rendered from the persisted timeline — DoD: timeline shows a full mocked negotiation [FR-NEG-4]
-- [ ] **T-1813** (P1) Build the FSM state view panel: current state + recent transitions — DoD: panel tracks a scripted game's transitions
-- [ ] **T-1814** (P1) Build the gatekeeper stats panel: per-service queue depth, rate-window usage, retries, backpressure indicators — DoD: panel reflects `get_queue_status()` live [ADR-009]
-- [ ] **T-1815** (P0) Build the token meter panel: per-game/series usage vs budget with 70% warning styling and hard-stop state — DoD: panel reflects meter events in a mocked game [FR-LLM-3]
-- [ ] **T-1816** (P0) Build the email/report status panel: reconcile status, send confirmation message id, dead-letter visibility — DoD: a mocked send failure is visible without opening logs (kills A6 pain #1) [FR-REP-3]
-- [ ] **T-1817** (P0) Build the incident feed panel: retries, timeouts, fallbacks, degradations as a scrolling feed — DoD: injected faults appear within 250 ms [FR-UI-5 / FR-OBS-2]
+- [x] **T-1801** (P0) Write failing tests for `ui/app.py`: FastAPI app boots, WS endpoint accepts connections, app contains zero business logic (SDK calls only) — DoD: tests fail (RED) [FR-UI-2 / FR-UI-4]
+- [x] **T-1802** (P0) Implement `ui/app.py` (≤120 code lines) — DoD: T-1801 green [ADR-005]
+- [x] **T-1803** (P0) Add forbidden-import meta-test: `ui/*` may import ONLY the sdk package (never domain/strategy/net/reporting directly) — DoD: meta-test green in CI [FR-UI-4]
+- [x] **T-1804** (P0) Implement `ui/views.py` route handlers delegating to SDK queries (≤120 code lines) — DoD: handler tests green; T-1803 still green
+- [x] **T-1805** (P0) Wire event bus → WS push (no polling anywhere); client JS reconnects with backoff on drop — DoD: WS test green; grep finds no `setInterval` polling of REST status (A6 UI lesson) [FR-UI-2]
+- [x] **T-1806** (P0) Add multi-client tests: two WS subscribers both receive all events; a slow client never stalls the bus or steals frames — DoD: tests green [deps: T-0421]
+- [x] **T-1807** (P0) Build the static dashboard shell (`ui/static/` single page: layout grid, panel containers, WS client) — DoD: page loads, connects, renders raw event feed
+- [x] **T-1808** (P0) Build the board + belief heatmap panel: own position, barriers, opponent scent overlay, belief heatmap (deeper color = higher probability) — DoD: renders live during a headless test game [FR-UI-1]
+- [x] **T-1809** (P0) Add the local-truth-only enforcement test: SDK query payloads and WS frames NEVER contain the opponent's true position; schema-level exclusion asserted — DoD: test green (book rules 8–9, disqualification risk) [FR-UI-1]
+- [x] **T-1810** (P0) Build the turn banner panel: green YOUR TURN / gray LOCKED driven by FSM events; controls disabled while LOCKED — DoD: banner follows FSM in a scripted game [FR-UI-2]
+- [x] **T-1811** (P0) Build the dialogue transcript panel: hints in/out with per-message provider+model provenance tag — DoD: provenance visible per message in a mocked-LLM game [FR-LLM-2]
+- [x] **T-1812** (P0) Build the negotiation timeline panel: every propose/counter/lock step rendered from the persisted timeline — DoD: timeline shows a full mocked negotiation [FR-NEG-4]
+- [x] **T-1813** (P1) Build the FSM state view panel: current state + recent transitions — DoD: panel tracks a scripted game's transitions
+- [x] **T-1814** (P1) Build the gatekeeper stats panel: per-service queue depth, rate-window usage, retries, backpressure indicators — DoD: panel reflects `get_queue_status()` live [ADR-009]
+- [x] **T-1815** (P0) Build the token meter panel: per-game/series usage vs budget with 70% warning styling and hard-stop state — DoD: panel reflects meter events in a mocked game [FR-LLM-3]
+- [x] **T-1816** (P0) Build the email/report status panel: reconcile status, send confirmation message id, dead-letter visibility — DoD: a mocked send failure is visible without opening logs (kills A6 pain #1) [FR-REP-3]
+- [x] **T-1817** (P0) Build the incident feed panel: retries, timeouts, fallbacks, degradations as a scrolling feed — DoD: injected faults appear within 250 ms [FR-UI-5 / FR-OBS-2]
 - [ ] **T-1818** (P1) Build the tunnel-health indicator + active-provider badge components — DoD: badge flips on mocked provider switch; tunnel state follows T-1108 events [FR-LLM-2 / FR-NET-3]
 - [ ] **T-1819** (P1) Build the match-day cockpit strip: preflight results + opponent profile card — DoD: preflight checklist renders green/red from a mocked run [FR-UI-5 / FR-NET-8]
 - [ ] **T-1820** (P1) Build one-click start / pause-safe controls wired to SDK actions with SERVER-DRIVEN button state (no blind timeouts) — DoD: buttons reflect real FSM/permission state in tests [FR-UI-5; deps: T-0823]
 - [ ] **T-1821** (P1) Build the negotiation human-approval UI: view draft, edit, approve/send — DoD: approval flow test green end-to-end with mocked LLM [FR-NEG-4; deps: T-1229]
-- [ ] **T-1822** (P0) Define pydantic view-models for all WS frame types; serialization tests — DoD: every panel's frame type validated; unknown frame rejected in tests [ADR-006]
-- [ ] **T-1823** (P1) Add UI latency test: event published → WS frame received < 250 ms under a busy event stream — DoD: timed test green [PRD §4 performance]
-- [ ] **T-1824** (P1) Add degraded-state handling: WS drop shows a reconnecting banner; stale panels visually marked until resync — DoD: manual + automated check green
+- [x] **T-1822** (P0) Define pydantic view-models for all WS frame types; serialization tests — DoD: every panel's frame type validated; unknown frame rejected in tests [ADR-006]
+- [x] **T-1823** (P1) Add UI latency test: event published → WS frame received < 250 ms under a busy event stream — DoD: timed test green [PRD §4 performance]
+- [x] **T-1824** (P1) Add degraded-state handling: WS drop shows a reconnecting banner; stale panels visually marked until resync — DoD: manual + automated check green
 - [ ] **T-1825** (P0) Run the screenshot pass: capture EVERY screen and state (incl. belief heatmap live) into `assets/` — DoD: screenshot set complete per guidelines §10 checklist [deps: T-1808]
-- [ ] **T-1826** (P1) Write the Nielsen-heuristics writeup `docs/UX.md`: map each of the 10 heuristics to concrete dashboard decisions — DoD: all 10 covered with screenshots referenced
-- [ ] **T-1827** (P1) Apply + document accessibility measures: color-safe heatmap ramp (not red-only), keyboard navigation, text labels/contrast — DoD: notes in docs/UX.md; heatmap readable in grayscale
-- [ ] **T-1828** (P0) Add the dashboard integration test: a headless scripted game drives the UI via a WS fake browser client; every panel receives its event types — DoD: test green in CI
+- [x] **T-1826** (P1) Write the Nielsen-heuristics writeup `docs/UX.md`: map each of the 10 heuristics to concrete dashboard decisions — DoD: all 10 covered with screenshots referenced
+- [x] **T-1827** (P1) Apply + document accessibility measures: color-safe heatmap ramp (not red-only), keyboard navigation, text labels/contrast — DoD: notes in docs/UX.md; heatmap readable in grayscale
+- [x] **T-1828** (P0) Add the dashboard integration test: a headless scripted game drives the UI via a WS fake browser client; every panel receives its event types — DoD: test green in CI
 
 ## E19 — Replay viewer (14 tasks)
 
@@ -776,7 +776,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E15 | Thief strategy | M4 | 26 | 13 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 13 | 0 |
 | E17 | Reporting | M5 | 28 | 19 | 4 |
-| E18 | UI dashboard | M5 | 28 | 0 | 0 |
+| E18 | UI dashboard | M5 | 28 | 23 | 5 |
 | E19 | Replay viewer | M5 | 14 | 0 | 0 |
 | E20 | SDK & CLI | M5 | 16 | 0 | 0 |
 | E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 0 | 0 |

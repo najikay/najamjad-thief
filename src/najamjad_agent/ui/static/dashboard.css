@@ -1,0 +1,119 @@
+/* Dashboard styling.
+ *
+ * The heatmap ramp is viridis-like on purpose: it is colour-blind safe and its
+ * lightness increases monotonically, so the belief map still reads correctly in
+ * grayscale or on a projector (docs/UX.md, accessibility).
+ */
+
+:root {
+  --bg: #0f1216;
+  --panel: #171c22;
+  --line: #262e37;
+  --text: #dbe3ec;
+  --muted: #8a97a6;
+  --ok: #35c07d;
+  --warn: #e0a83a;
+  --bad: #e2604d;
+  --us: #6fd3ff;
+  --barrier: #4a5563;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: .7; }
+
+.badges { display: flex; gap: 8px; }
+
+.tag {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tag.ok { color: var(--ok); border-color: var(--ok); }
+.tag.warn { color: var(--warn); border-color: var(--warn); }
+.tag.bad { color: var(--bad); border-color: var(--bad); }
+
+main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  padding: 14px 18px 32px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+}
+.panel.wide { grid-column: 1 / -1; }
+.panel.stale { opacity: .45; }
+
+.banner {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  margin-bottom: 12px;
+  background: #22303a;
+  color: var(--muted);
+}
+.banner.active { background: rgba(53, 192, 125, .16); color: var(--ok); }
+
+.board { display: grid; gap: 2px; }
+.cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #0b0e11;
+  background: #1d242c;
+}
+.cell.barrier { background: var(--barrier); }
+.cell.us { outline: 2px solid var(--us); outline-offset: -2px; }
+.cell.peak { box-shadow: inset 0 0 0 2px #ffffff; }
+
+.legend { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.swatch.us { background: var(--us); }
+.swatch.barrier { background: var(--barrier); }
+.swatch.belief { background: linear-gradient(90deg, #2a3d55, #fde725); }
+.swatch.peak { background: #fff; }
+
+.scroll { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+
+.msg { border-left: 2px solid var(--line); padding: 4px 0 4px 8px; }
+.msg.out { border-left-color: var(--us); }
+.msg .meta { color: var(--muted); font-size: 11px; }
+
+.bar { height: 8px; border-radius: 4px; background: #22303a; overflow: hidden; margin: 6px 0; }
+.bar > span { display: block; height: 100%; background: var(--ok); }
+.bar.warn > span { background: var(--warn); }
+.bar.bad > span { background: var(--bad); }
+
+.mini { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.row { display: flex; justify-content: space-between; gap: 10px; }
