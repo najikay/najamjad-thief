@@ -23,6 +23,7 @@ from ..protocol.schemas_wire import (
     NegotiateMessage,
     TurnMessage,
 )
+from .session_guard import SessionGuard
 
 # One queue per message kind: a flood of control messages must not delay a turn.
 KINDS: dict[str, type[BaseModel]] = {
@@ -40,12 +41,14 @@ class Inboxes:
         self,
         emit: Callable[[dict], None] | None = None,
         maxsize: int = 1000,
+        guard: SessionGuard | None = None,
     ) -> None:
         """Create the queues; `emit` receives every accept/reject event."""
         self._queues = {kind: queue.Queue(maxsize=maxsize) for kind in KINDS}
         self._emit = emit or (lambda _event: None)
         self._last_step = -1
         self._lock = threading.Lock()
+        self.guard = guard or SessionGuard(emit=emit)
 
     def accept(self, kind: str, raw: Any) -> ParseResult:
         """Validate and enqueue one inbound message, returning the verdict."""
@@ -61,6 +64,12 @@ class Inboxes:
             self._emit(
                 {"event": "inbox.unknown_fields", "kind": kind, "fields": result.unknown_fields}
             )
+        # Identity and rate before sequence: a stranger's turn must not even
+        # be allowed to advance our step counter.
+        refusal = self.guard.check(result.model)
+        if refusal:
+            self._emit({"event": "inbox.unauthorised", "kind": kind, "reason": refusal})
+            return ParseResult(errors=[refusal])
         if kind == "turn":
             problem = self._check_sequence(result.model)
             if problem:

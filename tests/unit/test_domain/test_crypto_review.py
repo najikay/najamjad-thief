@@ -23,9 +23,22 @@ def test_sources_were_found() -> None:
 
 
 def test_sha256_is_only_computed_in_designated_modules() -> None:
-    """One hashing implementation means one place to get the byte format right."""
-    allowed = {"crypto.py", "scent_models.py", "nonce_vault.py"}
+    """One hashing implementation means one place to get the byte format right.
+
+    Each allowed module hashes for a *different* purpose, and none of them
+    computes a commit: crypto.py owns commit-reveal, scent_models.py fingerprints
+    the pheromone model for the pre-series lock, nonce_vault.py derives its
+    at-rest keystream, and session_guard.py derives the HMAC session token that
+    keeps strangers out of a live match.
+    """
+    allowed = {"crypto.py", "scent_models.py", "nonce_vault.py", "session_guard.py"}
     offenders = [p.name for p in SOURCES if "hashlib.sha256" in _read(p) and p.name not in allowed]
+    assert offenders == []
+
+
+def test_only_crypto_computes_commit_hashes() -> None:
+    """The rule that actually matters: one byte format for commitments."""
+    offenders = [p.name for p in SOURCES if "def commit_of" in _read(p) and p.name != "crypto.py"]
     assert offenders == []
 
 
