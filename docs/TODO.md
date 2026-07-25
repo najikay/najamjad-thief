@@ -461,10 +461,10 @@
 - [x] **T-1410** (P0) Implement pruning/beam cap for depth control — DoD: T-1409 green without strength regression on the tactical suite
 - [x] **T-1411** (P0) Write failing tests for corridor cutting in `strategy/cop_barriers.py`: chokepoint identification on the board graph; a placed barrier measurably reduces thief escape corridors — DoD: tests fail (RED) [FR-STR-3]
 - [x] **T-1412** (P0) Implement `strategy/cop_barriers.py` corridor cutting (≤120 code lines) — DoD: T-1411 green
-- [ ] **T-1413** (P1) Add corner-herding tests: multi-turn barrier plan drives belief mass toward a corner region — DoD: scenario tests green [FR-STR-3]
-- [ ] **T-1414** (P1) Implement the corner-herding planner — DoD: T-1413 green
-- [ ] **T-1415** (P0) Add barrier-capture planning tests: with belief peak adjacent and confidence above threshold, plan barrier-on-thief-cell capture; detect immobilization setups — DoD: tests fail (RED) [FR-ENG-4]
-- [ ] **T-1416** (P0) Implement barrier-capture / immobilization logic — DoD: T-1415 green
+- [x] **T-1413** (P1) Add corner-herding tests: multi-turn barrier plan drives belief mass toward a corner region — DoD: scenario tests green [FR-STR-3]
+- [x] **T-1414** (P1) Implement the corner-herding planner — DoD: T-1413 green
+- [x] **T-1415** (P0) Add barrier-capture planning tests: with belief peak adjacent and confidence above threshold, plan barrier-on-thief-cell capture; detect immobilization setups — DoD: tests fail (RED) [FR-ENG-4]
+- [x] **T-1416** (P0) Implement barrier-capture / immobilization logic — DoD: T-1415 green
 - [ ] **T-1417** (P1) Add barrier-economics tests: quota (14) spending policy — expected-value threshold per placement, reserve kept for endgame — DoD: tests green; thresholds in config
 - [ ] **T-1418** (P1) Add barrier-as-information tests: predicted forced detours sharpen belief (integration with barrier-aware diffusion) — DoD: tests green [deps: T-0614]
 - [ ] **T-1419** (P0) Build the cop tactical regression suite: ≥ 10 fixed positions with asserted best-move class ("must cut corridor", "must claim capture now", "must not waste barrier") — DoD: suite green and PR-blocking in CI
@@ -478,19 +478,19 @@
 
 ## E15 — Thief strategy (26 tasks)
 
-- [ ] **T-1501** (P0) Write failing tests for the survival-horizon objective: value = expected steps-to-capture under cop-belief, maximized over candidate moves — DoD: tests fail (RED) [FR-STR-4 / ADR-007]
-- [ ] **T-1502** (P0) Implement `strategy/thief_brain.py` core (≤120 code lines) — DoD: T-1501 green
-- [ ] **T-1503** (P0) Add cop-belief tests: thief maintains a belief grid over the COP's position (symmetric reuse of the belief engine) driving evasion — DoD: tests green [FR-STR-1]
-- [ ] **T-1504** (P0) Add lookahead tests: depth ≥ 2 evasion search avoids greedy traps (max-distance move into a corner is rejected) — DoD: tests fail (RED)
-- [ ] **T-1505** (P0) Implement the lookahead evasion search — DoD: T-1504 green
-- [ ] **T-1506** (P0) Add determinism tests: fixed seed → identical decisions; legality filter integrated — DoD: tests green [FR-STR-2]
-- [ ] **T-1507** (P0) Write failing tests for escape-route counting in `strategy/thief_escape.py`: count distinct exit corridors from a candidate cell given known barriers + edges — DoD: tests fail (RED) [FR-STR-4]
-- [ ] **T-1508** (P0) Implement `strategy/thief_escape.py` route counting (≤120 code lines) — DoD: T-1507 green
-- [ ] **T-1509** (P0) Add trap-avoidance tests: cells with escape-route count ≤ 1 heavily penalized; dead ends entered only when no alternative exists — DoD: tests green
-- [ ] **T-1510** (P1) Add scent-aware pathing tests: avoid freshly self-scented zones (minimize information leaked); prefer stale-scent regions when values tie — DoD: tests fail (RED) [FR-STR-4]
-- [ ] **T-1511** (P1) Implement scent-aware path scoring — DoD: T-1510 green
-- [ ] **T-1512** (P0) Add barrier-replanning tests: a newly declared cop barrier immediately updates route counts and the current plan — DoD: tests fail (RED)
-- [ ] **T-1513** (P0) Implement barrier reaction — DoD: T-1512 green
+- [x] **T-1501** (P0) Write failing tests for the survival-horizon objective: value = expected steps-to-capture under cop-belief, maximized over candidate moves — DoD: tests fail (RED) [FR-STR-4 / ADR-007]
+- [x] **T-1502** (P0) Implement `strategy/thief_brain.py` core (≤120 code lines) — DoD: T-1501 green
+- [x] **T-1503** (P0) Add cop-belief tests: thief maintains a belief grid over the COP's position (symmetric reuse of the belief engine) driving evasion — DoD: tests green [FR-STR-1]
+- [x] **T-1504** (P0) Add lookahead tests: depth ≥ 2 evasion search avoids greedy traps (max-distance move into a corner is rejected) — DoD: tests fail (RED)
+- [x] **T-1505** (P0) Implement the lookahead evasion search — DoD: T-1504 green
+- [x] **T-1506** (P0) Add determinism tests: fixed seed → identical decisions; legality filter integrated — DoD: tests green [FR-STR-2]
+- [x] **T-1507** (P0) Write failing tests for escape-route counting in `strategy/thief_escape.py`: count distinct exit corridors from a candidate cell given known barriers + edges — DoD: tests fail (RED) [FR-STR-4]
+- [x] **T-1508** (P0) Implement `strategy/thief_escape.py` route counting (≤120 code lines) — DoD: T-1507 green
+- [x] **T-1509** (P0) Add trap-avoidance tests: cells with escape-route count ≤ 1 heavily penalized; dead ends entered only when no alternative exists — DoD: tests green
+- [x] **T-1510** (P1) Add scent-aware pathing tests: avoid freshly self-scented zones (minimize information leaked); prefer stale-scent regions when values tie — DoD: tests fail (RED) [FR-STR-4]
+- [x] **T-1511** (P1) Implement scent-aware path scoring — DoD: T-1510 green
+- [x] **T-1512** (P0) Add barrier-replanning tests: a newly declared cop barrier immediately updates route counts and the current plan — DoD: tests fail (RED)
+- [x] **T-1513** (P0) Implement barrier reaction — DoD: T-1512 green
 - [ ] **T-1514** (P1) Add endgame-stalling tests: near the survival threshold, policy switches to max-safety stalling (STAY/oscillation when provably safe) — DoD: tests fail (RED) [FR-STR-4]
 - [ ] **T-1515** (P1) Implement the endgame stalling mode — DoD: T-1514 green
 - [ ] **T-1516** (P0) Add threshold-awareness tests: policy tracks remaining steps to survival; risk tolerance decreases as the threshold nears — DoD: tests green
@@ -772,8 +772,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E11 | Tunnel & preflight | M5 | 16 | 16 | 0 |
 | E12 | Negotiation | M5 | 31 | 22 | 0 |
 | E13 | LLM layer | M4 | 32 | 29 | 0 |
-| E14 | Cop strategy | M4 | 26 | 12 | 0 |
-| E15 | Thief strategy | M4 | 26 | 0 | 0 |
+| E14 | Cop strategy | M4 | 26 | 16 | 0 |
+| E15 | Thief strategy | M4 | 26 | 13 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 0 | 0 |
 | E17 | Reporting | M5 | 28 | 0 | 0 |
 | E18 | UI dashboard | M5 | 28 | 0 | 0 |
