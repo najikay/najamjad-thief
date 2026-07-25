@@ -428,39 +428,39 @@
 - [x] **T-1312** (P0) Write failing tests for `llm/template_provider.py`: role-specific sentence banks, landmark vocab keyed by `map_area` from config, deterministic under seed, zero tokens — DoD: tests fail (RED) [FR-LLM-1]
 - [x] **T-1313** (P0) Implement `llm/template_provider.py` (≤120 code lines) — DoD: T-1312 green
 - [x] **T-1314** (P1) Add template intent-mix tests: template hints carry a truth/lie verdict distribution from config (never hardcoded 40%) — DoD: tests green [FR-CFG-2]
-- [~] **T-1315** (P0) Write failing tests for `llm/prompts.py` hint prompt: pins map area, word cap, truth/lie instruction, strict JSON contract `{"message","verdict","reasoning"}` — DoD: tests fail (RED) [FR-LLM-4]
-- [~] **T-1316** (P0) Implement `llm/prompts.py` builders (hint, parse, negotiate; ≤120 code lines) — DoD: T-1315 green; prompts stored for the prompt book
-- [~] **T-1317** (P1) Add negotiation/parse prompt tests: negotiate prompt renders playbook position + red lines; parse prompt demands structured claim JSON with confidence — DoD: tests green [FR-NEG-4 / FR-LLM-5]
+- [x] **T-1315** (P0) Write failing tests for `llm/prompts.py` hint prompt: pins map area, word cap, truth/lie instruction, strict JSON contract `{"message","verdict","reasoning"}` — DoD: tests fail (RED) [FR-LLM-4]
+- [x] **T-1316** (P0) Implement `llm/prompts.py` builders (hint, parse, negotiate; ≤120 code lines) — DoD: T-1315 green; prompts stored for the prompt book
+- [x] **T-1317** (P1) Add negotiation/parse prompt tests: negotiate prompt renders playbook position + red lines; parse prompt demands structured claim JSON with confidence — DoD: tests green [FR-NEG-4 / FR-LLM-5]
 - [x] **T-1318** (P0) Write failing tests for `llm/hint_guard.py`: word cap ≤ `hint_max_words` enforced post-generation (truncate or regenerate policy) — DoD: tests fail (RED) [FR-LLM-4]
 - [x] **T-1319** (P0) Implement `llm/hint_guard.py` (≤120 code lines) — DoD: T-1318 green
-- [ ] **T-1320** (P0) Add coordinate-leak gate tests: regex + validator blocks digit pairs, grid references, and coordinate-like patterns before send; blocked hint falls back to a clean template line — DoD: tests green with adversarial hint fixtures [FR-LLM-4, book rule 27]
-- [ ] **T-1321** (P0) Add single-egress tests: BOTH template and LLM hints pass through the same hint_guard path (no bypass) — DoD: meta-test green
-- [ ] **T-1322** (P0) Write failing tests for `llm/token_meter.py`: per-call, per-mini-game, per-series counters with input/output split per model — DoD: tests fail (RED) [FR-LLM-3]
-- [ ] **T-1323** (P0) Implement `llm/token_meter.py` (≤120 code lines) — DoD: T-1322 green
-- [ ] **T-1324** (P0) Add budget tests: warning event at 70% of series budget; HARD STOP at 100% forces router to template mode — DoD: tests green [FR-LLM-3, G6]
-- [ ] **T-1325** (P0) Add meter-persistence tests: totals survive a process restart within a match; totals feed sealed step records and the result JSON (rule 54) — DoD: tests green [deps: T-0725]
-- [ ] **T-1326** (P1) Write failing tests for hint parsing: LLM (mocked) parses opponent free text into structured claims with confidence score — DoD: tests fail (RED) [FR-LLM-5]
-- [ ] **T-1327** (P1) Implement the hint-parse flow via the router — DoD: T-1326 green
-- [ ] **T-1328** (P0) Add deterministic-fallback-parser tests: keyword/landmark gazetteer parse when providers unavailable; low confidence or parse failure degrades to "uninformative hint" (identity belief update) — DoD: tests green [FR-LLM-5; deps: T-0624]
-- [ ] **T-1329** (P0) Implement the deterministic fallback parser — DoD: T-1328 green
-- [ ] **T-1330** (P1) Add throttle/deadline tests: `every_n_steps` skips LLM off-cycle; `step_deadline_seconds` breach → template fallback within the turn budget — DoD: tests green [FR-LLM-6]
-- [ ] **T-1331** (P0) Add chain integration test (all providers mocked): anthropic 500s → deepseek serves → deepseek 429 → template; recovery after health OK; provider events emitted at each hop — DoD: test green [FR-LLM-1/2]
-- [ ] **T-1332** (P0) Author `docs/PRD_llm_router.md`: chain design, health model, budgets, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-1320** (P0) Add coordinate-leak gate tests: regex + validator blocks digit pairs, grid references, and coordinate-like patterns before send; blocked hint falls back to a clean template line — DoD: tests green with adversarial hint fixtures [FR-LLM-4, book rule 27]
+- [x] **T-1321** (P0) Add single-egress tests: BOTH template and LLM hints pass through the same hint_guard path (no bypass) — DoD: meta-test green
+- [x] **T-1322** (P0) Write failing tests for `llm/token_meter.py`: per-call, per-mini-game, per-series counters with input/output split per model — DoD: tests fail (RED) [FR-LLM-3]
+- [x] **T-1323** (P0) Implement `llm/token_meter.py` (≤120 code lines) — DoD: T-1322 green
+- [x] **T-1324** (P0) Add budget tests: warning event at 70% of series budget; HARD STOP at 100% forces router to template mode — DoD: tests green [FR-LLM-3, G6]
+- [~] **T-1325** (P0) Add meter-persistence tests: totals survive a process restart within a match; totals feed sealed step records and the result JSON (rule 54) — DoD: tests green [deps: T-0725]
+- [x] **T-1326** (P1) Write failing tests for hint parsing: LLM (mocked) parses opponent free text into structured claims with confidence score — DoD: tests fail (RED) [FR-LLM-5]
+- [x] **T-1327** (P1) Implement the hint-parse flow via the router — DoD: T-1326 green
+- [x] **T-1328** (P0) Add deterministic-fallback-parser tests: keyword/landmark gazetteer parse when providers unavailable; low confidence or parse failure degrades to "uninformative hint" (identity belief update) — DoD: tests green [FR-LLM-5; deps: T-0624]
+- [x] **T-1329** (P0) Implement the deterministic fallback parser — DoD: T-1328 green
+- [x] **T-1330** (P1) Add throttle/deadline tests: `every_n_steps` skips LLM off-cycle; `step_deadline_seconds` breach → template fallback within the turn budget — DoD: tests green [FR-LLM-6]
+- [~] **T-1331** (P0) Add chain integration test (all providers mocked): anthropic 500s → deepseek serves → deepseek 429 → template; recovery after health OK; provider events emitted at each hop — DoD: test green [FR-LLM-1/2]
+- [x] **T-1332** (P0) Author `docs/PRD_llm_router.md`: chain design, health model, budgets, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 
 ## E14 — Cop strategy (26 tasks)
 
-- [ ] **T-1401** (P0) Write failing tests for `strategy/base.py`: BrainBase-compatible interface — `decide(state, belief, ...)` → Decision (move | barrier, hint intent hooks) — DoD: tests fail (RED) [FR-STR-2]
-- [ ] **T-1402** (P0) Implement `strategy/base.py` (≤120 code lines) — DoD: T-1401 green; interface compatible with the reference BrainBase seam
-- [ ] **T-1403** (P0) Add legality-guarantee tests: ANY brain output passes the movement legality filter; illegal suggestion → deterministic safe fallback (never emitted) — DoD: tests green [FR-STR-2; deps: T-0512]
-- [ ] **T-1404** (P0) Write failing tests for cop expectimax: depth ≥ 2 search over the belief distribution with an expected-capture-time value function — DoD: tests fail (RED) [FR-STR-3 / ADR-007]
-- [ ] **T-1405** (P0) Implement `strategy/cop_brain.py` expectimax core (≤120 code lines) — DoD: T-1404 green
-- [ ] **T-1406** (P0) Add evaluation-function tests: belief-weighted Manhattan interception score; deterministic tie-breaking under a fixed seed — DoD: tests green
-- [ ] **T-1407** (P0) Add interception-targeting tests: target = argmax belief-weighted distance cell; lead pursuit anticipates target drift under the movement model — DoD: tests fail (RED) [FR-STR-3]
-- [ ] **T-1408** (P0) Implement interception targeting — DoD: T-1407 green
-- [ ] **T-1409** (P0) Add search-budget tests: expectimax completes within the move-time budget (≤ 5 s typical) on the largest negotiated board size — DoD: timed test green [PRD §4 performance]
-- [ ] **T-1410** (P0) Implement pruning/beam cap for depth control — DoD: T-1409 green without strength regression on the tactical suite
-- [ ] **T-1411** (P0) Write failing tests for corridor cutting in `strategy/cop_barriers.py`: chokepoint identification on the board graph; a placed barrier measurably reduces thief escape corridors — DoD: tests fail (RED) [FR-STR-3]
-- [ ] **T-1412** (P0) Implement `strategy/cop_barriers.py` corridor cutting (≤120 code lines) — DoD: T-1411 green
+- [x] **T-1401** (P0) Write failing tests for `strategy/base.py`: BrainBase-compatible interface — `decide(state, belief, ...)` → Decision (move | barrier, hint intent hooks) — DoD: tests fail (RED) [FR-STR-2]
+- [x] **T-1402** (P0) Implement `strategy/base.py` (≤120 code lines) — DoD: T-1401 green; interface compatible with the reference BrainBase seam
+- [x] **T-1403** (P0) Add legality-guarantee tests: ANY brain output passes the movement legality filter; illegal suggestion → deterministic safe fallback (never emitted) — DoD: tests green [FR-STR-2; deps: T-0512]
+- [x] **T-1404** (P0) Write failing tests for cop expectimax: depth ≥ 2 search over the belief distribution with an expected-capture-time value function — DoD: tests fail (RED) [FR-STR-3 / ADR-007]
+- [x] **T-1405** (P0) Implement `strategy/cop_brain.py` expectimax core (≤120 code lines) — DoD: T-1404 green
+- [x] **T-1406** (P0) Add evaluation-function tests: belief-weighted Manhattan interception score; deterministic tie-breaking under a fixed seed — DoD: tests green
+- [x] **T-1407** (P0) Add interception-targeting tests: target = argmax belief-weighted distance cell; lead pursuit anticipates target drift under the movement model — DoD: tests fail (RED) [FR-STR-3]
+- [x] **T-1408** (P0) Implement interception targeting — DoD: T-1407 green
+- [x] **T-1409** (P0) Add search-budget tests: expectimax completes within the move-time budget (≤ 5 s typical) on the largest negotiated board size — DoD: timed test green [PRD §4 performance]
+- [x] **T-1410** (P0) Implement pruning/beam cap for depth control — DoD: T-1409 green without strength regression on the tactical suite
+- [x] **T-1411** (P0) Write failing tests for corridor cutting in `strategy/cop_barriers.py`: chokepoint identification on the board graph; a placed barrier measurably reduces thief escape corridors — DoD: tests fail (RED) [FR-STR-3]
+- [x] **T-1412** (P0) Implement `strategy/cop_barriers.py` corridor cutting (≤120 code lines) — DoD: T-1411 green
 - [ ] **T-1413** (P1) Add corner-herding tests: multi-turn barrier plan drives belief mass toward a corner region — DoD: scenario tests green [FR-STR-3]
 - [ ] **T-1414** (P1) Implement the corner-herding planner — DoD: T-1413 green
 - [ ] **T-1415** (P0) Add barrier-capture planning tests: with belief peak adjacent and confidence above threshold, plan barrier-on-thief-cell capture; detect immobilization setups — DoD: tests fail (RED) [FR-ENG-4]
@@ -771,8 +771,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E10 | MCP networking | M3 | 30 | 29 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 16 | 0 |
 | E12 | Negotiation | M5 | 31 | 22 | 0 |
-| E13 | LLM layer | M4 | 32 | 15 | 0 |
-| E14 | Cop strategy | M4 | 26 | 0 | 0 |
+| E13 | LLM layer | M4 | 32 | 29 | 0 |
+| E14 | Cop strategy | M4 | 26 | 12 | 0 |
 | E15 | Thief strategy | M4 | 26 | 0 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 0 | 0 |
 | E17 | Reporting | M5 | 28 | 0 | 0 |
