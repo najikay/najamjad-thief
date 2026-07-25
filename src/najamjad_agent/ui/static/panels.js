@@ -37,10 +37,29 @@ export function renderNegotiation(node, steps) {
   node.replaceChildren(...steps.map((step) => {
     const row = document.createElement('div');
     row.className = 'msg';
-    row.innerHTML = `<div class="meta">${step.stage || step.kind || ''} · ${step.actor || ''}</div>`;
-    row.append(document.createTextNode(step.summary || step.text || JSON.stringify(step)));
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${step.action || 'step'} · ${step.stage || ''}`;
+    const body = document.createElement('div');
+    body.textContent = describeStep(step);
+    row.append(meta, body);
     return row;
   }));
+}
+
+// The timeline carries whatever each step needed to record, so the renderer
+// summarises the fields that are actually present rather than assuming a shape.
+function describeStep(step) {
+  const skip = new Set(['action', 'stage']);
+  const parts = Object.entries(step)
+    .filter(([key]) => !skip.has(key))
+    .map(([key, value]) => `${key}: ${typeof value === 'object' ? flatten(value) : value}`);
+  return parts.length ? parts.join(' · ') : '—';
+}
+
+function flatten(value) {
+  if (Array.isArray(value)) return value.join(', ');
+  return Object.entries(value || {}).map(([k, v]) => `${k}=${v}`).join(', ') || '—';
 }
 
 export function renderBudget(node, budget) {
@@ -80,7 +99,7 @@ export function renderReport(node, report) {
   const delivery = report.sent
     ? `sent · ${report.message_id}`
     : report.error || (report.reconciled ? 'NOT SENT' : 'waiting for the match to end');
-  node.className = report.needs_attention ? 'tag bad' : '';
+  node.className = report.needs_attention ? 'alert' : '';
   node.innerHTML = `
     <div class="row"><span>Reconciled</span><strong>${report.status}</strong></div>
     <div class="row"><span>Mutual agreement</span><strong>${agreement}</strong></div>

@@ -1,0 +1,133 @@
+/* Replay viewer styling.
+ *
+ * The verdict banner is the mandatory submission screenshot (book PAGE 75/96),
+ * so it is the loudest thing on the page and states its result in words as
+ * well as colour — a green/red pair alone would be unreadable to a colour-blind
+ * grader and in a grayscale printout.
+ */
+
+:root {
+  --bg: #0f1216;
+  --panel: #171c22;
+  --line: #262e37;
+  --text: #dbe3ec;
+  --muted: #8a97a6;
+  --ok: #35c07d;
+  --bad: #e2604d;
+  --self: #6fd3ff;
+  --barrier: #4a5563;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+.meta { display: flex; gap: 8px; }
+.tag { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--muted); }
+
+/* Content is centred and capped: on a wide projector an uncapped auto-fit grid
+ * strands two panels in a sea of empty background. */
+.verdict, main { max-width: 1180px; margin-left: auto; margin-right: auto; }
+
+.verdict {
+  margin: 16px auto;
+  padding: 18px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  border: 2px solid var(--line);
+}
+.verdict.pending { color: var(--muted); }
+.verdict.ok { color: var(--ok); border-color: var(--ok); background: rgba(53, 192, 125, .10); }
+.verdict.bad { color: var(--bad); border-color: var(--bad); background: rgba(226, 96, 77, .10); }
+
+.errors { margin: 0 18px 12px; color: var(--bad); font-size: 13px; }
+
+main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  padding: 0 18px 32px;
+  align-items: start;
+}
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.panel.wide { grid-column: 1 / -1; }
+
+/* Wraps rather than overflowing: the control row has to survive a narrow
+ * panel on a projector, which the first screenshot pass caught it failing. */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.controls input[type=range] { flex: 1 1 120px; min-width: 0; }
+
+button {
+  background: #22303a;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+button:hover:not(:disabled) { border-color: var(--self); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--self); outline-offset: 2px; }
+
+.board { display: grid; gap: 2px; }
+.cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: #1d242c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.cell.barrier { background: var(--barrier); }
+.cell.self { background: var(--self); color: #0b0e11; font-weight: 700; }
+
+.legend { display: flex; gap: 14px; color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+.swatch.self { background: var(--self); }
+.swatch.barrier { background: var(--barrier); }
+
+.record .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.record .row span:first-child { color: var(--muted); }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; word-break: break-all; }
+.mono .row { padding: 4px 0; }
+.mono .match { color: var(--ok); }
+.mono .differ { color: var(--bad); }
+
+.strip { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  min-width: 34px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  font-size: 12px;
+  cursor: pointer;
+  background: none;
+}
+.chip.bad { border-color: var(--bad); color: var(--bad); font-weight: 700; }
+.chip.current { background: #22303a; outline: 2px solid var(--self); }

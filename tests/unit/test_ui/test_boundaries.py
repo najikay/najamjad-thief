@@ -7,6 +7,7 @@ was both the clunky one and the one that missed updates.
 """
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,18 @@ def test_a_dropped_socket_marks_the_panels_stale_rather_than_lying():
     assert "reconnecting in" in source
     assert "classList.toggle('stale'" in source
     assert "socket.onclose" in source
+
+
+@pytest.mark.parametrize("script", sorted(STATIC.glob("*.js")), ids=lambda path: path.name)
+def test_no_module_declares_the_same_function_twice(script):
+    """A redeclared function silently wins over the first — the later one
+    replaces it, and whatever called the original starts doing something else.
+    """
+    names = re.findall(r"^(?:export )?function (\w+)", script.read_text(encoding="utf-8"), re.M)
+
+    duplicates = {name for name in names if names.count(name) > 1}
+
+    assert not duplicates, f"{script.name} declares {sorted(duplicates)} more than once"
 
 
 def test_the_page_loads_its_client_as_a_module():

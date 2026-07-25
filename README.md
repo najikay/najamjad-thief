@@ -19,7 +19,36 @@ uv sync                                   # install locked dependencies
 uv run pytest tests/                      # run tests with coverage gate (>= 85%)
 uv run ruff check .                       # lint — zero violations required
 uv run python scripts/check_file_sizes.py # 150-code-line/file gate
+
+uv run python scripts/demo_dashboard.py            # dashboard over a played game
+uv run python -m najamjad_agent.replay --log <log> # replay viewer (add --check for CI)
 ```
+
+## The dashboard
+
+Belief heatmap, turn banner, dialogue with per-message model provenance, the
+negotiation timeline, token budget, and report delivery status — pushed over a
+WebSocket, never polled. It shows **local truth only** (book rules 8-9): the
+opponent's position has no field in the read model, and a meta-test enforces
+that the UI can reach the agent only through the SDK.
+
+![Live dashboard](assets/dashboard-live.png)
+
+## Replay viewer
+
+Every step is re-hashed from its revealed `(payload, nonce)` and compared with
+the stored commitment (book rule 20). Below, the lecturer's own sample log
+replaying clean:
+
+![Verified OK](assets/replay-verified-ok.png)
+
+And the same log with one record edited after the fact — the forgery is
+localised to exactly the step it was planted in, and rule 19 voids the game:
+
+![Tampered](assets/replay-tampered.png)
+
+See `assets/README.md` for how each image is reproduced.
+
 
 ## Documentation
 

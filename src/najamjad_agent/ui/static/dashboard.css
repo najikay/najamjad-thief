@@ -117,3 +117,13 @@ main {
 
 .mini { color: var(--muted); font-size: 12px; margin-top: 10px; }
 .row { display: flex; justify-content: space-between; gap: 10px; }
+
+/* A panel that needs a human: the report never sent, a delivery that failed.
+ * Bordered block, not the pill used for status chips. */
+.alert {
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(226, 96, 77, .08);
+}
+.alert strong { color: var(--bad); }

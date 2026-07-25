@@ -1,8 +1,8 @@
 """CI gate: repo hygiene rules that ruff cannot express.
 
 Why: three guideline/book rules are enforced by scanning text, not linting —
-(1) uv-only tooling: no `pip install` / `python -m` in any executable content
-    (guidelines §8.4). In markdown, only fenced code blocks count as
+(1) uv-only tooling: no `pip install`, and no bare `python -m` outside
+    `uv run` (guidelines §8.4). In markdown, only fenced code blocks count as
     executable — prose that *describes* the prohibition is not a violation;
     quoted third-party commands inside fences carry an inline marker;
 (2) no silent exception swallowing (`except: pass`) — A6's worst bug class
@@ -25,7 +25,10 @@ QUOTE_MARKER = "third-party-quote-ok"
 # escape hatch cannot be hidden deep inside a real module.
 FIXTURE_MARKER = "repo-rules-gate-fixtures"
 FIXTURE_HEADER_LINES = 15
-UV_ONLY = re.compile(r"\bpip3? install\b|\bpython3? -m\b")
+# `uv run python -m mod` is uv-only tooling and is what the rule wants; only a
+# bare interpreter invocation escapes the locked environment. `pip install`
+# stays forbidden either way, so `uv run python -m pip install` is still caught.
+UV_ONLY = re.compile(r"\bpip3? install\b|(?<!uv run )\bpython3? -m\b")
 SILENT_EXCEPT = re.compile(r"except[^:\n]*:\s*(?:pass|\.\.\.)\s*$", re.MULTILINE)
 SECRET_HINTS = re.compile(r"sk-ant-api|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|AIzaSy[\w-]{30}")
 FORBIDDEN_TRACKED = ("credentials.json", "token.json", ".env")

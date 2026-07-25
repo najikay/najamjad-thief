@@ -39,6 +39,27 @@ def test_pip_in_python_source_is_flagged(load_script, tmp_path: Path) -> None:
     assert any("UV-ONLY" in issue for issue in issues)
 
 
+def test_bare_python_dash_m_is_flagged(load_script, tmp_path: Path) -> None:
+    """A bare interpreter escapes the locked environment — the rule's point."""
+    gate = load_script("check_repo_rules")
+    issues = _scan_one(gate, tmp_path, "doc.md", "```bash\npython -m najamjad_agent.replay\n```\n")
+    assert any("UV-ONLY" in issue for issue in issues)
+
+
+def test_uv_run_python_dash_m_is_allowed(load_script, tmp_path: Path) -> None:
+    """`uv run python -m mod` IS uv-only tooling; flagging it was a false positive."""
+    gate = load_script("check_repo_rules")
+    body = "```bash\nuv run python -m najamjad_agent.replay --log x.json\n```\n"
+    assert _scan_one(gate, tmp_path, "doc.md", body) == []
+
+
+def test_uv_run_does_not_launder_a_pip_install(load_script, tmp_path: Path) -> None:
+    """The `uv run` exemption must not become a way to smuggle pip past the gate."""
+    gate = load_script("check_repo_rules")
+    issues = _scan_one(gate, tmp_path, "doc.md", "```bash\nuv run python -m pip install x\n```\n")
+    assert any("UV-ONLY" in issue for issue in issues)
+
+
 def test_pipeline_word_is_not_a_false_positive(load_script, tmp_path: Path) -> None:
     gate = load_script("check_repo_rules")
     assert _scan_one(gate, tmp_path, "doc.md", "Our CI pipeline installs via uv.\n") == []

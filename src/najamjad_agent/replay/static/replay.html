@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NajAmjad replay viewer</title>
+<link rel="stylesheet" href="/replay-static/replay.css">
+</head>
+<body>
+<header>
+  <h1>Replay viewer</h1>
+  <div class="meta">
+    <span id="game" class="tag">—</span>
+    <span id="counts" class="tag">—</span>
+  </div>
+</header>
+
+<div id="banner" class="verdict pending">LOADING…</div>
+<p id="errors" class="errors" hidden></p>
+
+<main>
+  <section class="panel">
+    <h2>Step <span id="stepno">—</span> of <span id="steptotal">—</span></h2>
+    <div class="controls">
+      <button id="first" type="button" aria-label="First step">&laquo; First</button>
+      <button id="prev" type="button" aria-label="Previous step">&lsaquo; Prev</button>
+      <input id="slider" type="range" min="0" max="0" value="0" aria-label="Step">
+      <button id="next" type="button" aria-label="Next step">Next &rsaquo;</button>
+      <button id="last" type="button" aria-label="Last step">Last &raquo;</button>
+    </div>
+    <div id="board" class="board"></div>
+    <p class="legend">
+      <span class="swatch self"></span> the logging peer
+      <span class="swatch barrier"></span> barrier
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Sealed record</h2>
+    <div id="record" class="record"></div>
+    <h2>Commitment</h2>
+    <div id="hashes" class="mono"></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>All steps</h2>
+    <div id="strip" class="strip"></div>
+  </section>
+</main>
+
+<script type="module" src="/replay-static/replay.js"></script>
+</body>
+</html>

@@ -44,6 +44,17 @@ async function resync() {
   }
 }
 
+// A page opened mid-match would otherwise show an empty feed until the next
+// event happened to fire — the socket only carries what arrives after we join.
+async function backfillEvents() {
+  try {
+    const { events } = await fetch('/api/events').then((r) => r.json());
+    events.forEach((event) => appendEvent(el('events'), event));
+  } catch (error) {
+    console.warn('event backfill failed', error);
+  }
+}
+
 function handle(frame) {
   if (frame.type === 'snapshot') {
     paint(frame);
@@ -74,4 +85,5 @@ function connect() {
 
 setConnection('warn', 'connecting…');
 resync();
+backfillEvents();
 connect();

@@ -583,27 +583,27 @@
 - [x] **T-1822** (P0) Define pydantic view-models for all WS frame types; serialization tests — DoD: every panel's frame type validated; unknown frame rejected in tests [ADR-006]
 - [x] **T-1823** (P1) Add UI latency test: event published → WS frame received < 250 ms under a busy event stream — DoD: timed test green [PRD §4 performance]
 - [x] **T-1824** (P1) Add degraded-state handling: WS drop shows a reconnecting banner; stale panels visually marked until resync — DoD: manual + automated check green
-- [ ] **T-1825** (P0) Run the screenshot pass: capture EVERY screen and state (incl. belief heatmap live) into `assets/` — DoD: screenshot set complete per guidelines §10 checklist [deps: T-1808]
+- [x] **T-1825** (P0) Run the screenshot pass: capture EVERY screen and state (incl. belief heatmap live) into `assets/` — DoD: screenshot set complete per guidelines §10 checklist [deps: T-1808]
 - [x] **T-1826** (P1) Write the Nielsen-heuristics writeup `docs/UX.md`: map each of the 10 heuristics to concrete dashboard decisions — DoD: all 10 covered with screenshots referenced
 - [x] **T-1827** (P1) Apply + document accessibility measures: color-safe heatmap ramp (not red-only), keyboard navigation, text labels/contrast — DoD: notes in docs/UX.md; heatmap readable in grayscale
 - [x] **T-1828** (P0) Add the dashboard integration test: a headless scripted game drives the UI via a WS fake browser client; every panel receives its event types — DoD: test green in CI
 
 ## E19 — Replay viewer (14 tasks)
 
-- [ ] **T-1901** (P0) Write failing tests for `replay/verifier.py`: per-step SHA-256 recompute over revealed (payload, nonce) vs stored commit — DoD: tests fail (RED) [FR-UI-3, book rule 20]
-- [ ] **T-1902** (P0) Implement `replay/verifier.py` (≤120 code lines) — DoD: T-1901 green; reuses domain/crypto.verify, no duplicate hashing logic
-- [ ] **T-1903** (P0) Add tamper-localization tests: modifying step k flags exactly step k; aggregate verdict TAMPERED — DoD: tests green
-- [ ] **T-1904** (P1) Add log-format tolerance tests: verifier loads OUR log artifact and the reference simulator's log format (normalization layer) — DoD: both fixtures verify [ADR-012]
-- [ ] **T-1905** (P0) Write failing tests for `replay/app.py`: load any `log_*.json`, step forward/back, per-step state rebuild — DoD: tests fail (RED) [FR-UI-3]
-- [ ] **T-1906** (P0) Implement `replay/app.py` (≤120 code lines) as a second page on the FastAPI stack — DoD: T-1905 green [ADR-005]
-- [ ] **T-1907** (P0) Implement per-step board reconstruction in the replay UI: board, barriers, scent snapshot, hint text, commit status — DoD: scripted log renders step by step
-- [ ] **T-1908** (P0) Implement the green "Verified OK" banner when every step verifies — DoD: clean log shows the banner [FR-UI-3]
-- [ ] **T-1909** (P0) Implement the red "TAMPERED" banner + failing-step highlight; game marked void in the view — DoD: tampered fixture shows banner + highlighted step [FR-UI-3, book rule 19]
-- [ ] **T-1910** (P0) Add banner-logic tests: verifier verdicts drive banners deterministically (no UI-side hashing) — DoD: tests green
-- [ ] **T-1911** (P0) Load the lecturer's sample logs: reference sample-run log replays end-to-end with Verified OK — DoD: replay of `tests/goldens/artifacts/log_*.json` shows Verified OK [ADR-012; deps: T-0126]
-- [ ] **T-1912** (P0) Create the tampered negative fixture: deliberately corrupted copy of the sample log committed as a test fixture; replay shows TAMPERED — DoD: fixture + test green
-- [ ] **T-1913** (P0) Wire the replay CLI verb: `uv run najamjad-<role> replay --log <path>` opens the viewer — DoD: command works from a clean clone [deps: T-2012]
-- [ ] **T-1914** (P0) Capture the "Verified OK" screenshot for both READMEs (mandatory submission item) — DoD: screenshot in `assets/`, embedded in both READMEs [book PAGE 75/96]
+- [x] **T-1901** (P0) Write failing tests for `replay/verifier.py`: per-step SHA-256 recompute over revealed (payload, nonce) vs stored commit — DoD: tests fail (RED) [FR-UI-3, book rule 20]
+- [x] **T-1902** (P0) Implement `replay/verifier.py` (≤120 code lines) — DoD: T-1901 green; reuses domain/crypto.verify, no duplicate hashing logic
+- [x] **T-1903** (P0) Add tamper-localization tests: modifying step k flags exactly step k; aggregate verdict TAMPERED — DoD: tests green
+- [x] **T-1904** (P1) Add log-format tolerance tests: verifier loads OUR log artifact and the reference simulator's log format (normalization layer) — DoD: both fixtures verify [ADR-012]
+- [x] **T-1905** (P0) Write failing tests for `replay/app.py`: load any `log_*.json`, step forward/back, per-step state rebuild — DoD: tests fail (RED) [FR-UI-3]
+- [x] **T-1906** (P0) Implement `replay/app.py` (≤120 code lines) as a second page on the FastAPI stack — DoD: T-1905 green [ADR-005]
+- [x] **T-1907** (P0) Implement per-step board reconstruction in the replay UI: board, barriers, scent snapshot, hint text, commit status — DoD: scripted log renders step by step
+- [x] **T-1908** (P0) Implement the green "Verified OK" banner when every step verifies — DoD: clean log shows the banner [FR-UI-3]
+- [x] **T-1909** (P0) Implement the red "TAMPERED" banner + failing-step highlight; game marked void in the view — DoD: tampered fixture shows banner + highlighted step [FR-UI-3, book rule 19]
+- [x] **T-1910** (P0) Add banner-logic tests: verifier verdicts drive banners deterministically (no UI-side hashing) — DoD: tests green
+- [x] **T-1911** (P0) Load the lecturer's sample logs: reference sample-run log replays end-to-end with Verified OK — DoD: replay of `tests/goldens/artifacts/log_*.json` shows Verified OK [ADR-012; deps: T-0126]
+- [x] **T-1912** (P0) Create the tampered negative fixture: deliberately corrupted copy of the sample log committed as a test fixture; replay shows TAMPERED — DoD: fixture + test green
+- [x] **T-1913** (P0) Wire the replay CLI verb: `uv run najamjad-<role> replay --log <path>` opens the viewer — DoD: command works from a clean clone [deps: T-2012]
+- [x] **T-1914** (P0) Capture the "Verified OK" screenshot for both READMEs (mandatory submission item) — DoD: screenshot in `assets/`, embedded in both READMEs [book PAGE 75/96]
 
 ## E20 — SDK & CLI (16 tasks)
 
@@ -776,8 +776,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E15 | Thief strategy | M4 | 26 | 13 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 13 | 0 |
 | E17 | Reporting | M5 | 28 | 19 | 4 |
-| E18 | UI dashboard | M5 | 28 | 23 | 5 |
-| E19 | Replay viewer | M5 | 14 | 0 | 0 |
+| E18 | UI dashboard | M5 | 28 | 24 | 4 |
+| E19 | Replay viewer | M5 | 14 | 14 | 0 |
 | E20 | SDK & CLI | M5 | 16 | 0 | 0 |
 | E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 0 | 0 |
 | E22 | Documentation deliverables | M2–M7 | 33 | 0 | 0 |
