@@ -59,7 +59,7 @@ def test_an_empty_arena_still_produces_a_usable_prompt() -> None:
 
 def test_the_parse_prompt_requires_confidence_and_allows_null() -> None:
     """Refusing to guess is the point — null beats an invented direction."""
-    system, user = parse_prompt("I am heading north")
+    system, user, _ = parse_prompt("I am heading north")
     assert "confidence" in system
     assert "Never guess" in system
     assert "heading north" in user

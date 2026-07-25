@@ -507,24 +507,24 @@
 
 ## E16 — Hint policy & opponent modeling (18 tasks)
 
-- [ ] **T-1601** (P1) Write failing tests for the intent scheduler: truth/lie budget managed over game phases — cheap truths early to build trust, expensive lies late — DoD: tests fail (RED) [FR-STR-5]
-- [ ] **T-1602** (P1) Implement `strategy/hint_policy.py` scheduler (≤120 code lines) — DoD: T-1601 green
-- [ ] **T-1603** (P0) Add plausibility-gate tests: candidate lie checked against OUR OWN scent physics; a lie the scent instantly refutes is rejected (fall back to truth or a vaguer lie) — DoD: tests fail (RED) [FR-STR-5; deps: T-0626]
-- [ ] **T-1604** (P0) Implement the plausibility gate (reuses the E06 consistency checker against our own field) — DoD: T-1603 green
-- [ ] **T-1605** (P1) Add credibility-banking tests: lie spending gated on estimated opponent trust; high-value moments (near capture / near threshold) prioritized — DoD: tests fail (RED) [FR-STR-5]
-- [ ] **T-1606** (P1) Implement credibility banking — DoD: T-1605 green
-- [ ] **T-1607** (P1) Add hint-content selection tests: truthful hints choose the LEAST informative truth; lies maximize expected opponent belief-shift toward a chosen misdirection cell — DoD: tests green
-- [ ] **T-1608** (P0) Add intent-sealing tests: the chosen truth/lie verdict flows into the sealed record and always matches the actually sent hint — DoD: tests green [FR-CRY-1; deps: T-0702]
-- [ ] **T-1609** (P1) Write failing tests for `strategy/opponent_model.py`: per-opponent stats — hint-consistency score, credibility coefficient, movement-pattern histogram — DoD: tests fail (RED) [FR-STR-6]
-- [ ] **T-1610** (P1) Implement `strategy/opponent_model.py` (≤120 code lines) — DoD: T-1609 green
-- [ ] **T-1611** (P0) Add credibility-update tests: scent-vs-claim verdicts update the coefficient (bounded, smooth — beta/EWMA), exposed to the belief engine via the E06 hook — DoD: tests green [FR-STR-6; deps: T-0623]
-- [ ] **T-1612** (P1) Add persistence tests: model saved/loaded per opponent under `matches/<opponent>/`, survives process restart within a series — DoD: tests fail (RED) [FR-STR-6 / FR-CFG-3]
-- [ ] **T-1613** (P1) Implement opponent-model persistence (JSON in the match workspace) — DoD: T-1612 green
-- [ ] **T-1614** (P2) Add post-audit learning tests: revealed true opponent paths update movement priors between mini-games in a series — DoD: tests fail (RED) [FR-STR-6]
-- [ ] **T-1615** (P2) Implement the post-audit learning hook — DoD: T-1614 green
-- [ ] **T-1616** (P1) Add behavior scenario tests: scripted liar opponent → credibility drops → hints discounted in belief; honest opponent → hints gain weight — DoD: both scenarios green
-- [ ] **T-1617** (P2) Run a self-play A/B: hint policy ON vs OFF — measure opponent belief-error increase; record for the notebook — DoD: A/B results in results/ [deps: T-2106]
-- [ ] **T-1618** (P1) Document hint-policy design + edge cases (word-cap collisions with landmark names, no-plausible-lie situations) in PRD_strategy_cop/thief — DoD: sections merged; each edge case has a test id
+- [x] **T-1601** (P1) Write failing tests for the intent scheduler: truth/lie budget managed over game phases — cheap truths early to build trust, expensive lies late — DoD: tests fail (RED) [FR-STR-5]
+- [x] **T-1602** (P1) Implement `strategy/hint_policy.py` scheduler (≤120 code lines) — DoD: T-1601 green
+- [x] **T-1603** (P0) Add plausibility-gate tests: candidate lie checked against OUR OWN scent physics; a lie the scent instantly refutes is rejected (fall back to truth or a vaguer lie) — DoD: tests fail (RED) [FR-STR-5; deps: T-0626]
+- [x] **T-1604** (P0) Implement the plausibility gate (reuses the E06 consistency checker against our own field) — DoD: T-1603 green
+- [x] **T-1605** (P1) Add credibility-banking tests: lie spending gated on estimated opponent trust; high-value moments (near capture / near threshold) prioritized — DoD: tests fail (RED) [FR-STR-5]
+- [x] **T-1606** (P1) Implement credibility banking — DoD: T-1605 green
+- [~] **T-1607** (P1) Add hint-content selection tests: truthful hints choose the LEAST informative truth; lies maximize expected opponent belief-shift toward a chosen misdirection cell — DoD: tests green
+- [x] **T-1608** (P0) Add intent-sealing tests: the chosen truth/lie verdict flows into the sealed record and always matches the actually sent hint — DoD: tests green [FR-CRY-1; deps: T-0702]
+- [x] **T-1609** (P1) Write failing tests for `strategy/opponent_model.py`: per-opponent stats — hint-consistency score, credibility coefficient, movement-pattern histogram — DoD: tests fail (RED) [FR-STR-6]
+- [x] **T-1610** (P1) Implement `strategy/opponent_model.py` (≤120 code lines) — DoD: T-1609 green
+- [x] **T-1611** (P0) Add credibility-update tests: scent-vs-claim verdicts update the coefficient (bounded, smooth — beta/EWMA), exposed to the belief engine via the E06 hook — DoD: tests green [FR-STR-6; deps: T-0623]
+- [x] **T-1612** (P1) Add persistence tests: model saved/loaded per opponent under `matches/<opponent>/`, survives process restart within a series — DoD: tests fail (RED) [FR-STR-6 / FR-CFG-3]
+- [x] **T-1613** (P1) Implement opponent-model persistence (JSON in the match workspace) — DoD: T-1612 green
+- [~] **T-1614** (P2) Add post-audit learning tests: revealed true opponent paths update movement priors between mini-games in a series — DoD: tests fail (RED) [FR-STR-6]
+- [~] **T-1615** (P2) Implement the post-audit learning hook — DoD: T-1614 green
+- [x] **T-1616** (P1) Add behavior scenario tests: scripted liar opponent → credibility drops → hints discounted in belief; honest opponent → hints gain weight — DoD: both scenarios green
+- [~] **T-1617** (P2) Run a self-play A/B: hint policy ON vs OFF — measure opponent belief-error increase; record for the notebook — DoD: A/B results in results/ [deps: T-2106]
+- [~] **T-1618** (P1) Document hint-policy design + edge cases (word-cap collisions with landmark names, no-plausible-lie situations) in PRD_strategy_cop/thief — DoD: sections merged; each edge case has a test id
 
 ## E17 — Reporting (28 tasks)
 
@@ -774,7 +774,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E13 | LLM layer | M4 | 32 | 29 | 0 |
 | E14 | Cop strategy | M4 | 26 | 16 | 0 |
 | E15 | Thief strategy | M4 | 26 | 13 | 0 |
-| E16 | Hint policy & opponent modeling | M4 | 18 | 0 | 0 |
+| E16 | Hint policy & opponent modeling | M4 | 18 | 13 | 0 |
 | E17 | Reporting | M5 | 28 | 0 | 0 |
 | E18 | UI dashboard | M5 | 28 | 0 | 0 |
 | E19 | Replay viewer | M5 | 14 | 0 | 0 |
