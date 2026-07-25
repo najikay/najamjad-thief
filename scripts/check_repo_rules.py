@@ -19,6 +19,12 @@ import sys
 from pathlib import Path
 
 QUOTE_MARKER = "third-party-quote-ok"
+# A file whose header declares this marker holds deliberately planted bad
+# patterns (the gate's own test fixtures). Content scanning is skipped for it;
+# filename/secret-file rules still apply. Kept narrow and header-only so the
+# escape hatch cannot be hidden deep inside a real module.
+FIXTURE_MARKER = "repo-rules-gate-fixtures"
+FIXTURE_HEADER_LINES = 15
 UV_ONLY = re.compile(r"\bpip3? install\b|\bpython3? -m\b")
 SILENT_EXCEPT = re.compile(r"except[^:\n]*:\s*(?:pass|\.\.\.)\s*$", re.MULTILINE)
 SECRET_HINTS = re.compile(r"sk-ant-api|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|AIzaSy[\w-]{30}")
@@ -46,6 +52,8 @@ def _scan(path: Path, root: Path) -> list[str]:
     if path.suffix not in TEXT_SUFFIXES or path.name == Path(__file__).name:
         return problems
     text = path.read_text(encoding="utf-8", errors="replace")
+    if FIXTURE_MARKER in "\n".join(text.splitlines()[:FIXTURE_HEADER_LINES]):
+        return problems
     in_fence = False
     for number, line in enumerate(text.splitlines(), start=1):
         if path.suffix == ".md" and line.lstrip().startswith("```"):

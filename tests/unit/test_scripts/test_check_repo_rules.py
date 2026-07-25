@@ -1,4 +1,8 @@
-"""Unit tests for the repo-rules CI gate (uv-only, silent-except, secrets)."""
+"""Unit tests for the repo-rules CI gate (uv-only, silent-except, secrets).
+
+repo-rules-gate-fixtures: this file deliberately contains the forbidden
+patterns it asserts on, so the gate skips scanning its own content.
+"""
 
 from pathlib import Path
 
@@ -63,3 +67,19 @@ def test_credential_like_content_is_flagged(load_script, tmp_path: Path) -> None
     gate = load_script("check_repo_rules")
     issues = _scan_one(gate, tmp_path, "notes.txt", "key = sk-ant-api03-abcdef\n")
     assert any("SECRET-CONTENT" in issue for issue in issues)
+
+
+def test_header_fixture_marker_exempts_planted_patterns(load_script, tmp_path: Path) -> None:
+    """This test file itself relies on the exemption — lock its behaviour."""
+    gate = load_script("check_repo_rules")
+    body = f'"""Doc.\n\n{gate.FIXTURE_MARKER}: planted patterns below.\n"""\nCMD = "pip install x"\n'
+    assert _scan_one(gate, tmp_path, "fixtures.py", body) == []
+
+
+def test_fixture_marker_below_the_header_does_not_exempt(load_script, tmp_path: Path) -> None:
+    """The escape hatch must not be hideable deep inside a real module."""
+    gate = load_script("check_repo_rules")
+    filler = "\n".join(f"x{i} = {i}" for i in range(gate.FIXTURE_HEADER_LINES + 5))
+    body = f'{filler}\n# {gate.FIXTURE_MARKER}\nCMD = "pip install x"\n'
+    issues = _scan_one(gate, tmp_path, "sneaky.py", body)
+    assert any("UV-ONLY" in issue for issue in issues)

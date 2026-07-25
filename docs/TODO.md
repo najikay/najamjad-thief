@@ -91,7 +91,7 @@
 - [~] **T-0207** (P0) Wire file-size gate into CI on both repos over `src/` and `tests/` — DoD: planted 151-code-line file fails CI on a test branch
 - [~] **T-0208** (P0) Add secret-scan job (`scripts/scan_secrets.py` or gitleaks): key/token patterns in tracked files + assert `.env-example` exists and `.gitignore` covers the secret list — DoD: job green; planted dummy `sk-ant-...` string fails it (E5 gate)
 - [x] **T-0209** (P0) Write unit test for the secret scanner using planted-fixture files (positive and negative cases) — DoD: scanner behavior locked by tests
-- [~] **T-0210** (P0) Add uv-only grep gate: CI fails on `pip install`, `python -m`, `virtualenv`, `requirements.txt` in code, scripts, workflows, and docs — excluding fenced code blocks that explicitly quote third-party commands (e.g., the reference simulator's `python -m police_thief` run line) — DoD: planted `pip install` line in a doc fails CI; a fenced third-party quotation does not (E4 gate)
+- [x] **T-0210** (P0) Add uv-only grep gate: CI fails on `pip install`, `python -m`, `virtualenv`, `requirements.txt` in code, scripts, workflows, and docs — excluding fenced code blocks that explicitly quote third-party commands (e.g., the reference simulator's `python -m police_thief` run line) — DoD: planted `pip install` line in a doc fails CI; a fenced third-party quotation does not (E4 gate)
 - [x] **T-0211** (P1) Write unit test for the uv-only gate script (allowed vs forbidden strings, incl. false-positive guard for words like "pipeline") — DoD: gate behavior locked by tests
 - [x] **T-0212** (P0) Add no-silent-except gate: script flags `except ...: pass` / bare `except` without logging, supplementing ruff S110/S112 — DoD: planted silent except fails CI [FR-OBS-2 / ADR-008]
 - [x] **T-0213** (P1) Write unit test for the no-silent-except gate (fixture with logged handler passes, `pass` handler fails) — DoD: gate behavior locked by tests
@@ -166,41 +166,41 @@
 
 ## E05 — Domain: board, movement, barriers, capture, scoring (35 tasks)
 
-- [ ] **T-0501** (P0) Write failing tests for `domain/board.py`: NxN grid from config (side ≥ 7), in-bounds checks, orthogonal neighbors, Manhattan distance — DoD: tests fail (RED) [FR-ENG-1]
-- [ ] **T-0502** (P0) Implement `domain/board.py` (≤120 code lines) — DoD: T-0501 green; grid size read from signed config only [FR-ENG-1]
-- [ ] **T-0503** (P0) Write failing tests for axis conventions: origin corner + start index from config applied consistently to coordinates and neighbor math — DoD: tests fail (RED) [FR-ENG-1]
-- [ ] **T-0504** (P0) Implement axis-convention support in board.py — DoD: T-0503 green; default top-left/0 matches reference behavior
-- [ ] **T-0505** (P0) Write failing tests for barrier state: barrier cells impassable for BOTH sides, permanent for the whole mini-game, queryable set — DoD: tests fail (RED) [FR-ENG-3]
-- [ ] **T-0506** (P0) Implement barrier storage/lookup in board.py — DoD: T-0505 green
-- [ ] **T-0507** (P0) Write failing tests for `domain/movement.py`: N/S/E/W/STAY application, off-board illegal, barrier-cell illegal, STAY adds no visited cell — DoD: tests fail (RED) [FR-ENG-2]
-- [ ] **T-0508** (P0) Implement `domain/movement.py` move application + own-move validation (≤120 code lines) — DoD: T-0507 green
-- [ ] **T-0509** (P0) Add diagonal-rejection tests: every diagonal delta rejected as illegal regardless of encoding — DoD: tests green; rejection produces a typed error usable for opponent enforcement [FR-ENG-2, book rules 13–14]
-- [ ] **T-0510** (P0) Write failing tests for OPPONENT-move validation: declared opponent transitions checked for one-cell orthogonal delta, no teleport, no barrier crossing, step monotonicity — we enforce physics on them — DoD: tests fail (RED) [FR-ENG-2]
-- [ ] **T-0511** (P0) Implement opponent-move validation path in movement.py — DoD: T-0510 green; violation yields a physics-violation verdict for the protocol layer
-- [ ] **T-0512** (P0) Add legality-filter tests: the set of legal own moves is always non-empty-or-explicit (empty set → immobilization signal), and nothing outside it can be emitted — DoD: tests green [FR-STR-2]
+- [x] **T-0501** (P0) Write failing tests for `domain/board.py`: NxN grid from config (side ≥ 7), in-bounds checks, orthogonal neighbors, Manhattan distance — DoD: tests fail (RED) [FR-ENG-1]
+- [x] **T-0502** (P0) Implement `domain/board.py` (≤120 code lines) — DoD: T-0501 green; grid size read from signed config only [FR-ENG-1]
+- [x] **T-0503** (P0) Write failing tests for axis conventions: origin corner + start index from config applied consistently to coordinates and neighbor math — DoD: tests fail (RED) [FR-ENG-1]
+- [x] **T-0504** (P0) Implement axis-convention support in board.py — DoD: T-0503 green; default top-left/0 matches reference behavior
+- [x] **T-0505** (P0) Write failing tests for barrier state: barrier cells impassable for BOTH sides, permanent for the whole mini-game, queryable set — DoD: tests fail (RED) [FR-ENG-3]
+- [x] **T-0506** (P0) Implement barrier storage/lookup in board.py — DoD: T-0505 green
+- [x] **T-0507** (P0) Write failing tests for `domain/movement.py`: N/S/E/W/STAY application, off-board illegal, barrier-cell illegal, STAY adds no visited cell — DoD: tests fail (RED) [FR-ENG-2]
+- [x] **T-0508** (P0) Implement `domain/movement.py` move application + own-move validation (≤120 code lines) — DoD: T-0507 green
+- [x] **T-0509** (P0) Add diagonal-rejection tests: every diagonal delta rejected as illegal regardless of encoding — DoD: tests green; rejection produces a typed error usable for opponent enforcement [FR-ENG-2, book rules 13–14]
+- [x] **T-0510** (P0) Write failing tests for OPPONENT-move validation: declared opponent transitions checked for one-cell orthogonal delta, no teleport, no barrier crossing, step monotonicity — we enforce physics on them — DoD: tests fail (RED) [FR-ENG-2]
+- [x] **T-0511** (P0) Implement opponent-move validation path in movement.py — DoD: T-0510 green; violation yields a physics-violation verdict for the protocol layer
+- [x] **T-0512** (P0) Add legality-filter tests: the set of legal own moves is always non-empty-or-explicit (empty set → immobilization signal), and nothing outside it can be emitted — DoD: tests green [FR-STR-2]
 - [ ] **T-0513** (P1) Add hypothesis property tests: ∀ position + validated move sequence, agent stays in bounds and never occupies a barrier cell — DoD: property suite green over ≥ 500 generated cases [PLAN §5]
-- [ ] **T-0514** (P0) Write failing tests for the Barrier Law: cop only, in lieu of moving, target = own cell or orthogonally adjacent; budget from config (≥ 14) decremented; exhausted budget rejects placement — DoD: tests fail (RED) [FR-ENG-3]
-- [ ] **T-0515** (P0) Implement barrier placement per the Barrier Law in movement.py/board.py — DoD: T-0514 green
-- [ ] **T-0516** (P0) Add barrier-declaration-duty tests: every placement produces a truthful declaration record with the exact cell (no hidden barriers path exists in code) — DoD: tests green [book rules 15–16]
-- [ ] **T-0517** (P0) Write failing tests for `domain/capture.py`: cop entering thief's cell captures ONLY with a declared Capture Claim (entry without claim ≠ capture) — DoD: tests fail (RED) [FR-ENG-4]
-- [ ] **T-0518** (P0) Implement `domain/capture.py` capture-claim evaluation (≤120 code lines) — DoD: T-0517 green
-- [ ] **T-0519** (P0) Add barrier-capture tests: barrier placed on the thief's current cell = capture — DoD: tests green [book rule 46]
-- [ ] **T-0520** (P0) Implement barrier-capture in capture.py — DoD: T-0519 green
-- [ ] **T-0521** (P0) Add immobilization-capture tests: thief with zero legal moves (barriers + edges) is captured — DoD: tests green [book rule 47]
-- [ ] **T-0522** (P0) Implement immobilization detection — DoD: T-0521 green; uses movement legality filter, no duplicate logic
-- [ ] **T-0523** (P0) Add truth-duty tests: capture-query answer computed from the true own cell only; response object carries claim + honest boolean; auditable via sealed record — DoD: tests green [FR-ENG-4, book rules 21–22]
-- [ ] **T-0524** (P0) Implement honest `claim_response` builder in capture.py — DoD: T-0523 green; no code path can emit a dishonest answer
-- [ ] **T-0525** (P0) Write failing tests for survival: `survival_threshold` (≥ 35) valid steps without capture → thief survival; step-counting semantics fixed and documented — DoD: tests fail (RED) [FR-ENG-5]
-- [ ] **T-0526** (P0) Implement survival check + step-cap resolution (cap reached = thief survival, documented interpretation per PRD A2 / book Open-Q 5) — DoD: T-0525 green; interpretation recorded in an ADR note [FR-ENG-5]
-- [ ] **T-0527** (P0) Write failing tests for `domain/scoring.py`: fixed table — capture 20/5, survival 5/10, technical loss 0/0 — DoD: tests fail (RED) [FR-ENG-6]
-- [ ] **T-0528** (P0) Implement `domain/scoring.py` `score_subgame` (≤120 code lines) — DoD: T-0527 green; values read from signed config, asserted against Appendix F fixed values
-- [ ] **T-0529** (P0) Add series-accounting tests: 6 mini-game aggregation, per-group totals, sub_games_won counts — DoD: tests fail then green with implementation [FR-ENG-6]
-- [ ] **T-0530** (P0) Implement series aggregation in scoring.py — DoD: T-0529 green
-- [ ] **T-0531** (P0) Add tie-rule tests: equal cumulative series score → each team +2, `winner_group: null` — DoD: tests green [FR-ENG-6]
-- [ ] **T-0532** (P0) Implement the tie rule — DoD: T-0531 green
+- [x] **T-0514** (P0) Write failing tests for the Barrier Law: cop only, in lieu of moving, target = own cell or orthogonally adjacent; budget from config (≥ 14) decremented; exhausted budget rejects placement — DoD: tests fail (RED) [FR-ENG-3]
+- [x] **T-0515** (P0) Implement barrier placement per the Barrier Law in movement.py/board.py — DoD: T-0514 green
+- [x] **T-0516** (P0) Add barrier-declaration-duty tests: every placement produces a truthful declaration record with the exact cell (no hidden barriers path exists in code) — DoD: tests green [book rules 15–16]
+- [x] **T-0517** (P0) Write failing tests for `domain/capture.py`: cop entering thief's cell captures ONLY with a declared Capture Claim (entry without claim ≠ capture) — DoD: tests fail (RED) [FR-ENG-4]
+- [x] **T-0518** (P0) Implement `domain/capture.py` capture-claim evaluation (≤120 code lines) — DoD: T-0517 green
+- [x] **T-0519** (P0) Add barrier-capture tests: barrier placed on the thief's current cell = capture — DoD: tests green [book rule 46]
+- [x] **T-0520** (P0) Implement barrier-capture in capture.py — DoD: T-0519 green
+- [x] **T-0521** (P0) Add immobilization-capture tests: thief with zero legal moves (barriers + edges) is captured — DoD: tests green [book rule 47]
+- [x] **T-0522** (P0) Implement immobilization detection — DoD: T-0521 green; uses movement legality filter, no duplicate logic
+- [x] **T-0523** (P0) Add truth-duty tests: capture-query answer computed from the true own cell only; response object carries claim + honest boolean; auditable via sealed record — DoD: tests green [FR-ENG-4, book rules 21–22]
+- [x] **T-0524** (P0) Implement honest `claim_response` builder in capture.py — DoD: T-0523 green; no code path can emit a dishonest answer
+- [x] **T-0525** (P0) Write failing tests for survival: `survival_threshold` (≥ 35) valid steps without capture → thief survival; step-counting semantics fixed and documented — DoD: tests fail (RED) [FR-ENG-5]
+- [x] **T-0526** (P0) Implement survival check + step-cap resolution (cap reached = thief survival, documented interpretation per PRD A2 / book Open-Q 5) — DoD: T-0525 green; interpretation recorded in an ADR note [FR-ENG-5]
+- [x] **T-0527** (P0) Write failing tests for `domain/scoring.py`: fixed table — capture 20/5, survival 5/10, technical loss 0/0 — DoD: tests fail (RED) [FR-ENG-6]
+- [x] **T-0528** (P0) Implement `domain/scoring.py` `score_subgame` (≤120 code lines) — DoD: T-0527 green; values read from signed config, asserted against Appendix F fixed values
+- [x] **T-0529** (P0) Add series-accounting tests: 6 mini-game aggregation, per-group totals, sub_games_won counts — DoD: tests fail then green with implementation [FR-ENG-6]
+- [x] **T-0530** (P0) Implement series aggregation in scoring.py — DoD: T-0529 green
+- [x] **T-0531** (P0) Add tie-rule tests: equal cumulative series score → each team +2, `winner_group: null` — DoD: tests green [FR-ENG-6]
+- [x] **T-0532** (P0) Implement the tie rule — DoD: T-0531 green
 - [ ] **T-0533** (P0) Add golden test: our aggregate output shape matches the reference simulator's `result_*.json` aggregate block — DoD: golden comparison green [ADR-012; deps: T-0126]
 - [ ] **T-0534** (P1) Write `docs/edge-cases-domain.md`: boundary conditions (corner starts, 1-move traps, quota edge, threshold-1 step) with expected input/response per guidelines §6.3 — DoD: every listed edge case has a test id next to it
-- [ ] **T-0535** (P0) Add cop capture-claim honesty tests: our `capture_claim` is always derived from the cop's true own position; no code path can claim a foreign cell — DoD: tests green; meta-test confirms a single claim-source function [FR-ENG-4, book rule 22]
+- [x] **T-0535** (P0) Add cop capture-claim honesty tests: our `capture_claim` is always derived from the cop's true own position; no code path can claim a foreign cell — DoD: tests green; meta-test confirms a single claim-source function [FR-ENG-4, book rule 22]
 
 ## E06 — Scent & belief (30 tasks)
 
@@ -760,10 +760,10 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | Epic | Title | Milestone | Total | Done | Blocked |
 |---|---|---|---:|---:|---:|
 | E01 | Workspace & two-repo bootstrap | M1 | 29 | 20 | 2 |
-| E02 | CI compliance gates | M1 | 23 | 6 | 0 |
+| E02 | CI compliance gates | M1 | 23 | 7 | 0 |
 | E03 | Config system | M2 | 24 | 0 | 0 |
 | E04 | Shared infrastructure | M2 | 28 | 0 | 0 |
-| E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 0 | 0 |
+| E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
 | E06 | Scent & belief | M2 | 30 | 0 | 0 |
 | E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 0 | 0 |
 | E08 | Game FSM & orchestrator | M3 | 26 | 0 | 0 |
