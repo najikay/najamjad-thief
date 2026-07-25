@@ -18,9 +18,15 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 
 # Fields whose truthfulness the whole report depends on. They must be real
 # booleans — `null`, "true" or a missing key are all refused.
-REQUIRED_BOOLEAN_PATHS = (
-    ("mutual_agreement", "confirmed"),
-)
+#
+# Scoped per artifact kind: only the log and the result carry an agreement
+# block. Demanding one on a declaration or config would block a perfectly valid
+# write, and a gate that cries wolf is a gate people switch off.
+REQUIRED_BOOLEAN_PATHS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "result": (("mutual_agreement", "confirmed"),),
+    "log": (("mutual_agreement", "confirmed"),),
+    "probe": (("mutual_agreement", "confirmed"),),
+}
 
 
 class EgressBlockedError(Exception):
@@ -33,10 +39,10 @@ class EgressBlockedError(Exception):
         self.problems = problems
 
 
-def _boolean_problems(payload: dict[str, Any]) -> list[str]:
-    """Check the agreement flags that A6 shipped as null."""
+def _boolean_problems(payload: dict[str, Any], kind: str) -> list[str]:
+    """Check the agreement flags that A6 shipped as null, for this artifact kind."""
     problems: list[str] = []
-    for path in REQUIRED_BOOLEAN_PATHS:
+    for path in REQUIRED_BOOLEAN_PATHS.get(kind, ()):
         node: Any = payload
         for key in path:
             node = node.get(key) if isinstance(node, dict) else None
@@ -67,7 +73,7 @@ def validate_egress(
         for item in error.errors():
             location = ".".join(str(part) for part in item.get("loc", ())) or "<root>"
             problems.append(f"{location}: {item.get('msg', 'invalid value')}")
-    problems.extend(_boolean_problems(payload))
+    problems.extend(_boolean_problems(payload, kind))
     if problems or parsed is None:
         if alert is not None:
             alert({"event": "egress.blocked", "kind": kind, "problems": problems})

@@ -45,10 +45,18 @@ def test_no_module_writes_json_to_disk_outside_the_sanctioned_ones() -> None:
 
 
 def test_required_boolean_paths_cover_the_agreement_flag() -> None:
-    """The A6 regression guard must actually point at the agreement field."""
+    """The A6 regression guard must point at the agreement field.
+
+    Scoped per artifact kind: only the log and result carry the block, so
+    demanding it on a declaration would block a valid write — and a gate that
+    cries wolf is a gate people switch off.
+    """
     from najamjad_agent.protocol.egress import REQUIRED_BOOLEAN_PATHS
 
-    assert ("mutual_agreement", "confirmed") in REQUIRED_BOOLEAN_PATHS
+    for kind in ("result", "log"):
+        assert ("mutual_agreement", "confirmed") in REQUIRED_BOOLEAN_PATHS[kind]
+    assert "declaration" not in REQUIRED_BOOLEAN_PATHS
+    assert "config" not in REQUIRED_BOOLEAN_PATHS
 
 
 def test_result_schema_declares_confirmed_as_a_plain_bool() -> None:

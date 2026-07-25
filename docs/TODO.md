@@ -528,34 +528,34 @@
 
 ## E17 — Reporting (28 tasks)
 
-- [ ] **T-1701** (P0) Write failing tests for the declaration builder in `reporting/artifacts.py`: all fields from negotiation + Step-0, filename `declaration_<game_id>.json`, per-group signature — DoD: tests fail (RED) [FR-REP-1]
-- [ ] **T-1702** (P0) Implement `reporting/artifacts.py` declaration writer (≤120 code lines) — DoD: T-1701 green
-- [ ] **T-1703** (P0) Add config-artifact tests: per-mini-game `config_<game_id>_g<NN>.json` with `config_sha256`; byte-identical output on both peers — DoD: tests fail (RED) [FR-REP-1 / FR-NEG-1]
-- [ ] **T-1704** (P0) Implement the config artifact writer — DoD: T-1703 green
-- [ ] **T-1705** (P0) Add log-artifact tests: sealed step chain + step-0 + summary + audit outcome + mutual_agreement block — DoD: tests fail (RED)
-- [ ] **T-1706** (P0) Implement the log artifact writer — DoD: T-1705 green
-- [ ] **T-1707** (P0) Add result-artifact tests: per-sub-game rows + totals + SYMMETRIC mutual_agreement hash (only symmetric outcome hashed, so both peers' files agree byte-for-byte on the signature) — DoD: tests fail (RED) [FR-REP-1]
-- [ ] **T-1708** (P0) Implement the result writer with symmetric hashing — DoD: T-1707 green; two-peer test asserts identical mutual sha256
-- [ ] **T-1709** (P0) Add lifecycle-consistency tests: shared `game_uid` across all 4 files; artifacts written into `matches/<opponent>/` — DoD: tests green [FR-CFG-3 / FR-REP-1]
-- [ ] **T-1710** (P0) Add artifact golden tests: our 4 outputs validate against reference sample-run shapes — DoD: `pytest -m goldens` green [ADR-012; deps: T-0923]
-- [ ] **T-1711** (P0) Route every artifact write through `validate_egress()`; invalid artifact blocks the write + raises an operator alert — DoD: negative test green [FR-REP-2; deps: T-0922]
-- [ ] **T-1712** (P0) Ops: health-check the EXISTING Google OAuth client first (account standing, scope, quota, consent screen); create a fresh dedicated Google Cloud project (Gmail API, consent screen in Testing with both members as test users, Desktop OAuth client) ONLY if the existing client is tainted — DoD: health-check outcome + decision recorded; working `credentials.json` present locally only, ignored by git [PRD A5, risk R10]
-- [ ] **T-1713** (P0) Document + execute the first-run OAuth flow producing `token.json`; verify `.gitignore` blocks both files and the secret scan catches planted copies — DoD: token works; scan test green [book rules 39–40]
-- [ ] **T-1714** (P0) Write failing tests for `reporting/gmail_sender.py`: OAuth scope is `gmail.send` ONLY (scope assertion test); Gmail API fully mocked — DoD: tests fail (RED) [FR-REP-3, book rule 30]
-- [ ] **T-1715** (P0) Implement `reporting/gmail_sender.py` (≤120 code lines): MIME with JSON attachment, base64url, `users().messages().send`, via the `gmail` gatekeeper — DoD: T-1714 green
-- [ ] **T-1716** (P0) Add attachment/recipient tests: result JSON attached (never inline body); recipient `rmisegal+uoh26finalgame@gmail.com` from config — DoD: tests green [FR-REP-3, book rules 33–34/51]
-- [ ] **T-1717** (P0) Add mode tests: `mode=draft` creates a draft (dev), `mode=send` sends (league); league config asserts send mode — DoD: tests green [FR-REP-3]
-- [ ] **T-1718** (P0) Add send-confirmation tests: API response message id captured, evented, and surfaced to the UI; absent id = failure path with alert — DoD: tests green (kills A6 pain #1) [FR-REP-3]
-- [ ] **T-1719** (P0) Add OAuth-preflight tests: invalid/expired token fails fast at preflight; NO interactive OAuth can ever trigger mid-match or on a background thread — DoD: tests green (A6 lesson 6) [deps: T-1113]
-- [ ] **T-1720** (P0) Add 429-backoff tests: Gmail 429 honored — backoff per gatekeeper config, no blind resend, retries capped, unsent report lands in a dead-letter file with an operator alert — DoD: tests green [FR-REP-3, book PAGE 95]
-- [ ] **T-1721** (P0) Add DOS-detector tests: anomalous outbound send pattern locks the gmail gatekeeper + raises an alert — DoD: tests green [book rule 29]
-- [ ] **T-1722** (P0) Write failing tests for `reporting/reconcile.py`: exchange result summaries with the opponent pre-send; diff over the symmetric fields — DoD: tests fail (RED) [FR-REP-6]
-- [ ] **T-1723** (P0) Implement `reporting/reconcile.py` (≤120 code lines) — DoD: T-1722 green
-- [ ] **T-1724** (P0) Add discrepancy-alert tests: mismatch → operator alert showing both versions side by side; send held until operator decision — DoD: tests green [FR-REP-6, rule 35 protection]
-- [ ] **T-1725** (P0) Wire reconciliation into the runtime result flow (NOT a manual CLI step): result send blocks on the reconcile step outcome — DoD: integration test green (A6 lesson: reconcile was dead code) [FR-REP-6]
-- [ ] **T-1726** (P0) Add per-match config-commit tests: match config committed to GitHub at match start; `github_commit` hash captured into Step-0 + result JSON — DoD: tests fail (RED) [FR-REP-5, Appendix F §2; deps: T-0723]
-- [ ] **T-1727** (P0) Implement the auto-commit + hash-capture flow — DoD: T-1726 green; hash identical in Step-0, result JSON, and git log
-- [ ] **T-1728** (P1) Add archive-bundle tests: artifacts + events + logs + config bundled into `matches/<opponent>/` by the archive verb; bundle completeness asserted — DoD: tests green [FR-OBS-3; deps: T-2013]
+- [x] **T-1701** (P0) Write failing tests for the declaration builder in `reporting/artifacts.py`: all fields from negotiation + Step-0, filename `declaration_<game_id>.json`, per-group signature — DoD: tests fail (RED) [FR-REP-1]
+- [x] **T-1702** (P0) Implement `reporting/artifacts.py` declaration writer (≤120 code lines) — DoD: T-1701 green
+- [x] **T-1703** (P0) Add config-artifact tests: per-mini-game `config_<game_id>_g<NN>.json` with `config_sha256`; byte-identical output on both peers — DoD: tests fail (RED) [FR-REP-1 / FR-NEG-1]
+- [x] **T-1704** (P0) Implement the config artifact writer — DoD: T-1703 green
+- [x] **T-1705** (P0) Add log-artifact tests: sealed step chain + step-0 + summary + audit outcome + mutual_agreement block — DoD: tests fail (RED)
+- [x] **T-1706** (P0) Implement the log artifact writer — DoD: T-1705 green
+- [x] **T-1707** (P0) Add result-artifact tests: per-sub-game rows + totals + SYMMETRIC mutual_agreement hash (only symmetric outcome hashed, so both peers' files agree byte-for-byte on the signature) — DoD: tests fail (RED) [FR-REP-1]
+- [x] **T-1708** (P0) Implement the result writer with symmetric hashing — DoD: T-1707 green; two-peer test asserts identical mutual sha256
+- [x] **T-1709** (P0) Add lifecycle-consistency tests: shared `game_uid` across all 4 files; artifacts written into `matches/<opponent>/` — DoD: tests green [FR-CFG-3 / FR-REP-1]
+- [~] **T-1710** (P0) Add artifact golden tests: our 4 outputs validate against reference sample-run shapes — DoD: `pytest -m goldens` green [ADR-012; deps: T-0923]
+- [x] **T-1711** (P0) Route every artifact write through `validate_egress()`; invalid artifact blocks the write + raises an operator alert — DoD: negative test green [FR-REP-2; deps: T-0922]
+- [!] **T-1712** (P0) Ops: health-check the EXISTING Google OAuth client first (account standing, scope, quota, consent screen); create a fresh dedicated Google Cloud project (Gmail API, consent screen in Testing with both members as test users, Desktop OAuth client) ONLY if the existing client is tainted — DoD: health-check outcome + decision recorded; working `credentials.json` present locally only, ignored by git [PRD A5, risk R10]
+- [!] **T-1713** (P0) Document + execute the first-run OAuth flow producing `token.json`; verify `.gitignore` blocks both files and the secret scan catches planted copies — DoD: token works; scan test green [book rules 39–40]
+- [x] **T-1714** (P0) Write failing tests for `reporting/gmail_sender.py`: OAuth scope is `gmail.send` ONLY (scope assertion test); Gmail API fully mocked — DoD: tests fail (RED) [FR-REP-3, book rule 30]
+- [x] **T-1715** (P0) Implement `reporting/gmail_sender.py` (≤120 code lines): MIME with JSON attachment, base64url, `users().messages().send`, via the `gmail` gatekeeper — DoD: T-1714 green
+- [x] **T-1716** (P0) Add attachment/recipient tests: result JSON attached (never inline body); recipient `rmisegal+uoh26finalgame@gmail.com` from config — DoD: tests green [FR-REP-3, book rules 33–34/51]
+- [x] **T-1717** (P0) Add mode tests: `mode=draft` creates a draft (dev), `mode=send` sends (league); league config asserts send mode — DoD: tests green [FR-REP-3]
+- [x] **T-1718** (P0) Add send-confirmation tests: API response message id captured, evented, and surfaced to the UI; absent id = failure path with alert — DoD: tests green (kills A6 pain #1) [FR-REP-3]
+- [~] **T-1719** (P0) Add OAuth-preflight tests: invalid/expired token fails fast at preflight; NO interactive OAuth can ever trigger mid-match or on a background thread — DoD: tests green (A6 lesson 6) [deps: T-1113]
+- [x] **T-1720** (P0) Add 429-backoff tests: Gmail 429 honored — backoff per gatekeeper config, no blind resend, retries capped, unsent report lands in a dead-letter file with an operator alert — DoD: tests green [FR-REP-3, book PAGE 95]
+- [~] **T-1721** (P0) Add DOS-detector tests: anomalous outbound send pattern locks the gmail gatekeeper + raises an alert — DoD: tests green [book rule 29]
+- [x] **T-1722** (P0) Write failing tests for `reporting/reconcile.py`: exchange result summaries with the opponent pre-send; diff over the symmetric fields — DoD: tests fail (RED) [FR-REP-6]
+- [x] **T-1723** (P0) Implement `reporting/reconcile.py` (≤120 code lines) — DoD: T-1722 green
+- [x] **T-1724** (P0) Add discrepancy-alert tests: mismatch → operator alert showing both versions side by side; send held until operator decision — DoD: tests green [FR-REP-6, rule 35 protection]
+- [~] **T-1725** (P0) Wire reconciliation into the runtime result flow (NOT a manual CLI step): result send blocks on the reconcile step outcome — DoD: integration test green (A6 lesson: reconcile was dead code) [FR-REP-6]
+- [!] **T-1726** (P0) Add per-match config-commit tests: match config committed to GitHub at match start; `github_commit` hash captured into Step-0 + result JSON — DoD: tests fail (RED) [FR-REP-5, Appendix F §2; deps: T-0723]
+- [!] **T-1727** (P0) Implement the auto-commit + hash-capture flow — DoD: T-1726 green; hash identical in Step-0, result JSON, and git log
+- [~] **T-1728** (P1) Add archive-bundle tests: artifacts + events + logs + config bundled into `matches/<opponent>/` by the archive verb; bundle completeness asserted — DoD: tests green [FR-OBS-3; deps: T-2013]
 
 ## E18 — UI dashboard (28 tasks)
 
@@ -775,7 +775,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E14 | Cop strategy | M4 | 26 | 16 | 0 |
 | E15 | Thief strategy | M4 | 26 | 13 | 0 |
 | E16 | Hint policy & opponent modeling | M4 | 18 | 13 | 0 |
-| E17 | Reporting | M5 | 28 | 0 | 0 |
+| E17 | Reporting | M5 | 28 | 19 | 4 |
 | E18 | UI dashboard | M5 | 28 | 0 | 0 |
 | E19 | Replay viewer | M5 | 14 | 0 | 0 |
 | E20 | SDK & CLI | M5 | 16 | 0 | 0 |

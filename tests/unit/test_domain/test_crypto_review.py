@@ -37,6 +37,7 @@ def test_sha256_is_only_computed_in_designated_modules() -> None:
         "nonce_vault.py",  # at-rest keystream for spilled nonces
         "session_guard.py",  # HMAC session token binding a match to one opponent
         "contract.py",  # config_sha256 + the derived game_uid both peers compute
+        "agreement.py",  # the symmetric result signature both peers must match
     }
     offenders = [p.name for p in SOURCES if "hashlib.sha256" in _read(p) and p.name not in allowed]
     assert offenders == []
