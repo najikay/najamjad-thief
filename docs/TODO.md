@@ -204,36 +204,36 @@
 
 ## E06 — Scent & belief (30 tasks)
 
-- [ ] **T-0601** (P0) Write failing tests for scent emission: 5×5 field, center exactly 0.9 (fixed), radial falloff, off-board clipping — DoD: tests fail (RED) [FR-ENG-7]
-- [ ] **T-0602** (P0) Implement `domain/scent.py` emission (≤120 code lines) — DoD: T-0601 green; parameters read from locked config, asserted fixed [FR-ENG-7]
-- [ ] **T-0603** (P0) Write failing tests for decay: `τ(t+1)=max(0,(1−ρ)τ+Δτ)` with ρ=0.10, applied only after a full turn (both agents moved) — DoD: tests fail (RED) [FR-ENG-7]
-- [ ] **T-0604** (P0) Implement decay in scent.py — DoD: T-0603 green; decay call is a single explicit method invoked by the orchestrator
-- [ ] **T-0605** (P0) Write failing tests for clamping: values within [0, 0.9] after ANY operation sequence (emission on fresh trail, repeated stays) — DoD: tests fail (RED)
-- [ ] **T-0606** (P0) Implement clamp in scent.py — DoD: T-0605 green
-- [ ] **T-0607** (P0) Write failing tests for snapshot/absorb: wire format `{"r,c": v}` matching the reference simulator; snapshot never contains a raw position; absorb merges opponent grid with bounds checks — DoD: tests fail (RED) [FR-NET-1]
-- [ ] **T-0608** (P0) Implement snapshot + absorb in scent.py — DoD: T-0607 green; malformed/out-of-range inbound intensities coerced or rejected with an event
-- [ ] **T-0609** (P1) Add hypothesis property tests: non-negativity, upper clamp, monotone decay without new emission, deposit readable ~6–7 turns (half-peak) — DoD: property suite green [PLAN §5]
-- [ ] **T-0610** (P0) Add numeric-example golden test: reproduce the book's worked 5×5 field (0.90 center / 0.62 orthogonal / 0.42 diagonal / edge ring) exactly and store it as the pheromone-model lock example — DoD: golden green; this file is the input the E12 contract lock (T-1207) consumes later [FR-NEG-2]
-- [ ] **T-0611** (P0) Write failing tests for `domain/belief.py`: uniform prior over free cells; normalization invariant (sums to 1) after every operation — DoD: tests fail (RED) [FR-STR-1]
-- [ ] **T-0612** (P0) Implement `domain/belief.py` grid init + normalize (≤120 code lines) — DoD: T-0611 green
-- [ ] **T-0613** (P0) Write failing tests for movement-model diffusion: mass spreads to the von Neumann neighborhood per opponent move; BARRIER-AWARE (no mass through declared barriers or off-board) — DoD: tests fail (RED) [FR-STR-1]
-- [ ] **T-0614** (P0) Implement barrier-aware diffuse — DoD: T-0613 green; extends the reference `diffuse()` with barrier masking
-- [ ] **T-0615** (P0) Write failing tests for scent-observation update: cells weighted by observed intensity likelihood; zero-scent cells near expected trail downweighted — DoD: tests fail (RED)
-- [ ] **T-0616** (P0) Implement Bayes scent fusion in belief.py — DoD: T-0615 green; trust weight from config, not hardcoded
-- [ ] **T-0617** (P0) Write failing tests for exclusion updates: our own cell and provably-empty cells zeroed then renormalized — DoD: tests fail (RED)
-- [ ] **T-0618** (P0) Implement exclusion update — DoD: T-0617 green
-- [ ] **T-0619** (P1) Add hypothesis property tests for belief: ∀ update sequences — valid distribution (sum 1 ± ε, no negatives, no NaN), even with degenerate inputs — DoD: property suite green
-- [ ] **T-0620** (P0) Write failing tests for `domain/hint_evidence.py`: structured claim ("north", "near landmark X") → per-cell likelihood map, weighted by a per-opponent credibility coefficient — DoD: tests fail (RED) [FR-STR-1]
-- [ ] **T-0621** (P0) Implement `domain/hint_evidence.py` (≤120 code lines) — DoD: T-0620 green
-- [ ] **T-0622** (P0) Add credibility-coefficient tests: bounded [0,1]-style coefficient; update rule raises on confirmed truth, lowers on refuted claim — DoD: tests green [FR-STR-6]
-- [ ] **T-0623** (P0) Implement the credibility update hook (interface consumed by strategy/opponent_model.py) — DoD: T-0622 green; single update entry point, no duplicate logic
-- [ ] **T-0624** (P0) Add uninformative-hint tests: parse failure / empty hint yields an identity belief update (graceful degradation, never a crash) — DoD: tests green [FR-LLM-5]
-- [ ] **T-0625** (P0) Write failing tests for the scent-vs-claim consistency checker: book worked example — claim "moved north" with τ=0 north cells and fresh mass elsewhere is flagged as a lie — DoD: tests fail (RED) [FR-STR-6, book PAGE 46]
-- [ ] **T-0626** (P0) Implement the consistency checker (lie detection) in hint_evidence.py — DoD: T-0625 green; verdicts feed the credibility hook
-- [ ] **T-0627** (P0) Add fusion-order tests: scent × movement × hint composed in the documented order; a hint can never override directly contradicting scent physics — DoD: tests green [FR-STR-1]
-- [ ] **T-0628** (P1) Add seeded scenario tests: over scripted deterministic games, belief peak converges to the true opponent path within N turns — DoD: convergence assertions green for ≥ 3 scenarios
-- [ ] **T-0629** (P1) Add micro-benchmark test: one full belief+scent update ≤ 50 ms on boards 7×7–15×15 (fits the 5 s move budget with search on top) — DoD: benchmark assertion green in CI [PRD §4 performance]
-- [ ] **T-0630** (P0) Author `docs/PRD_belief_engine.md`: theory (Bayes fusion), I/O contracts, metrics (convergence, calibration), alternatives considered, test scenarios — DoD: doc complete per guidelines §2.3 [PLAN §11]
+- [x] **T-0601** (P0) Write failing tests for scent emission: 5×5 field, center exactly 0.9 (fixed), radial falloff, off-board clipping — DoD: tests fail (RED) [FR-ENG-7]
+- [x] **T-0602** (P0) Implement `domain/scent.py` emission (≤120 code lines) — DoD: T-0601 green; parameters read from locked config, asserted fixed [FR-ENG-7]
+- [x] **T-0603** (P0) Write failing tests for decay: `τ(t+1)=max(0,(1−ρ)τ+Δτ)` with ρ=0.10, applied only after a full turn (both agents moved) — DoD: tests fail (RED) [FR-ENG-7]
+- [x] **T-0604** (P0) Implement decay in scent.py — DoD: T-0603 green; decay call is a single explicit method invoked by the orchestrator
+- [x] **T-0605** (P0) Write failing tests for clamping: values within [0, 0.9] after ANY operation sequence (emission on fresh trail, repeated stays) — DoD: tests fail (RED)
+- [x] **T-0606** (P0) Implement clamp in scent.py — DoD: T-0605 green
+- [x] **T-0607** (P0) Write failing tests for snapshot/absorb: wire format `{"r,c": v}` matching the reference simulator; snapshot never contains a raw position; absorb merges opponent grid with bounds checks — DoD: tests fail (RED) [FR-NET-1]
+- [x] **T-0608** (P0) Implement snapshot + absorb in scent.py — DoD: T-0607 green; malformed/out-of-range inbound intensities coerced or rejected with an event
+- [x] **T-0609** (P1) Add hypothesis property tests: non-negativity, upper clamp, monotone decay without new emission, deposit readable ~6–7 turns (half-peak) — DoD: property suite green [PLAN §5]
+- [x] **T-0610** (P0) Add numeric-example golden test: reproduce the book's worked 5×5 field (0.90 center / 0.62 orthogonal / 0.42 diagonal / edge ring) exactly and store it as the pheromone-model lock example — DoD: golden green; this file is the input the E12 contract lock (T-1207) consumes later [FR-NEG-2]
+- [x] **T-0611** (P0) Write failing tests for `domain/belief.py`: uniform prior over free cells; normalization invariant (sums to 1) after every operation — DoD: tests fail (RED) [FR-STR-1]
+- [x] **T-0612** (P0) Implement `domain/belief.py` grid init + normalize (≤120 code lines) — DoD: T-0611 green
+- [x] **T-0613** (P0) Write failing tests for movement-model diffusion: mass spreads to the von Neumann neighborhood per opponent move; BARRIER-AWARE (no mass through declared barriers or off-board) — DoD: tests fail (RED) [FR-STR-1]
+- [x] **T-0614** (P0) Implement barrier-aware diffuse — DoD: T-0613 green; extends the reference `diffuse()` with barrier masking
+- [x] **T-0615** (P0) Write failing tests for scent-observation update: cells weighted by observed intensity likelihood; zero-scent cells near expected trail downweighted — DoD: tests fail (RED)
+- [x] **T-0616** (P0) Implement Bayes scent fusion in belief.py — DoD: T-0615 green; trust weight from config, not hardcoded
+- [x] **T-0617** (P0) Write failing tests for exclusion updates: our own cell and provably-empty cells zeroed then renormalized — DoD: tests fail (RED)
+- [x] **T-0618** (P0) Implement exclusion update — DoD: T-0617 green
+- [x] **T-0619** (P1) Add hypothesis property tests for belief: ∀ update sequences — valid distribution (sum 1 ± ε, no negatives, no NaN), even with degenerate inputs — DoD: property suite green
+- [x] **T-0620** (P0) Write failing tests for `domain/hint_evidence.py`: structured claim ("north", "near landmark X") → per-cell likelihood map, weighted by a per-opponent credibility coefficient — DoD: tests fail (RED) [FR-STR-1]
+- [x] **T-0621** (P0) Implement `domain/hint_evidence.py` (≤120 code lines) — DoD: T-0620 green
+- [x] **T-0622** (P0) Add credibility-coefficient tests: bounded [0,1]-style coefficient; update rule raises on confirmed truth, lowers on refuted claim — DoD: tests green [FR-STR-6]
+- [x] **T-0623** (P0) Implement the credibility update hook (interface consumed by strategy/opponent_model.py) — DoD: T-0622 green; single update entry point, no duplicate logic
+- [x] **T-0624** (P0) Add uninformative-hint tests: parse failure / empty hint yields an identity belief update (graceful degradation, never a crash) — DoD: tests green [FR-LLM-5]
+- [x] **T-0625** (P0) Write failing tests for the scent-vs-claim consistency checker: book worked example — claim "moved north" with τ=0 north cells and fresh mass elsewhere is flagged as a lie — DoD: tests fail (RED) [FR-STR-6, book PAGE 46]
+- [x] **T-0626** (P0) Implement the consistency checker (lie detection) in hint_evidence.py — DoD: T-0625 green; verdicts feed the credibility hook
+- [x] **T-0627** (P0) Add fusion-order tests: scent × movement × hint composed in the documented order; a hint can never override directly contradicting scent physics — DoD: tests green [FR-STR-1]
+- [x] **T-0628** (P1) Add seeded scenario tests: over scripted deterministic games, belief peak converges to the true opponent path within N turns — DoD: convergence assertions green for ≥ 3 scenarios
+- [x] **T-0629** (P1) Add micro-benchmark test: one full belief+scent update ≤ 50 ms on boards 7×7–15×15 (fits the 5 s move budget with search on top) — DoD: benchmark assertion green in CI [PRD §4 performance]
+- [x] **T-0630** (P0) Author `docs/PRD_belief_engine.md`: theory (Bayes fusion), I/O contracts, metrics (convergence, calibration), alternatives considered, test scenarios — DoD: doc complete per guidelines §2.3 [PLAN §11]
 
 ## E07 — Commit-reveal crypto, audit & Step-0 (32 tasks)
 
@@ -764,7 +764,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E03 | Config system | M2 | 24 | 0 | 0 |
 | E04 | Shared infrastructure | M2 | 28 | 0 | 0 |
 | E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
-| E06 | Scent & belief | M2 | 30 | 0 | 0 |
+| E06 | Scent & belief | M2 | 30 | 30 | 0 |
 | E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 0 | 0 |
 | E08 | Game FSM & orchestrator | M3 | 26 | 0 | 0 |
 | E09 | Protocol schemas & goldens | M3 | 24 | 0 | 0 |
