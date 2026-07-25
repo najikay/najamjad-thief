@@ -380,37 +380,37 @@
 
 ## E12 — Negotiation (31 tasks)
 
-- [ ] **T-1201** (P0) Write failing tests for `negotiation/contract.py`: builds canonical `game.json` from negotiated terms (sorted keys, byte-stable across runs) — DoD: tests fail (RED) [FR-NEG-1]
-- [ ] **T-1202** (P0) Implement `negotiation/contract.py` builder (≤120 code lines) — DoD: T-1201 green; uses protocol/canonical.py [deps: T-0308]
-- [ ] **T-1203** (P0) Add SHA-256 exchange tests: signature over canonical terms + nonce; peer verification recomputes and compares via compare_digest — DoD: tests fail then green with implementation [FR-NEG-1]
-- [ ] **T-1204** (P0) Implement signature exchange + verification (reference-compatible `Negotiation.signed()`/`verify_peer` shapes) — DoD: T-1203 green; golden test vs reference agreement payload
-- [ ] **T-1205** (P0) Add refuse-on-mismatch tests: ANY terms or signature mismatch → refuse to play, typed error + operator event — DoD: tests green [FR-NEG-1, book rule 11]
-- [ ] **T-1206** (P0) Add Appendix F floor-guard tests: contract builder rejects any value below an Appendix F minimum or any altered fixed value — DoD: tests green with adversarial term fixtures [book rule 12]
-- [ ] **T-1207** (P0) Add pheromone-model lock tests: formula + numeric example (the E06 golden, T-0610) hashed; mutual confirmation recorded pre-series — DoD: tests green [FR-NEG-2; deps: T-0610]
-- [ ] **T-1208** (P0) Implement the pheromone-lock exchange step in negotiation — DoD: T-1207 green; lock hash stored in match workspace
-- [ ] **T-1209** (P0) Add counted-game-declaration tests: our counted-match count declared at match start; opponent's declaration recorded into the declaration artifact — DoD: tests green [FR-NEG-3, book rules 37–38]
-- [ ] **T-1210** (P0) Implement the counted-game tracker: persistent count of our counted matches (JSON in the state dir) with an audit-trail event on any change; declarations may read ONLY the tracker, never hand-typed values — DoD: tracker tests green (rules 37–38) [FR-NEG-3]
-- [ ] **T-1211** (P0) Implement the counted-game declaration flow (reads the tracker T-1210) — DoD: T-1209 green [deps: T-1210]
-- [ ] **T-1212** (P0) Add deterministic id tests: `game_id` = sorted "<gidA>-vs-<gidB>", `game_uid` derived from canonical terms + group ids without an extra round-trip (reference-compatible) — DoD: tests green vs reference sample values
-- [ ] **T-1213** (P0) Implement game_id/game_uid derivation in contract.py — DoD: T-1212 green
-- [ ] **T-1214** (P0) Write failing tests for `negotiation/playbook.py`: default/preferred/red-line triple loaded from config for EVERY negotiable-or-minimum Appendix F item (board size, starts, axis origin/index, map area, hint word cap, response/watchdog timeouts, token budget, max_moves, survival_threshold, barrier quota — i.e., all minimum/negotiable rows of Tables 13–15 and 18–19) — DoD: tests fail (RED) [FR-NEG-4 / ADR-011]
-- [ ] **T-1215** (P0) Implement `negotiation/playbook.py` (≤120 code lines) — DoD: T-1214 green
-- [ ] **T-1216** (P0) Add red-line rejection tests: proposals violating red lines (lowering Appendix F minimums, numeric-coordinate hint protocol, LLM-move exception, skipping audit) auto-rejected with an explained reason — DoD: tests green [PLAN §4]
-- [ ] **T-1217** (P1) Add proposal-evaluation tests: incoming counter scored against preferred/acceptable ranges; accept/counter/reject recommendation with rationale — DoD: tests green
-- [ ] **T-1218** (P1) Author the playbook content: concrete default/preferred/red-line values for every negotiable item, reviewed by both team members — DoD: playbook config committed; review recorded in PR
-- [ ] **T-1219** (P0) Write failing tests for `negotiation/flow.py`: negotiate FSM propose → counter → accept → lock; illegal negotiation transitions raise — DoD: tests fail (RED) [FR-NEG-4]
-- [ ] **T-1220** (P0) Implement `negotiation/flow.py` (≤120 code lines) — DoD: T-1219 green
-- [ ] **T-1221** (P0) Add timeline-persistence tests: every propose/counter/agreement step persisted to the event timeline + match workspace (nothing invisible) — DoD: tests green (kills A6 pain #4) [FR-NEG-4]
-- [ ] **T-1222** (P0) Add lock-outcome tests: agreement → canonical game.json written to `matches/<opponent>/` and staged as the per-game config artifact — DoD: tests green [FR-CFG-3 / FR-REP-5]
-- [ ] **T-1223** (P0) Add negotiation-abort tests: stalled or failed negotiation resolves cleanly (walk away, no contract, state machine back to idle) — DoD: tests green
-- [ ] **T-1224** (P0) Write failing tests for `negotiation/adapters.py`: per-opponent quirk profile (tool-name aliases, field tolerances, timing preferences) selected at handshake — DoD: tests fail (RED) [FR-NEG-5 / ADR-011]
-- [ ] **T-1225** (P0) Implement `negotiation/adapters.py` (≤120 code lines) — DoD: T-1224 green
-- [ ] **T-1226** (P0) Add adapter-as-config tests: adding a new opponent profile is a data-file change only — a fixture profile alters aliases/tolerances with zero code modification — DoD: tests green (kills A6 pain #2)
-- [ ] **T-1227** (P1) Add free-language drafting tests: LLM (mocked) renders a playbook position into prose; numeric terms echoed in a structured block alongside the prose so nothing binding lives only in free text — DoD: tests green [FR-NEG-4 / FR-LLM-1]
-- [ ] **T-1228** (P1) Implement LLM proposal drafting via the router + prompts.py — DoD: T-1227 green [deps: T-1316]
-- [ ] **T-1229** (P0) Add human-approval gate tests: drafted proposal held pending operator approve/edit before send (SDK/UI hook); approval and edits evented — DoD: tests green [FR-NEG-4]
-- [ ] **T-1230** (P0) Add negotiation integration test: two local processes negotiate end-to-end → identical locked game.json bytes + matching SHA-256 on both sides — DoD: test green in CI [deps: T-1027]
-- [ ] **T-1231** (P0) Author `docs/PRD_negotiation.md`: negotiation theory/playbook design, I/O contracts, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-1201** (P0) Write failing tests for `negotiation/contract.py`: builds canonical `game.json` from negotiated terms (sorted keys, byte-stable across runs) — DoD: tests fail (RED) [FR-NEG-1]
+- [x] **T-1202** (P0) Implement `negotiation/contract.py` builder (≤120 code lines) — DoD: T-1201 green; uses protocol/canonical.py [deps: T-0308]
+- [x] **T-1203** (P0) Add SHA-256 exchange tests: signature over canonical terms + nonce; peer verification recomputes and compares via compare_digest — DoD: tests fail then green with implementation [FR-NEG-1]
+- [x] **T-1204** (P0) Implement signature exchange + verification (reference-compatible `Negotiation.signed()`/`verify_peer` shapes) — DoD: T-1203 green; golden test vs reference agreement payload
+- [x] **T-1205** (P0) Add refuse-on-mismatch tests: ANY terms or signature mismatch → refuse to play, typed error + operator event — DoD: tests green [FR-NEG-1, book rule 11]
+- [x] **T-1206** (P0) Add Appendix F floor-guard tests: contract builder rejects any value below an Appendix F minimum or any altered fixed value — DoD: tests green with adversarial term fixtures [book rule 12]
+- [~] **T-1207** (P0) Add pheromone-model lock tests: formula + numeric example (the E06 golden, T-0610) hashed; mutual confirmation recorded pre-series — DoD: tests green [FR-NEG-2; deps: T-0610]
+- [~] **T-1208** (P0) Implement the pheromone-lock exchange step in negotiation — DoD: T-1207 green; lock hash stored in match workspace
+- [x] **T-1209** (P0) Add counted-game-declaration tests: our counted-match count declared at match start; opponent's declaration recorded into the declaration artifact — DoD: tests green [FR-NEG-3, book rules 37–38]
+- [x] **T-1210** (P0) Implement the counted-game tracker: persistent count of our counted matches (JSON in the state dir) with an audit-trail event on any change; declarations may read ONLY the tracker, never hand-typed values — DoD: tracker tests green (rules 37–38) [FR-NEG-3]
+- [x] **T-1211** (P0) Implement the counted-game declaration flow (reads the tracker T-1210) — DoD: T-1209 green [deps: T-1210]
+- [x] **T-1212** (P0) Add deterministic id tests: `game_id` = sorted "<gidA>-vs-<gidB>", `game_uid` derived from canonical terms + group ids without an extra round-trip (reference-compatible) — DoD: tests green vs reference sample values
+- [x] **T-1213** (P0) Implement game_id/game_uid derivation in contract.py — DoD: T-1212 green
+- [x] **T-1214** (P0) Write failing tests for `negotiation/playbook.py`: default/preferred/red-line triple loaded from config for EVERY negotiable-or-minimum Appendix F item (board size, starts, axis origin/index, map area, hint word cap, response/watchdog timeouts, token budget, max_moves, survival_threshold, barrier quota — i.e., all minimum/negotiable rows of Tables 13–15 and 18–19) — DoD: tests fail (RED) [FR-NEG-4 / ADR-011]
+- [x] **T-1215** (P0) Implement `negotiation/playbook.py` (≤120 code lines) — DoD: T-1214 green
+- [x] **T-1216** (P0) Add red-line rejection tests: proposals violating red lines (lowering Appendix F minimums, numeric-coordinate hint protocol, LLM-move exception, skipping audit) auto-rejected with an explained reason — DoD: tests green [PLAN §4]
+- [x] **T-1217** (P1) Add proposal-evaluation tests: incoming counter scored against preferred/acceptable ranges; accept/counter/reject recommendation with rationale — DoD: tests green
+- [~] **T-1218** (P1) Author the playbook content: concrete default/preferred/red-line values for every negotiable item, reviewed by both team members — DoD: playbook config committed; review recorded in PR
+- [x] **T-1219** (P0) Write failing tests for `negotiation/flow.py`: negotiate FSM propose → counter → accept → lock; illegal negotiation transitions raise — DoD: tests fail (RED) [FR-NEG-4]
+- [x] **T-1220** (P0) Implement `negotiation/flow.py` (≤120 code lines) — DoD: T-1219 green
+- [x] **T-1221** (P0) Add timeline-persistence tests: every propose/counter/agreement step persisted to the event timeline + match workspace (nothing invisible) — DoD: tests green (kills A6 pain #4) [FR-NEG-4]
+- [~] **T-1222** (P0) Add lock-outcome tests: agreement → canonical game.json written to `matches/<opponent>/` and staged as the per-game config artifact — DoD: tests green [FR-CFG-3 / FR-REP-5]
+- [x] **T-1223** (P0) Add negotiation-abort tests: stalled or failed negotiation resolves cleanly (walk away, no contract, state machine back to idle) — DoD: tests green
+- [x] **T-1224** (P0) Write failing tests for `negotiation/adapters.py`: per-opponent quirk profile (tool-name aliases, field tolerances, timing preferences) selected at handshake — DoD: tests fail (RED) [FR-NEG-5 / ADR-011]
+- [x] **T-1225** (P0) Implement `negotiation/adapters.py` (≤120 code lines) — DoD: T-1224 green
+- [x] **T-1226** (P0) Add adapter-as-config tests: adding a new opponent profile is a data-file change only — a fixture profile alters aliases/tolerances with zero code modification — DoD: tests green (kills A6 pain #2)
+- [~] **T-1227** (P1) Add free-language drafting tests: LLM (mocked) renders a playbook position into prose; numeric terms echoed in a structured block alongside the prose so nothing binding lives only in free text — DoD: tests green [FR-NEG-4 / FR-LLM-1]
+- [~] **T-1228** (P1) Implement LLM proposal drafting via the router + prompts.py — DoD: T-1227 green [deps: T-1316]
+- [~] **T-1229** (P0) Add human-approval gate tests: drafted proposal held pending operator approve/edit before send (SDK/UI hook); approval and edits evented — DoD: tests green [FR-NEG-4]
+- [~] **T-1230** (P0) Add negotiation integration test: two local processes negotiate end-to-end → identical locked game.json bytes + matching SHA-256 on both sides — DoD: test green in CI [deps: T-1027]
+- [~] **T-1231** (P0) Author `docs/PRD_negotiation.md`: negotiation theory/playbook design, I/O contracts, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 
 ## E13 — LLM layer (32 tasks)
 
@@ -770,7 +770,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
 | E10 | MCP networking | M3 | 30 | 29 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 14 | 0 |
-| E12 | Negotiation | M5 | 31 | 0 | 0 |
+| E12 | Negotiation | M5 | 31 | 22 | 0 |
 | E13 | LLM layer | M4 | 32 | 0 | 0 |
 | E14 | Cop strategy | M4 | 26 | 0 | 0 |
 | E15 | Thief strategy | M4 | 26 | 0 | 0 |

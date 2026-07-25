@@ -31,7 +31,13 @@ def test_sha256_is_only_computed_in_designated_modules() -> None:
     at-rest keystream, and session_guard.py derives the HMAC session token that
     keeps strangers out of a live match.
     """
-    allowed = {"crypto.py", "scent_models.py", "nonce_vault.py", "session_guard.py"}
+    allowed = {
+        "crypto.py",  # commit-reveal, the one byte format that must match a peer
+        "scent_models.py",  # pheromone-model fingerprint for the pre-series lock
+        "nonce_vault.py",  # at-rest keystream for spilled nonces
+        "session_guard.py",  # HMAC session token binding a match to one opponent
+        "contract.py",  # config_sha256 + the derived game_uid both peers compute
+    }
     offenders = [p.name for p in SOURCES if "hashlib.sha256" in _read(p) and p.name not in allowed]
     assert offenders == []
 
