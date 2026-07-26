@@ -639,12 +639,12 @@
 - [ ] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [ ] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]
 - [ ] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]
-- [ ] **T-2114** (P0) Chaos test — opponent crash mid-game: kill the peer process → our side resolves a clean technical outcome, artifacts written, no hang — DoD: test green [PRD §4 reliability]
+- [x] **T-2114** (P0) Chaos test — opponent crash mid-game: kill the peer process → our side resolves a clean technical outcome, artifacts written, no hang — DoD: test green [PRD §4 reliability]
 - [ ] **T-2115** (P0) Chaos test — tunnel drop mid-series: supervised restart reconnects OR deadline path resolves cleanly — DoD: test green [FR-NET-3/4]
 - [ ] **T-2116** (P0) Chaos test — total LLM outage mid-match: both providers down → template floor, game continues, provider events emitted — DoD: test green [FR-LLM-1]
 - [ ] **T-2117** (P0) Chaos test — Gmail 429 storm during reporting: backoff + eventual send OR dead-letter + operator alert; never account-endangering blind resends — DoD: test green [FR-REP-3]
 - [ ] **T-2118** (P1) Chaos test — clock skew injected: deadline logic remains sane; preflight flags the skew — DoD: test green [FR-NET-8]
-- [ ] **T-2119** (P1) Chaos test — schema fuzzing against the live server: randomized malformed/hostile payloads on all 4 tools → zero crashes, structured errors only — DoD: fuzz run green [FR-NET-7]
+- [x] **T-2119** (P1) Chaos test — schema fuzzing against the live server: randomized malformed/hostile payloads on all 4 tools → zero crashes, structured errors only — DoD: fuzz run green [FR-NET-7]
 - [ ] **T-2120** (P2) Soak test: 3 consecutive series without restart — no memory growth, queues return to zero — DoD: soak metrics within bounds
 - [ ] **T-2121** (P0) Verify coverage ≥ 90% overall (floor 85 enforced) with branch coverage on critical domain paths (crypto, scoring, fsm, movement) — DoD: coverage report ≥ 90% in both repos (E3 gate)
 - [ ] **T-2122** (P0) Run the honest-omit audit: coverage omit list contains ONLY ui/static assets (at most the `cli.py` entry wiring; there is no `main.py`); every integration seam (mcp, gmail, tunnel supervision) covered via in-process fakes — DoD: audit checklist green, omit list matches the real tree (risk R7, A6 lesson 10)

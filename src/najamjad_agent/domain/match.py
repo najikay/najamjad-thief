@@ -15,6 +15,7 @@ from typing import Any
 
 from ..constants import EndReason, Role
 from ..shared.events import Emit
+from .audit import SKIP_AUDIT_REASONS, AuditReport
 from .fsm import GameStateMachine
 from .game_state import GameState
 from .match_audit import exchange_audit
@@ -85,13 +86,17 @@ class MatchRunner:
         orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 
-        reason = self._turn_loop(orchestrator)
-        report = exchange_audit(state.ledger, self._transport, self._audit_timeout)
+        reason = self._turn_loop(orchestrator) or EndReason.SURVIVAL
+        report = self._audit(state, reason)
         outcome = self.tracker.record(
-            end_reason=reason or EndReason.SURVIVAL,
+            end_reason=reason,
             role=role,
             steps=state.step,
-            audit_passed=report.passed,
+            # A skipped audit is not a failed one. Treating it as failure
+            # rewrote a plain timeout into `tamper_forfeit` — accusing an
+            # opponent of forgery for going offline, and mislabelling our own
+            # result in the report we file.
+            audit_passed=report.passed or report.skipped,
         )
         record = {
             "sub_game": sub_game,
@@ -99,11 +104,29 @@ class MatchRunner:
             "end_reason": outcome.end_reason.value,
             "steps": state.step,
             "audit": report.banner,
-            "records": state.ledger.audit_payload(),
+            # Only after an audit actually happened. With no audit the nonces
+            # were never released, and the ledger rightly refuses to hand them
+            # over (rule 18) — a game that ended in a timeout has nothing to
+            # reveal, and asking anyway raised into the match loop.
+            "records": [] if report.skipped else state.ledger.audit_payload(),
         }
         self.games.append(record)
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
+
+    def _audit(self, state: GameState, reason: EndReason) -> AuditReport:
+        """Exchange reveals — unless the protocol never reached a clean close.
+
+        `domain.audit` already declares which endings have nothing to audit: a
+        timeout, a stop, an opponent quitting. Demanding a reveal there means
+        holding a peer to a step they never got to, and reading their silence
+        as forgery.
+        """
+        if reason in SKIP_AUDIT_REASONS:
+            self._emit({"event": "audit.skipped", "reason": reason.value})
+            return AuditReport(passed=False, skipped=True)
+        return exchange_audit(state.ledger, self._transport, self._audit_timeout)
+
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""
