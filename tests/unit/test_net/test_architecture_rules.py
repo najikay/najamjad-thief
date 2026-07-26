@@ -66,7 +66,10 @@ def test_only_the_client_talks_to_the_opponent() -> None:
     Checks imports, not prose — a docstring may name FastMCP while explaining
     why the module deliberately does not use it.
     """
-    allowed = {"mcp_client.py", "mcp_server.py"}
+    # `mcp_session` holds the socket the client sends over: it is part of the
+    # one egress path, not a second one. The test below keeps it that way by
+    # asserting nothing else reaches for it.
+    allowed = {"mcp_client.py", "mcp_server.py", "mcp_session.py"}
     for path in SRC.rglob("*.py"):
         if path.name in allowed:
             continue
@@ -105,3 +108,16 @@ def test_every_net_module_stays_within_the_file_budget() -> None:
             if line.strip() and not line.strip().startswith("#")
         ]
         assert len(code_lines) <= 150, f"{path.name} has {len(code_lines)} lines"
+
+
+def test_the_session_is_reachable_only_through_the_client() -> None:
+    """Holding the socket in its own module must not become a second egress
+    path — anything calling it directly would bypass the gatekeeper."""
+    users = [
+        path.name
+        for path in SRC.rglob("*.py")
+        if path.name != "mcp_session.py"
+        and any(name.endswith("mcp_session") for name in _module_imports(path))
+    ]
+
+    assert users == ["mcp_client.py"], f"mcp_session is also used by {users}"
