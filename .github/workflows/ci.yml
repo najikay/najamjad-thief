@@ -10,10 +10,14 @@ jobs:
       # Both target the node24 runtime. The previous pins (checkout@v4,
       # setup-uv@v5) ran on node20, which GitHub deprecated in Sept 2025 and
       # now force-migrates — a warning today, a broken pipeline whenever they
-      # stop compensating. setup-uv v8+ also publishes immutable tags, so the
-      # ref we depend on cannot be repointed under us.
+      # stop compensating.
+      #
+      # setup-uv must be pinned to an EXACT version: from v8 it publishes
+      # immutable release tags only, so there is no moving `v8`/`v9` to follow
+      # and `@v9` fails to resolve at "Set up job" before any gate runs.
+      # checkout still publishes moving majors, so `@v7` picks up its patches.
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9
+      - uses: astral-sh/setup-uv@v9.0.0
       - name: Install dependencies (locked)
         run: uv sync --frozen
       - name: Ruff — zero violations (guidelines §7.1)

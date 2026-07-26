@@ -62,14 +62,38 @@ def test_a_missing_mandated_file_is_reported(load_script, monkeypatch):
     assert runner.missing_mandated_files() == ["docs/does-not-exist.md"]
 
 
-@pytest.mark.parametrize("action", ["actions/checkout", "astral-sh/setup-uv"])
-def test_ci_actions_target_a_supported_node_runtime(action):
-    """node20 actions are force-migrated by GitHub and will eventually break."""
+def action_pin(action: str) -> str:
+    """The ref `ci.yml` pins for one action."""
     document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     uses = [step["uses"] for step in document["jobs"]["quality"]["steps"] if "uses" in step]
+    return next(ref for ref in uses if ref.startswith(action + "@"))
 
-    pin = next(ref for ref in uses if ref.startswith(action))
+
+@pytest.mark.parametrize(
+    ("action", "minimum"), [("actions/checkout", 5), ("astral-sh/setup-uv", 6)]
+)
+def test_ci_actions_target_a_supported_node_runtime(action, minimum):
+    """node20 actions are force-migrated by GitHub and will eventually break."""
+    pin = action_pin(action)
     major = int(pin.rsplit("@v", 1)[1].split(".")[0])
 
-    minimum = {"actions/checkout": 5, "astral-sh/setup-uv": 6}[action]
     assert major >= minimum, f"{pin} predates the node24 runtime"
+
+
+def test_setup_uv_is_pinned_to_an_exact_version():
+    """From v8, setup-uv publishes immutable release tags only — there is no
+    moving `v8`/`v9` to follow. `@v9` looks reasonable, resolves to nothing, and
+    fails at "Set up job" before a single gate runs. Learned the hard way.
+    """
+    version = action_pin("astral-sh/setup-uv").rsplit("@v", 1)[1]
+
+    assert version.count(".") == 2, "setup-uv >= v8 must be pinned as vX.Y.Z"
+
+
+def test_every_pinned_action_uses_a_version_ref():
+    """A branch ref would make the pipeline depend on someone else's `main`."""
+    document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+
+    for step in document["jobs"]["quality"]["steps"]:
+        if "uses" in step:
+            assert "@v" in step["uses"], f"{step['uses']} is not pinned to a version"
