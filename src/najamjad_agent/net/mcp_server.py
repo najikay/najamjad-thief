@@ -46,25 +46,40 @@ def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
             return result.error_response(kind)
         return {"accepted": True, "kind": kind}
 
+    def _body(message: dict | None, payload: dict | None) -> dict:
+        """Whichever argument name the caller used.
+
+        The reference implementation names this argument `message` on three
+        tools and `payload` on `submit_audit`, and its client sends exactly
+        that. We accepted only `payload`, so a reference-derived opponent —
+        which is most of the class — could not deliver a single turn to us, and
+        we could not deliver one to them. Verified against the real simulator,
+        in both directions, before and after this change.
+
+        Accepting both names costs nothing and makes us the peer that works.
+        """
+        body = message if message is not None else payload
+        return body if isinstance(body, dict) else {}
+
     @mcp.tool
-    def negotiate(payload: dict) -> dict:
+    def negotiate(message: dict | None = None, payload: dict | None = None) -> dict:
         """Receive a signed terms proposal from the opponent."""
-        return _handle("negotiate", payload)
+        return _handle("negotiate", _body(message, payload))
 
     @mcp.tool
-    def receive_turn(payload: dict) -> dict:
+    def receive_turn(message: dict | None = None, payload: dict | None = None) -> dict:
         """Receive one commit or reveal message."""
-        return _handle("turn", payload)
+        return _handle("turn", _body(message, payload))
 
     @mcp.tool
-    def submit_audit(payload: dict) -> dict:
+    def submit_audit(payload: dict | None = None, message: dict | None = None) -> dict:
         """Receive the opponent's end-of-game revealed records."""
-        return _handle("audit", payload)
+        return _handle("audit", _body(message, payload))
 
     @mcp.tool
-    def receive_control(payload: dict) -> dict:
+    def receive_control(message: dict | None = None, payload: dict | None = None) -> dict:
         """Receive an out-of-band control instruction."""
-        return _handle("control", payload)
+        return _handle("control", _body(message, payload))
 
     return mcp
 

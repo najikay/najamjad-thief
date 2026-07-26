@@ -636,7 +636,7 @@
 - [ ] **T-2108** (P1) Implement the win-rate gate: our cop vs reference thief AND our thief vs reference cop, each ≥ 70% over 100 seeded games (M4 exit; nightly job, not PR-blocking) — DoD: nightly job publishes pass/fail vs threshold [deps: T-0217, T-2106]
 - [x] **T-2109** (P2) Add statistical reporting to the harness: win-rate confidence intervals + per-end-reason breakdown for the notebook — DoD: stats JSON emitted per run
 - [ ] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
-- [ ] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
+- [x] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [ ] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]
 - [ ] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]
 - [x] **T-2114** (P0) Chaos test — opponent crash mid-game: kill the peer process → our side resolves a clean technical outcome, artifacts written, no hang — DoD: test green [PRD §4 reliability]

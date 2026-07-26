@@ -26,6 +26,17 @@ TOOL_FOR_KIND = {
     "audit": "submit_audit",
     "control": "receive_control",
 }
+# The argument name each tool expects. This is not ours to choose: the reference
+# implementation declares `message` on three tools and `payload` on
+# `submit_audit`, and most of the class builds on it. Sending `payload`
+# everywhere — as we did — meant a reference-derived opponent rejected every
+# turn and every proposal we sent. Verified against the real simulator.
+ARGUMENT_FOR_TOOL = {
+    "negotiate": "message",
+    "receive_turn": "message",
+    "receive_control": "message",
+    "submit_audit": "payload",
+}
 
 
 class PeerClient:
@@ -62,9 +73,15 @@ class PeerClient:
             return loop
 
     async def _call_tool(self, tool: str, payload: dict[str, Any]) -> Any:
-        """Open a client for this call and invoke `tool`."""
+        """Open a client for this call and invoke `tool`.
+
+        Conservative in what we send: exactly the argument name the reference
+        declares for this tool, so a peer that accepts only that name still
+        works. Our own server accepts either.
+        """
         async with Client(self.opponent_url) as client:
-            return await client.call_tool(tool, {"payload": payload})
+            argument = ARGUMENT_FOR_TOOL.get(tool, "payload")
+            return await client.call_tool(tool, {argument: payload})
 
     def _invoke(self, tool: str, payload: dict[str, Any]) -> Any:
         """Run one tool call on the persistent loop and wait for its result."""
