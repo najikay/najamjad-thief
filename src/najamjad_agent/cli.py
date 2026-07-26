@@ -14,7 +14,9 @@ older typer idiom evaluates at import time, which both trips ruff's B008 and
 would read the filesystem for a default nobody asked for.
 """
 
+import contextlib
 import signal
+import threading
 from pathlib import Path
 from typing import Annotated
 
@@ -26,6 +28,7 @@ from .shared.version import CODE_VERSION
 app = typer.Typer(add_completion=False, help="NajAmjad P2P cops-and-thieves agent.")
 
 UNUSABLE_INPUT = 2
+SHUTDOWN_POLL_SECONDS = 0.5
 
 ConfigOption = Annotated[Path | None, typer.Option("--config", help="role config directory")]
 RoleOption = Annotated[str, typer.Option("--role", help="police or thief; default: this repo's")]
@@ -98,9 +101,29 @@ def _serve_until_interrupted(sdk: object) -> None:
     An unstopped tunnel keeps a public hostname pointing at a dead port, which
     is how an opponent ends up reporting us unreachable after we thought we had
     shut down cleanly.
+
+    An earlier version used `signal.sigwait`, which needs the signals blocked
+    first — unblocked, it never received them, and Ctrl-C left the agent
+    running until something killed it. A handler plus a polled wait is portable
+    (Windows has no `pthread_sigmask`) and interrupts reliably, because the
+    timeout guarantees the interpreter returns to run the handler.
     """
-    stop = signal.sigwait([signal.SIGINT, signal.SIGTERM])
-    typer.echo(f"\nreceived {signal.Signals(stop).name}, shutting down")
+    stop = threading.Event()
+    received: list[int] = []
+
+    def _handle(signum: int, _frame: object) -> None:
+        received.append(signum)
+        stop.set()
+
+    for name in ("SIGINT", "SIGTERM"):
+        sig = getattr(signal, name, None)
+        if sig is not None:
+            with contextlib.suppress(OSError, ValueError):
+                signal.signal(sig, _handle)
+    while not stop.wait(SHUTDOWN_POLL_SECONDS):
+        pass
+    label = signal.Signals(received[0]).name if received else "shutdown"
+    typer.echo(f"\nreceived {label}, shutting down")
     sdk.actions.stop_peer()  # type: ignore[attr-defined]
 
 

@@ -36,10 +36,19 @@ uv run najamjad-thief preflight                  # match-day checklist
 uv run najamjad-thief peer                       # go online: MCP server + tunnel + dashboard
 uv run najamjad-thief peer --no-tunnel --no-dashboard   # local play, nothing exposed
 
-uv run najamjad-thief replay <log.json>          # re-hash every step, print the verdict
-uv run najamjad-thief replay <log.json> --serve  # open the viewer instead
-uv run najamjad-thief archive match.zip          # bundle the evidence (secrets excluded)
+# Re-hash every step of a log and print the verdict. Paths are literal —
+# `<log>` would be read by the shell as a redirect, so use a real one:
+uv run najamjad-thief replay tests/goldens/artifacts/log_segal-police-team-vs-segal-thief-team_g01.json
+uv run najamjad-thief replay path/to/log.json --serve   # open the viewer instead
+uv run najamjad-thief archive match.zip                 # bundle evidence (secrets excluded)
 ```
+
+Run these from the repository root: the console script lives in this repo's
+`.venv`, so `uv run` cannot find it from a parent directory.
+
+**Cold start takes ~15 seconds** (importing the MCP stack) before `peer` is
+accepting calls — it prints `Uvicorn running` when it is genuinely ready. Start
+the agent well before a match rather than at the whistle.
 
 **Exit codes**, because these run in scripts:
 

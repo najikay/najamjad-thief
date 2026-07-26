@@ -6,6 +6,9 @@ verb that collapsed "tampered" into "broken file" would make an audit
 indistinguishable from a typo.
 """
 
+import signal
+import threading
+import time
 from pathlib import Path
 from unittest import mock
 
@@ -138,12 +141,45 @@ def test_peer_honours_no_tunnel_and_no_dashboard(runner):
     sdk.actions.start_peer.assert_called_once_with(with_tunnel=False, with_dashboard=False)
 
 
-def test_an_interrupted_peer_stops_the_tunnel_before_exiting():
-    """An unstopped tunnel points a public hostname at a dead port."""
+def serve_and_signal(signum: int) -> mock.Mock:
+    """Run the blocking serve loop and deliver `signum` to its own handler.
+
+    The handler is captured rather than raised for real: `signal.signal` only
+    works on the main thread, and pytest is not always on it.
+    """
     from najamjad_agent.cli import _serve_until_interrupted
 
     sdk = mock.Mock()
-    with mock.patch("signal.sigwait", return_value=2):
-        _serve_until_interrupted(sdk)
+    handlers: dict[int, object] = {}
+
+    with mock.patch("signal.signal", side_effect=lambda s, h: handlers.__setitem__(s, h)):
+        worker = threading.Thread(target=_serve_until_interrupted, args=(sdk,), daemon=True)
+        worker.start()
+        deadline = time.monotonic() + 5
+        while signum not in handlers and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert signum in handlers, "no handler was installed for this signal"
+        handlers[signum](signum, None)
+        worker.join(timeout=5)
+
+    assert not worker.is_alive(), "the serve loop never returned after the signal"
+    return sdk
+
+
+@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
+def test_an_interrupted_peer_stops_the_tunnel_before_exiting(signum):
+    """An unstopped tunnel points a public hostname at a dead port.
+
+    The previous implementation used `signal.sigwait`, which needs its signals
+    blocked first; unblocked it never woke, so Ctrl-C left the agent running
+    until something killed it. This test failed against that version.
+    """
+    sdk = serve_and_signal(signum)
 
     sdk.actions.stop_peer.assert_called_once()
+
+
+def test_the_shutdown_names_the_signal_it_received(capsys):
+    serve_and_signal(signal.SIGTERM)
+
+    assert "received SIGTERM, shutting down" in capsys.readouterr().out
