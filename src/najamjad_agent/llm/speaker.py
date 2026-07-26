@@ -10,9 +10,9 @@ failure silently becomes a template line rather than a lost turn. Both are
 quality decisions rather than cost decisions: the budget has room.
 """
 
-from collections.abc import Callable
 from typing import Any
 
+from ..shared.events import Emit
 from .base import ProviderError
 from .hint_guard import guard_hint
 from .hint_parser import extract_json
@@ -31,7 +31,7 @@ class Speaker:
         arena: str = "",
         hint_max_words: int = 15,
         every_n_steps: int = 1,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
     ) -> None:
         """Wire the speaker to its router and its offline floor."""
         self._router = router

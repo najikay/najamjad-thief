@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
+from ..shared.events import Emit
 from .rate_limits import RateLimitConfig
 
 ResultT = TypeVar("ResultT")
@@ -46,7 +47,7 @@ class ApiGatekeeper:
 
     service: str
     config: RateLimitConfig
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     sleep: Callable[[float], None] = time.sleep
     clock: Callable[[], float] = time.monotonic
     _tokens: float = field(init=False, default=0.0)

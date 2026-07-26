@@ -13,11 +13,11 @@ call goes through the `mcp_peer` gatekeeper so retries and backoff obey
 
 import asyncio
 import threading
-from collections.abc import Callable
 from typing import Any
 
 from fastmcp import Client
 
+from ..shared.events import Emit
 from ..shared.gatekeeper import ApiGatekeeper
 
 TOOL_FOR_KIND = {
@@ -35,7 +35,7 @@ class PeerClient:
         self,
         opponent_url: str,
         gatekeeper: ApiGatekeeper,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
         call_timeout: float = 30.0,
     ) -> None:
         """Prepare the client; the loop thread starts on first use."""

@@ -14,6 +14,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from ..shared.events import Emit
+
 
 class Watchdog:
     """Monitors heartbeats and escalates when the loop goes quiet."""
@@ -24,7 +26,7 @@ class Watchdog:
         persist_state: Callable[[], Any],
         controlled_shutdown: Callable[[], None],
         clock: Callable[[], float] = time.monotonic,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
     ) -> None:
         """Wire the watchdog to its rescue callbacks."""
         if threshold_seconds <= 0:

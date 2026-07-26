@@ -47,118 +47,50 @@ def test_role_specific_files_are_not_mirrored(load_script) -> None:
     assert not any(entry.startswith("config") for entry in sync.MANIFEST)
 
 
-def _pyproject(root: Path, name: str, line_length: int) -> None:
-    (root / "pyproject.toml").write_text(
-        f'[project]\nname = "{name}"\n\n[tool.ruff]\nline-length = {line_length}\n',
-        encoding="utf-8",
-    )
 
-
-def test_tooling_config_drift_is_detected(load_script, tmp_path: Path) -> None:
-    """A different ruff config means the repos aren't held to one standard."""
+def test_a_file_deleted_in_the_source_is_reported_as_an_orphan(load_script, tmp_path: Path):
+    """Copying is not mirroring: a rename leaves a stale twin behind, and two
+    test modules sharing a basename break pytest collection outright."""
     sync = load_script("sync_core")
     source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
     sibling.mkdir()
-    _pyproject(source, "najamjad-cop", 100)
-    _pyproject(sibling, "najamjad-thief", 120)
-    assert sync.check_tooling(source, sibling, push=False) == 1
+    sync.run(source, sibling, push=True)
+    stale = sibling / "src/najamjad_agent/gone.py"
+    stale.write_text("# left over from a rename\n", encoding="utf-8")
+
+    drift = sync.run(source, sibling, push=False)
+
+    assert drift == 1
+    assert sync.orphans(source, sibling) == [Path("src/najamjad_agent/gone.py")]
 
 
-def test_tooling_config_push_keeps_role_specific_identity(load_script, tmp_path: Path) -> None:
+def test_pushing_removes_the_orphan(load_script, tmp_path: Path) -> None:
     sync = load_script("sync_core")
     source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
     sibling.mkdir()
-    _pyproject(source, "najamjad-cop", 100)
-    _pyproject(sibling, "najamjad-thief", 120)
-    sync.check_tooling(source, sibling, push=True)
-    merged = (sibling / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'name = "najamjad-thief"' in merged, "role identity preserved"
-    assert "line-length = 100" in merged, "tooling mirrored"
-    assert sync.check_tooling(source, sibling, push=False) == 0
+    sync.run(source, sibling, push=True)
+    stale = sibling / "src/najamjad_agent/gone.py"
+    stale.write_text("# left over\n", encoding="utf-8")
+
+    sync.run(source, sibling, push=True)
+
+    assert not stale.exists()
+    assert sync.run(source, sibling, push=False) == 0
 
 
-def test_identical_tooling_reports_no_drift(load_script, tmp_path: Path) -> None:
+def test_files_outside_the_manifest_are_never_removed(load_script, tmp_path: Path) -> None:
+    """README and config are role-specific — deleting them would be a disaster."""
     sync = load_script("sync_core")
     source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
     sibling.mkdir()
-    _pyproject(source, "najamjad-cop", 100)
-    _pyproject(sibling, "najamjad-thief", 100)
-    assert sync.check_tooling(source, sibling, push=False) == 0
+    (sibling / "README.md").write_text("# thief\n", encoding="utf-8")
+    (sibling / "config").mkdir()
+    (sibling / "config" / "game.toml").write_text("version = '1.00'\n", encoding="utf-8")
 
+    sync.run(source, sibling, push=True)
 
-def _pyproject_with_deps(root: Path, name: str, dev: str) -> None:
-    """A pyproject whose dev-dependency group is the thing under test."""
-    (root / "pyproject.toml").write_text(
-        f'[project]\nname = "{name}"\ndescription = "the {name} agent"\n'
-        f'dependencies = ["pydantic>=2.7"]\n\n'
-        f"[dependency-groups]\ndev = [{dev}]\n\n[tool.ruff]\nline-length = 100\n",
-        encoding="utf-8",
-    )
-
-
-def test_a_dev_dependency_present_in_only_one_repo_is_drift(load_script, tmp_path: Path) -> None:
-    """The quiet failure: a test imports it, passes here, fails in the twin."""
-    sync = load_script("sync_core")
-    source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
-    sibling.mkdir()
-    _pyproject_with_deps(source, "najamjad-cop", '"pytest>=8.2", "pyyaml>=6.0"')
-    _pyproject_with_deps(sibling, "najamjad-thief", '"pytest>=8.2"')
-
-    assert sync.check_tooling(source, sibling, push=False) == 1
-
-
-def test_pushing_mirrors_dev_dependencies_but_keeps_the_twins_identity(
-    load_script, tmp_path: Path
-) -> None:
-    sync = load_script("sync_core")
-    source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
-    sibling.mkdir()
-    _pyproject_with_deps(source, "najamjad-cop", '"pytest>=8.2", "pyyaml>=6.0"')
-    _pyproject_with_deps(sibling, "najamjad-thief", '"pytest>=8.2"')
-
-    sync.check_tooling(source, sibling, push=True)
-    merged = (sibling / "pyproject.toml").read_text(encoding="utf-8")
-
-    assert "pyyaml>=6.0" in merged, "dev dependencies mirrored"
-    assert 'name = "najamjad-thief"' in merged, "role identity preserved"
-    assert 'description = "the najamjad-thief agent"' in merged
-    assert "najamjad-cop" not in merged
-    assert sync.check_tooling(source, sibling, push=False) == 0
-
-
-def test_a_runtime_dependency_difference_is_drift(load_script, tmp_path: Path) -> None:
-    sync = load_script("sync_core")
-    source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
-    sibling.mkdir()
-    _pyproject_with_deps(source, "najamjad-cop", '"pytest>=8.2"')
-    _pyproject_with_deps(sibling, "najamjad-thief", '"pytest>=8.2"')
-    twin = sibling / "pyproject.toml"
-    twin.write_text(
-        twin.read_text(encoding="utf-8").replace("pydantic>=2.7", "pydantic>=2.0"),
-        encoding="utf-8",
-    )
-
-    assert sync.check_tooling(source, sibling, push=False) == 1
-
-
-def test_a_name_inside_a_tool_section_cannot_overwrite_the_project_identity(
-    load_script, tmp_path: Path
-) -> None:
-    """Role-specific lines are matched by position; keying on the field name
-    would let a second `name =` anywhere in the file capture the project's."""
-    sync = load_script("sync_core")
-    source, sibling = _make_repo(tmp_path / "cop", "A = 1\n"), tmp_path / "thief"
-    sibling.mkdir()
-    body = '[project]\nname = "{n}"\n\n[tool.thing]\nname = "shared-tool-name"\nx = {x}\n'
-    (source / "pyproject.toml").write_text(body.format(n="najamjad-cop", x=1), encoding="utf-8")
-    (sibling / "pyproject.toml").write_text(body.format(n="najamjad-thief", x=2), encoding="utf-8")
-
-    sync.check_tooling(source, sibling, push=True)
-    merged = (sibling / "pyproject.toml").read_text(encoding="utf-8")
-
-    assert 'name = "najamjad-thief"' in merged
-    assert 'name = "shared-tool-name"' in merged
-    assert "x = 1" in merged
+    assert (sibling / "README.md").exists()
+    assert (sibling / "config" / "game.toml").exists()
 
 
 def test_cache_dirs_are_skipped(load_script, tmp_path: Path) -> None:

@@ -1,0 +1,79 @@
+"""The standard match-day checklist.
+
+`preflight` holds the machinery; this holds the policy — what must be true
+before we tell an opponent we are ready. The distinction matters because the
+probe contract is easy to satisfy accidentally: a probe that returns `None` is
+recorded as *not applicable* and a probe returning any string is recorded as a
+pass, so a check that merely runs without raising can report READY while
+proving nothing.
+
+The first version of this checklist did exactly that — it passed on an empty
+`opponent_url`, which is the one setting a match cannot start without.
+"""
+
+from collections.abc import Callable
+from typing import Any
+
+from ..shared.config import ConfigManager
+
+
+def required_setting(manager: ConfigManager, dotted: str) -> Callable[[], str]:
+    """A check that a setting is present AND non-empty.
+
+    `require` only proves the key exists. An empty string is exactly what an
+    unfilled config field looks like, so it has to fail here rather than sail
+    through as a pass with a blank detail.
+    """
+
+    def probe() -> str:
+        value = str(manager.get(dotted, "") or "").strip()
+        if not value:
+            raise ValueError(f"{dotted} is not set — fill it in before the match")
+        return value
+
+    return probe
+
+
+def config_check(manager: ConfigManager) -> Callable[[], str]:
+    """Re-validate the loaded configuration and say so."""
+
+    def probe() -> str:
+        manager.validate()
+        return f"version {manager.get('version', 'unknown')} valid"
+
+    return probe
+
+
+def port_check(server: Any) -> Callable[[], str]:
+    """Confirm our MCP port is actually free."""
+
+    def probe() -> str:
+        server.preflight()
+        return f"{server.host}:{server.port} free"
+
+    return probe
+
+
+def tunnel_check(tunnel: Any) -> Callable[[], Any]:
+    """Report the public hostname, or mark the check not applicable.
+
+    Returning `None` when no tunnel is configured is the honest answer: local
+    play is a legitimate setup, not a failure.
+    """
+
+    def probe() -> Any:
+        return tunnel.public_url if tunnel is not None else None
+
+    return probe
+
+
+def standard_checks(manager: ConfigManager, server: Any, tunnel: Any = None) -> dict[str, Any]:
+    """Everything that must hold before the agent claims to be match-ready."""
+    return {
+        "config": config_check(manager),
+        "port": port_check(server),
+        "tunnel": tunnel_check(tunnel),
+        "opponent_url": required_setting(manager, "network.opponent_url"),
+        "email_recipient": required_setting(manager, "email.recipient"),
+        "group_id": required_setting(manager, "game.group_id"),
+    }

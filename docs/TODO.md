@@ -607,22 +607,22 @@
 
 ## E20 — SDK & CLI (16 tasks)
 
-- [ ] **T-2001** (P0) Write failing tests for `sdk/sdk.py`: AgentSdk facade exposes every business operation (start peer, preflight, negotiation approval, replay, archive, queries) and contains DELEGATION ONLY — DoD: tests fail (RED) [guidelines §5.3, E7 gate]
-- [ ] **T-2002** (P0) Implement `sdk/sdk.py` (≤120 code lines) — DoD: T-2001 green; every method ≤ a few lines of delegation to the orchestrator/services
-- [ ] **T-2003** (P0) Add the consumer-import meta-test: UI and CLI import only `najamjad_agent.sdk`; direct internal imports fail CI — DoD: meta-test green [FR-UI-4; deps: T-1803]
-- [ ] **T-2004** (P1) Add the external-consumer contract test: a test client runs a full headless operation using only the public SDK surface (no internal module access) — DoD: test green [guidelines §5.3]
-- [ ] **T-2005** (P0) Write failing tests for `sdk/queries.py`: read models for board/belief/status/timeline/tokens/email state consumed by UI/CLI — DoD: tests fail (RED)
-- [ ] **T-2006** (P0) Implement `sdk/queries.py` (≤120 code lines) — DoD: T-2005 green
-- [ ] **T-2007** (P0) Add query-isolation tests: queries read from event-sourced/orchestrator state and never mutate anything — DoD: mutation attempt test green [ADR-008]
-- [ ] **T-2008** (P0) Write failing tests for `cli.py`: typer app with verbs `peer`, `preflight`, `replay`, `archive`; `--role`/`--config` options — DoD: tests fail (RED)
-- [ ] **T-2009** (P0) Implement `cli.py` (≤120 code lines) — DoD: T-2008 green
-- [ ] **T-2010** (P0) Add `peer` verb tests: boots the full agent (MCP server, optional tunnel, UI) via the SDK; clean shutdown on SIGINT — DoD: tests green with faked processes
-- [ ] **T-2011** (P0) Add `preflight` verb tests: runs the E11 checks, prints the checklist, exit code semantics — DoD: tests green [FR-NET-8; deps: T-1115]
-- [ ] **T-2012** (P0) Add `replay` verb tests: opens the replay viewer on a given log path; errors clearly on a missing/invalid file — DoD: tests green [deps: T-1906]
-- [ ] **T-2013** (P0) Add `archive` verb tests: bundles the match workspace (artifacts, events, logs, config, screenshots) into a single archive — DoD: bundle content assertion green [FR-OBS-3]
-- [ ] **T-2014** (P0) Add the no-business-logic-in-CLI meta-test: CLI functions contain only argument parsing + one SDK call each (AST/size check) — DoD: meta-test green in CI [guidelines §5.3]
-- [ ] **T-2015** (P0) Wire `[project.scripts]` entry points (`najamjad-cop` / `najamjad-thief`) and smoke-test `uv run najamjad-<role> --help` — DoD: entry points work from a clean clone in both repos
-- [ ] **T-2016** (P0) Write the CLI usage section in both READMEs: every verb with uv-only example commands — DoD: examples copy-paste-run successfully [E4 gate]
+- [x] **T-2001** (P0) Write failing tests for `sdk/sdk.py`: AgentSdk facade exposes every business operation (start peer, preflight, negotiation approval, replay, archive, queries) and contains DELEGATION ONLY — DoD: tests fail (RED) [guidelines §5.3, E7 gate]
+- [x] **T-2002** (P0) Implement `sdk/sdk.py` (≤120 code lines) — DoD: T-2001 green; every method ≤ a few lines of delegation to the orchestrator/services
+- [x] **T-2003** (P0) Add the consumer-import meta-test: UI and CLI import only `najamjad_agent.sdk`; direct internal imports fail CI — DoD: meta-test green [FR-UI-4; deps: T-1803]
+- [x] **T-2004** (P1) Add the external-consumer contract test: a test client runs a full headless operation using only the public SDK surface (no internal module access) — DoD: test green [guidelines §5.3]
+- [x] **T-2005** (P0) Write failing tests for `sdk/queries.py`: read models for board/belief/status/timeline/tokens/email state consumed by UI/CLI — DoD: tests fail (RED)
+- [x] **T-2006** (P0) Implement `sdk/queries.py` (≤120 code lines) — DoD: T-2005 green
+- [x] **T-2007** (P0) Add query-isolation tests: queries read from event-sourced/orchestrator state and never mutate anything — DoD: mutation attempt test green [ADR-008]
+- [x] **T-2008** (P0) Write failing tests for `cli.py`: typer app with verbs `peer`, `preflight`, `replay`, `archive`; `--role`/`--config` options — DoD: tests fail (RED)
+- [x] **T-2009** (P0) Implement `cli.py` (≤120 code lines) — DoD: T-2008 green
+- [x] **T-2010** (P0) Add `peer` verb tests: boots the full agent (MCP server, optional tunnel, UI) via the SDK; clean shutdown on SIGINT — DoD: tests green with faked processes
+- [x] **T-2011** (P0) Add `preflight` verb tests: runs the E11 checks, prints the checklist, exit code semantics — DoD: tests green [FR-NET-8; deps: T-1115]
+- [x] **T-2012** (P0) Add `replay` verb tests: opens the replay viewer on a given log path; errors clearly on a missing/invalid file — DoD: tests green [deps: T-1906]
+- [x] **T-2013** (P0) Add `archive` verb tests: bundles the match workspace (artifacts, events, logs, config, screenshots) into a single archive — DoD: bundle content assertion green [FR-OBS-3]
+- [x] **T-2014** (P0) Add the no-business-logic-in-CLI meta-test: CLI functions contain only argument parsing + one SDK call each (AST/size check) — DoD: meta-test green in CI [guidelines §5.3]
+- [x] **T-2015** (P0) Wire `[project.scripts]` entry points (`najamjad-cop` / `najamjad-thief`) and smoke-test `uv run najamjad-<role> --help` — DoD: entry points work from a clean clone in both repos
+- [x] **T-2016** (P0) Write the CLI usage section in both READMEs: every verb with uv-only example commands — DoD: examples copy-paste-run successfully [E4 gate]
 
 ## E21 — Integration, self-play & interop (26 tasks)
 
@@ -778,7 +778,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E17 | Reporting | M5 | 28 | 19 | 4 |
 | E18 | UI dashboard | M5 | 28 | 24 | 4 |
 | E19 | Replay viewer | M5 | 14 | 14 | 0 |
-| E20 | SDK & CLI | M5 | 16 | 0 | 0 |
+| E20 | SDK & CLI | M5 | 16 | 16 | 0 |
 | E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 0 | 0 |
 | E22 | Documentation deliverables | M2–M7 | 33 | 0 | 0 |
 | E23 | League operations | M6 | 24 | 0 | 0 |

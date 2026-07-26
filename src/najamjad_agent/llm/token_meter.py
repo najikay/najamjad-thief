@@ -20,9 +20,10 @@ normal play. The project ceiling is set generously for the same reason — it
 should never be the thing that decides a match.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
+
+from ..shared.events import Emit
 
 WARN_RATIO = 0.70
 DEGRADE_RATIO = 0.90
@@ -77,7 +78,7 @@ class TokenMeter:
     # measured need: it is a runaway-loop backstop, never a reason to play worse.
     series_limit: int = 200_000
     project_limit: int = 5_000_000
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     by_purpose: dict[str, int] = field(default_factory=dict)
     by_model: dict[str, int] = field(default_factory=dict)
     per_sub_game: dict[int, int] = field(default_factory=dict)

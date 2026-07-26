@@ -18,6 +18,8 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from ..shared.events import Emit
+
 PROVIDERS = ("cloudflare", "ngrok")
 
 
@@ -45,7 +47,7 @@ class Tunnel:
         hostname: str,
         port: int,
         name: str = "",
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
         spawn: Callable[[list[str]], Any] | None = None,
     ) -> None:
         """Configure the tunnel; nothing runs until `start()`."""
@@ -128,7 +130,7 @@ class Tunnel:
         self._emit({"event": "tunnel.stopped", "provider": self.provider})
 
 
-def from_config(config: Any, port: int, emit: Callable[[dict], None] | None = None) -> Tunnel:
+def from_config(config: Any, port: int, emit: Emit | None = None) -> Tunnel:
     """Build a tunnel from the `[tunnel]` config table (provider switch, no code)."""
     return Tunnel(
         provider=str(config.get("tunnel.provider", "cloudflare")),

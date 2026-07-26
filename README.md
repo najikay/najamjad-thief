@@ -19,9 +19,42 @@ uv sync                                   # install locked dependencies
 uv run pytest tests/                      # run tests with coverage gate (>= 85%)
 uv run ruff check .                       # lint — zero violations required
 uv run python scripts/check_file_sizes.py # 150-code-line/file gate
+uv run python scripts/check_all.py        # every CI gate, one PASS/FAIL verdict
+```
 
+## Command line
+
+One console script per repo (`najamjad-thief` here, `najamjad-cop` in the
+companion). Every verb is argument parsing plus a single SDK call — the CLI
+holds no game logic, and a meta-test keeps it that way.
+
+```bash
+uv run najamjad-thief --help                     # every verb
+uv run najamjad-thief version                    # code version (book rule 53)
+
+uv run najamjad-thief preflight                  # match-day checklist
+uv run najamjad-thief peer                       # go online: MCP server + tunnel + dashboard
+uv run najamjad-thief peer --no-tunnel --no-dashboard   # local play, nothing exposed
+
+uv run najamjad-thief replay <log.json>          # re-hash every step, print the verdict
+uv run najamjad-thief replay <log.json> --serve  # open the viewer instead
+uv run najamjad-thief archive match.zip          # bundle the evidence (secrets excluded)
+```
+
+**Exit codes**, because these run in scripts:
+
+| Code | Meaning | Example |
+|---|---|---|
+| `0` | it worked | preflight ready, log verified |
+| `1` | it ran, the answer was bad | not match-ready, log **TAMPERED** |
+| `2` | it could not run | log file missing or unreadable |
+
+A tampered log and a missing file are deliberately different codes: an audit
+result must never be mistaken for a typo.
+
+```bash
 uv run python scripts/demo_dashboard.py            # dashboard over a played game
-uv run python -m najamjad_agent.replay --log <log> # replay viewer (add --check for CI)
+uv run python -m najamjad_agent.replay --log <log> # viewer without the CLI wrapper
 ```
 
 ## The dashboard

@@ -11,7 +11,6 @@ must never be consumed as the first turn of the next one.
 
 import queue
 import threading
-from collections.abc import Callable
 from typing import Any
 
 from pydantic import BaseModel
@@ -23,6 +22,7 @@ from ..protocol.schemas_wire import (
     NegotiateMessage,
     TurnMessage,
 )
+from ..shared.events import Emit
 from .session_guard import SessionGuard
 
 # One queue per message kind: a flood of control messages must not delay a turn.
@@ -39,7 +39,7 @@ class Inboxes:
 
     def __init__(
         self,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
         maxsize: int = 1000,
         guard: SessionGuard | None = None,
     ) -> None:

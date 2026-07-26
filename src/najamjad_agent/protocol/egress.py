@@ -9,10 +9,11 @@ a report that would void the match for both teams (rule 35).
 A meta-test asserts no send path bypasses this module.
 """
 
-from collections.abc import Callable
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+from ..shared.events import Emit
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -58,7 +59,7 @@ def validate_egress(
     model: type[ModelT],
     payload: dict[str, Any],
     kind: str,
-    alert: Callable[[dict], None] | None = None,
+    alert: Emit | None = None,
 ) -> ModelT:
     """Validate an outbound payload or refuse to let it leave.
 

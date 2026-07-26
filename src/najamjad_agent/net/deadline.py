@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..domain.crypto import SealedRecord, seal
+from ..shared.events import Emit
 
 
 @dataclass
@@ -39,7 +40,7 @@ class DeadlineTracker:
     response_timeout: float = 30.0
     max_retries: int = 3
     clock: Callable[[], float] = time.monotonic
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     timeouts: list[dict[str, Any]] = field(default_factory=list)
 
     def start(self, label: str, timeout: float | None = None) -> Deadline:

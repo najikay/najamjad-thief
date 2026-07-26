@@ -9,9 +9,9 @@ Waiting is delegated to the DeadlineTracker so every wait in the system is
 bounded by the same configured budget (book rule 6).
 """
 
-from collections.abc import Callable
 from typing import Any
 
+from ..shared.events import Emit
 from .deadline import DeadlineTracker
 from .inbox import Inboxes
 from .mcp_client import PeerClient
@@ -25,7 +25,7 @@ class PeerTransport:
         inboxes: Inboxes,
         client: PeerClient,
         deadlines: DeadlineTracker,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
     ) -> None:
         """Wire the transport to its inboxes, client and deadline budget."""
         self._inboxes = inboxes

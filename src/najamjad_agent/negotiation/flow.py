@@ -11,11 +11,11 @@ FSM: a negotiation that silently skips verification would sign a contract we
 never actually checked.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from ..shared.events import Emit
 from .contract import Contract, ContractError
 from .playbook import COUNTER, REJECT, Playbook
 
@@ -51,7 +51,7 @@ class Negotiation:
 
     playbook: Playbook = field(default_factory=Playbook)
     our_group: str = ""
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     stage: Stage = Stage.IDLE
     timeline: list[dict[str, Any]] = field(default_factory=list)
     contract: Contract | None = None

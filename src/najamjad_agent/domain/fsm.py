@@ -10,10 +10,10 @@ Every accepted transition emits an event carrying `game_uid` and `step`, so the
 dashboard and the post-match analysis see the same history the FSM saw.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from ..constants import Phase
+from ..shared.events import Emit
 
 # The legal graph (PLAN §2.1). Error transitions into TECHNICAL_LOSS are
 # deliberately narrow: only the phases that wait on the network can time out.
@@ -60,7 +60,7 @@ class GameStateMachine:
     game_uid: str = ""
     phase: Phase = Phase.NEGOTIATING
     step: int = 0
-    on_transition: Callable[[dict], None] | None = None
+    on_transition: Emit | None = None
     history: list[Phase] = field(default_factory=list)
 
     def __post_init__(self) -> None:

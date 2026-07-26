@@ -18,6 +18,13 @@ from typing import Any
 from ..protocol.canonical import canonical_json
 
 Subscriber = Callable[[dict[str, Any]], None]
+# What every subsystem accepts as its `emit` hook. The return type is `Any`
+# rather than `None` on purpose: `EventBus.publish` returns the enriched event
+# (useful to a caller that wants the stamped copy), and every emitter site
+# ignores it. Declaring `None` made the bus's own method unassignable to the
+# hook it exists to feed — a mismatch nothing caught until a `src` module
+# finally wired the two together.
+Emit = Callable[[dict[str, Any]], Any]
 # Keys never written to the stream, whatever a caller passes (book rule 18).
 REDACTED_KEYS = frozenset({"nonce", "nonces", "api_key", "token", "client_secret", "password"})
 REDACTION = "<redacted>"

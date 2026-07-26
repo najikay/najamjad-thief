@@ -28,6 +28,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..shared.events import Emit
+
 # A legitimate peer sends at most a few messages per turn. This ceiling is far
 # above honest play and far below what would exhaust the inbox queue.
 DEFAULT_MAX_PER_MINUTE = 120
@@ -52,7 +54,7 @@ class SessionGuard:
     expected_sender: str = ""
     expected_token: str = ""
     max_per_minute: int = DEFAULT_MAX_PER_MINUTE
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     clock: Callable[[], float] = time.monotonic
     _timestamps: list[float] = field(default_factory=list)
 

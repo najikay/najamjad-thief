@@ -26,10 +26,15 @@ MANIFEST = (
     "LICENSE",
 )
 SKIP_PARTS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
-# Only these two pyproject fields may differ between the cop and thief repos;
-# every other line — dependencies, dev dependencies, ruff/pytest/coverage
-# config — must match, or the repos are no longer held to the same standard.
-ROLE_SPECIFIC = re.compile(r"^\s*(name|description)\s*=")
+# Only the lines naming this repo may differ between cop and thief: the project
+# name, its description, and its console-script entry point. Every other line —
+# dependencies, dev dependencies, ruff/pytest/coverage config — must match, or
+# the repos are no longer held to the same standard.
+#
+# The entry point is here because it is easy to forget it names the repo: an
+# earlier version of this pattern mirrored it verbatim, and the thief repo
+# ended up shipping a `najamjad-cop` command that could not be launched.
+ROLE_SPECIFIC = re.compile(r"^\s*(name|description|najamjad-\w+)\s*=")
 
 
 def _files_under(base: Path, entry: str) -> list[Path]:
@@ -85,6 +90,21 @@ def check_tooling(source: Path, sibling: Path, push: bool) -> int:
     return 1
 
 
+def orphans(source: Path, sibling: Path) -> list[Path]:
+    """Manifest files the sibling still has and the source no longer does.
+
+    Copying alone is not mirroring. A renamed or deleted file stays behind in
+    the twin forever, and the stale copy is not inert: two test modules with the
+    same basename collide under pytest, so a rename in one repo broke the
+    other's entire suite while every file it *did* copy was byte-identical.
+    """
+    ours = {file.relative_to(source) for entry in MANIFEST for file in _files_under(source, entry)}
+    theirs = {
+        file.relative_to(sibling) for entry in MANIFEST for file in _files_under(sibling, entry)
+    }
+    return sorted(theirs - ours)
+
+
 def run(source: Path, sibling: Path, push: bool) -> int:
     """Compare (or copy) all manifest files; return count of drifted files."""
     drift = check_tooling(source, sibling, push)
@@ -101,6 +121,13 @@ def run(source: Path, sibling: Path, push: bool) -> int:
                 print(f"SYNCED {relative}")
             else:
                 print(f"DRIFT  {relative}")
+    for stale in orphans(source, sibling):
+        drift += 1
+        if push:
+            (sibling / stale).unlink()
+            print(f"REMOVED {stale}")
+        else:
+            print(f"ORPHAN  {stale}")
     return drift
 
 

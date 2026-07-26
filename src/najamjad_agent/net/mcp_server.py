@@ -12,11 +12,11 @@ does not control.
 
 import socket
 import threading
-from collections.abc import Callable
 from typing import Any
 
 from fastmcp import FastMCP
 
+from ..shared.events import Emit
 from .inbox import Inboxes
 
 SERVER_NAME = "najamjad_peer"
@@ -33,7 +33,7 @@ def port_is_free(host: str, port: int) -> bool:
     return True
 
 
-def build_server(inboxes: Inboxes, emit: Callable[[dict], None] | None = None) -> FastMCP:
+def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
     """Create the MCP server exposing the four interop tools."""
     mcp: FastMCP = FastMCP(SERVER_NAME)
     publish = emit or (lambda _event: None)
@@ -77,7 +77,7 @@ class PeerServer:
         inboxes: Inboxes,
         host: str = "127.0.0.1",
         port: int = 8802,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
     ) -> None:
         """Bind configuration; nothing starts until `start()` is called."""
         self.host = host

@@ -18,6 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..shared.events import Emit
 from .base import (
     Completion,
     Provider,
@@ -49,7 +50,7 @@ class LLMRouter:
 
     providers: list[Provider]
     meter: TokenMeter | None = None
-    emit: Callable[[dict], None] | None = None
+    emit: Emit | None = None
     clock: Callable[[], float] = time.monotonic
     cooldown: float = DEFAULT_COOLDOWN_SEC
     _states: list[ProviderState] = field(init=False, default_factory=list)

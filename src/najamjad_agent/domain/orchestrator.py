@@ -10,10 +10,10 @@ Ingress handling lives in `turn_ingress` (untrusted input, its own threat
 model); this module owns the outgoing half and the end-of-game decision.
 """
 
-from collections.abc import Callable
 from typing import Any
 
 from ..constants import EndReason, Move, Phase, Role
+from ..shared.events import Emit
 from .crypto import step_payload
 from .endings import opponent_end_reason, own_barrier_capture
 from .fsm import GameStateMachine
@@ -42,7 +42,7 @@ class Orchestrator:
         brain: Brain,
         speaker: Speaker,
         clock: Clock,
-        emit: Callable[[dict], None] | None = None,
+        emit: Emit | None = None,
         response_timeout: float = 30.0,
         max_retries: int = 3,
     ) -> None:

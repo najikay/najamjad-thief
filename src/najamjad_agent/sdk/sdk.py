@@ -14,6 +14,7 @@ from typing import Any
 
 from ..llm.router import LLMRouter
 from ..llm.token_meter import TokenMeter
+from .actions import AgentActions
 from .queries import (
     assert_local_truth,
     board_view,
@@ -26,8 +27,22 @@ from .queries import (
 )
 
 
+def _emitter(events: Any) -> Any:
+    """Publish onto the bus when there is one that can publish.
+
+    A read-only event source (one that only exposes `history`) is a legitimate
+    thing to hand the SDK; requiring `publish` would make the facade refuse it
+    for the sake of a side effect nobody asked for.
+    """
+    return getattr(events, "publish", None) or (lambda _event: None)
+
+
 class AgentSdk:
-    """Everything a consumer may ask of the agent."""
+    """Everything a consumer may ask of the agent.
+
+    Reads are methods here; writes live on `.actions`. Both halves are pure
+    delegation, and together they are the whole surface a UI or CLI may touch.
+    """
 
     def __init__(
         self,
@@ -38,8 +53,10 @@ class AgentSdk:
         negotiation: Any = None,
         gatekeepers: dict[str, Any] | None = None,
         events: Any = None,
+        actions: AgentActions | None = None,
     ) -> None:
         """Hold the subsystems; every one of them is optional before a match."""
+        self.actions = actions or AgentActions(negotiation=negotiation, emit=_emitter(events))
         self._state = state
         self._fsm = fsm
         self._router = router
