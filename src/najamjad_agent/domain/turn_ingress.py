@@ -110,9 +110,22 @@ def _absorb_capture_claim(
     claim = message.get("capture_claim")
     if not isinstance(claim, bool) or not claim:
         return
-    state.pending_capture_claim = True
     state.claimed_cell = _parse_cell(message.get("claimed_cell"))
-    event("capture.claimed", step=state.step, cell=list(state.claimed_cell or ()))
+    # The answer is decided HERE, against the cell we occupy at the moment the
+    # claim is made — not when we get round to replying. Deciding it later meant
+    # answering from the cell we had already moved to, so a claim that truly
+    # landed was answered "no": a dishonest reply under rules 21-22, and one the
+    # audit would expose, for a game we had ourselves recorded as a capture.
+    claimed = state.claimed_cell
+    state.pending_capture_claim = claimed is not None and tuple(claimed) == tuple(
+        state.own_position
+    )
+    event(
+        "capture.claimed",
+        step=state.step,
+        cell=list(state.claimed_cell or ()),
+        lands=state.pending_capture_claim,
+    )
 
 
 def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, Any]:
@@ -127,26 +140,23 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
         extras["barrier_placed"] = [barrier[0], barrier[1]]
     if state.role.value == "police":
         extras["capture_claim"] = claim
-    elif state.pending_capture_claim:
+    elif state.pending_capture_claim is not None:
         # Rules 21-22: a claim must be answered, and answered honestly. Without
         # this the cop never learns whether its claim landed — it waits out the
         # deadline and records a timeout for a game the thief has recorded as a
         # capture, and two contradictory reports void the game for both (rules
         # 33-35). The answer is sealed like everything else, so a lie here is
         # provable at the audit.
-        extras["claim_response"] = _claim_lands(state)
+        #
+        # `is not None`, not truthiness: an honest "no" is False, and a falsy
+        # check would silently swallow exactly the answers we are obliged to give.
+        extras["claim_response"] = state.pending_capture_claim
         state.pending_capture_claim = None
     if state.pending_end is not None and "claim_response" not in extras:
         # An ending only we can see — survival, or an immobilised thief. Declare
         # it so the opponent closes on the same reason instead of timing out.
         extras["win_claim"] = state.pending_end.value
     return extras
-
-
-def _claim_lands(state: GameState) -> bool:
-    """Whether the cop's claimed cell really is ours."""
-    claimed = state.claimed_cell
-    return claimed is not None and tuple(claimed) == tuple(state.own_position)
 
 
 def build_turn_message(

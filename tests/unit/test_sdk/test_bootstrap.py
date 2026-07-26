@@ -100,3 +100,29 @@ def test_an_outside_consumer_can_work_through_the_sdk_alone(workspace, tmp_path)
     assert archive.path.exists()
     assert verdict.banner == "Verified OK"
     assert set(snapshot) >= {"board", "turn", "budget", "report"}
+
+
+def test_local_play_without_a_configured_tunnel_is_allowed(tmp_path, monkeypatch):
+    """A hostname-less config means local play, not a broken agent."""
+    from najamjad_agent.sdk import bootstrap
+
+    real_load = bootstrap.ConfigManager.load
+
+    def no_tunnel(role_dir, shared_config=None, require_shared=False):
+        manager = real_load(role_dir, shared_config, require_shared)
+        manager._values["tunnel"] = {}
+        return manager
+
+    monkeypatch.setattr(bootstrap.ConfigManager, "load", staticmethod(no_tunnel))
+    sdk = build_sdk(workspace=tmp_path, dashboard=False)
+
+    assert sdk.actions.public_url.startswith("http://"), "falls back to the local MCP url"
+
+
+def test_the_config_root_is_returned_when_no_role_directory_exists(monkeypatch, tmp_path):
+    """A clone missing its config must not silently pick the wrong side."""
+    from najamjad_agent.sdk import bootstrap
+
+    monkeypatch.setattr(bootstrap, "CONFIG_ROOT", tmp_path / "config")
+
+    assert bootstrap.default_config_path() == tmp_path / "config"

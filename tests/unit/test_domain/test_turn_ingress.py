@@ -89,11 +89,45 @@ def test_malformed_or_off_board_barriers_are_ignored(state: GameState, barrier) 
 
 
 def test_a_capture_claim_is_recorded_for_an_honest_answer(state: GameState) -> None:
-    """Rules 21-22: the thief must answer a claim truthfully."""
+    """Rules 21-22: the thief must answer a claim truthfully.
+
+    The answer is settled here, against the cell we occupy *now*. Deciding it
+    when we get round to replying meant answering from the cell we had already
+    moved to — saying "no" to a claim that had genuinely landed.
+    """
     captured, record = _events()
-    absorb_turn(state, _turn(capture_claim=True), record)
+    absorb_turn(state, _turn(capture_claim=True, claimed_cell=list(state.own_position)), record)
     assert state.pending_capture_claim is True
     assert any(event["event"] == "capture.claimed" for event in captured)
+
+
+def test_a_claim_naming_another_cell_is_answered_no(state: GameState) -> None:
+    _, record = _events()
+    elsewhere = [state.own_position[0], state.own_position[1] + 1]
+
+    absorb_turn(state, _turn(capture_claim=True, claimed_cell=elsewhere), record)
+
+    assert state.pending_capture_claim is False, "an honest no, not a missing answer"
+
+
+def test_a_claim_naming_no_cell_cannot_land(state: GameState) -> None:
+    """Unanswerable as posed: we cannot confirm a cell nobody named."""
+    _, record = _events()
+
+    absorb_turn(state, _turn(capture_claim=True), record)
+
+    assert state.pending_capture_claim is False
+
+
+def test_the_answer_survives_us_moving_away(state: GameState) -> None:
+    """The regression this whole change exists for."""
+    _, record = _events()
+    here = list(state.own_position)
+
+    absorb_turn(state, _turn(capture_claim=True, claimed_cell=here), record)
+    state.own_position = (state.own_position[0], state.own_position[1] + 1)
+
+    assert state.pending_capture_claim is True
 
 
 def test_a_non_boolean_capture_claim_is_ignored(state: GameState) -> None:

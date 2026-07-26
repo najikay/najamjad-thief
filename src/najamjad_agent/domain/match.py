@@ -23,6 +23,12 @@ from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
+# The brain factory receives the state as well as the role, because a brain
+# reasons over the *current* board — barriers appear mid-game — and gets it from
+# a `board_supplier`, not from `TurnFacts`. Handing over only the role left the
+# caller no way to wire that, and every real brain raised `AttributeError` the
+# first time it was asked to move.
+BrainFactory = Callable[[Role, GameState], Any]
 
 
 class MatchRunner:
@@ -34,7 +40,7 @@ class MatchRunner:
         tracker: SeriesTracker,
         transport: Any,
         build_state: StateFactory,
-        build_brain: Callable[[Role], Any],
+        build_brain: BrainFactory,
         speaker: Any,
         clock: Any,
         first_role: Role = Role.COP,
@@ -108,7 +114,7 @@ class MatchRunner:
             state=state,
             fsm=fsm,
             transport=self._transport,
-            brain=self._build_brain(role),
+            brain=self._build_brain(role, state),
             speaker=self._speaker,
             clock=self._clock,
             emit=self._emit,

@@ -37,7 +37,7 @@ def build_runner(link, our_group: str, their_group: str, first_role: Role) -> Ma
         tracker=tracker,
         transport=link,
         build_state=lambda _params, role, sub_game: _fresh_state(role, sub_game),
-        build_brain=lambda _role: ScriptedBrain(CYCLE * 40),
+        build_brain=lambda _role, _state: ScriptedBrain(CYCLE * 40),
         speaker=FixedSpeaker(),
         clock=FakeClock(),
         first_role=first_role,

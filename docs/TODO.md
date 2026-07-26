@@ -628,13 +628,13 @@
 
 - [ ] **T-2101** (P0) Build the two-process harness: script launches the cop-repo and thief-repo binaries on localhost ports with test configs and collects exit status + artifacts — DoD: harness runs a full series locally [FR-NET-6]
 - [ ] **T-2102** (P0) Add the CI integration test: full 6 mini-game series over localhost between the two repos' processes — DoD: series completes in CI (marked slow); M3 exit criterion
-- [ ] **T-2103** (P0) Assert audit Verified OK for EVERY mini-game in the CI series — DoD: assertion green (goal G4) [FR-CRY-3]
+- [x] **T-2103** (P0) Assert audit Verified OK for EVERY mini-game in the CI series — DoD: assertion green (goal G4) [FR-CRY-3]
 - [ ] **T-2104** (P0) Assert all 4 lifecycle artifacts per match, shared game_uid, schema-valid, correct filenames in the CI series — DoD: assertion green [FR-REP-1]
-- [ ] **T-2105** (P0) Assert both peers' result `mutual_agreement` hashes are identical in the CI series — DoD: assertion green [FR-REP-6]
-- [ ] **T-2106** (P1) Build the self-play harness: seeded headless N-game runner with pluggable brains, JSONL results output — DoD: 100-game run completes with reproducible seed [FR-STR-7]
-- [ ] **T-2107** (P1) Port the reference greedy brains as baseline opponents inside the harness — DoD: baseline-vs-baseline games run deterministically under seed [ADR-012]
+- [x] **T-2105** (P0) Assert both peers' result `mutual_agreement` hashes are identical in the CI series — DoD: assertion green [FR-REP-6]
+- [x] **T-2106** (P1) Build the self-play harness: seeded headless N-game runner with pluggable brains, JSONL results output — DoD: 100-game run completes with reproducible seed [FR-STR-7]
+- [x] **T-2107** (P1) Port the reference greedy brains as baseline opponents inside the harness — DoD: baseline-vs-baseline games run deterministically under seed [ADR-012]
 - [ ] **T-2108** (P1) Implement the win-rate gate: our cop vs reference thief AND our thief vs reference cop, each ≥ 70% over 100 seeded games (M4 exit; nightly job, not PR-blocking) — DoD: nightly job publishes pass/fail vs threshold [deps: T-0217, T-2106]
-- [ ] **T-2109** (P2) Add statistical reporting to the harness: win-rate confidence intervals + per-end-reason breakdown for the notebook — DoD: stats JSON emitted per run
+- [x] **T-2109** (P2) Add statistical reporting to the harness: win-rate confidence intervals + per-end-reason breakdown for the notebook — DoD: stats JSON emitted per run
 - [ ] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
 - [ ] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [ ] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]

@@ -39,6 +39,13 @@ def opponent_end_reason(state: GameState, message: dict[str, Any]) -> EndReason 
     declared = _their_declaration(state, message)
     if declared is not None:
         return return_reason(declared)
+    if state.role is Role.THIEF and _barrier_traps_us(state, message):
+        # Rules 15-16 make the barrier declaration mandatory, so we can evaluate
+        # it from our own true cell the moment it arrives — both sides reach the
+        # same verdict on the same turn, with nothing to announce. Without this
+        # the cop ended on a barrier capture and we sat waiting, then filed a
+        # timeout against its capture.
+        return return_reason(EndReason.CAPTURE)
     if state.role is Role.THIEF and message.get("capture_claim"):
         # Rules 21-22: answered from our own true cell, and honestly. The claim
         # names a cell, so it lands only if that cell is ours.
@@ -74,3 +81,11 @@ def _their_declaration(state: GameState, message: dict[str, Any]) -> EndReason |
         except ValueError:
             return None
     return None
+
+
+def _barrier_traps_us(state: GameState, message: dict[str, Any]) -> bool:
+    """Did the barrier they just declared capture us where we actually stand?"""
+    cell = message.get("barrier_placed")
+    if not (isinstance(cell, list | tuple) and len(cell) == 2):
+        return False
+    return evaluate_barrier_capture(tuple(cell), state.own_position).captured
