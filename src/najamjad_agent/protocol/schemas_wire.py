@@ -47,9 +47,19 @@ class NegotiateTerms(TolerantModel):
 
 
 class NegotiateMessage(TolerantModel):
-    """Signed proposal exchanged before play (reference `negotiate` tool)."""
+    """Signed proposal exchanged before play (reference `negotiate` tool).
 
-    identity: str
+    `identity` is the sender's *group* identity object — group_id, name,
+    members — exactly as the reference sends it, and exactly as our own
+    `Contract.signed()` builds it. Declaring it a plain string rejected a real
+    reference proposal outright, and would have rejected our own.
+
+    A string is still accepted: a peer that sends only a group name is being
+    terser than the reference, not hostile, and the signature covers the terms
+    rather than the identity either way.
+    """
+
+    identity: dict[str, Any] | str = Field(default_factory=dict)
     terms: dict[str, Any]
     nonce: str
     signature: str
@@ -71,9 +81,15 @@ class TurnMessage(TolerantModel):
     timestamp: str = ""
     payload: dict[str, Any] | None = None
     barrier_placed: list[int] | None = None
-    capture_claim: bool | None = None
-    claim_response: bool | None = None
-    win_claim: str | None = None
+    # The three claim fields carry the reference implementation's shapes, which
+    # are richer than the booleans we used. A reference peer sends
+    # `capture_claim: [r, c]`, `claim_response: {"claim": [r, c], "caught": …}`
+    # and `win_claim: {"type": "survival"}`; declaring these as bool/str
+    # rejected every one of them. The looser union also accepts our earlier
+    # forms, so a peer using either convention is understood.
+    capture_claim: list[int] | bool | None = None
+    claim_response: dict[str, Any] | bool | None = None
+    win_claim: dict[str, Any] | str | None = None
 
     @model_validator(mode="after")
     def _barrier_is_a_cell(self) -> "TurnMessage":

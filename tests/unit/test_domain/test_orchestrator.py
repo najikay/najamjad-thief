@@ -98,7 +98,10 @@ def test_capture_claim_is_only_made_from_our_own_cell() -> None:
     orchestrator, transport, _ = build_orchestrator(role=Role.COP, moves=[Move.STAY])
     orchestrator.state.opponent_estimate = (5, 5)
     orchestrator.take_turn()
-    assert transport.sent[0]["capture_claim"] is False
+
+    # No claim at all, rather than `false`: the reference's claim field carries
+    # the cell being claimed, so "not claiming" is simply its absence.
+    assert "capture_claim" not in transport.sent[0]
 
 
 def test_receive_turn_absorbs_hint_and_scent() -> None:
@@ -155,7 +158,7 @@ def test_the_thief_answers_a_landing_capture_claim_honestly() -> None:
     assert orchestrator.take_turn() is EndReason.CAPTURE
     assert orchestrator.fsm.phase is Phase.GAME_END
     sent = orchestrator._transport.sent[-1]
-    assert sent["claim_response"] is True
+    assert sent["claim_response"] == {"claim": [3, 3], "caught": True}
 
 
 def test_a_capture_claim_from_elsewhere_does_not_end_the_game() -> None:
@@ -183,7 +186,7 @@ def test_survival_threshold_ends_the_game() -> None:
     # Declared to the opponent, so both sides close on survival rather than one
     # of them timing out and filing a contradictory result.
     assert orchestrator.take_turn() is EndReason.SURVIVAL
-    assert orchestrator._transport.sent[-1]["win_claim"] == "survival"
+    assert orchestrator._transport.sent[-1]["win_claim"] == {"type": "survival"}
 
 
 def test_events_carry_step_correlation() -> None:

@@ -16,6 +16,7 @@ import json
 import pytest
 from fastmcp import Client
 
+from najamjad_agent.constants import Move, Role
 from najamjad_agent.net.inbox import Inboxes
 from najamjad_agent.net.mcp_client import ARGUMENT_FOR_TOOL, TOOL_FOR_KIND
 from najamjad_agent.net.mcp_server import build_server
@@ -94,3 +95,76 @@ async def test_a_call_with_neither_argument_is_refused_not_crashed(tool):
     response = await call_tool(tool, {})
 
     assert response.get("accepted") is False
+
+
+# The reference's TurnMessage dataclass, transcribed from its own source. Its
+# parser does `cls(**data)`, so a field it does not declare is a TypeError —
+# sending one extra key makes every turn we send unreadable to it.
+REFERENCE_TURN_FIELDS = {
+    "step", "sender", "hint", "smell_grid", "commit", "timestamp",
+    "barrier_placed", "capture_claim", "claim_response", "win_claim",
+}
+REFERENCE_TURN_REQUIRED = {"step", "sender", "hint", "smell_grid", "commit", "timestamp"}
+
+
+def built_turn(role: Role, **kwargs) -> dict:
+    """A turn message produced by the real orchestrator."""
+    from tests.fakes.orchestration import build_orchestrator
+
+    orchestrator, transport, _ = build_orchestrator(role=role, **kwargs)
+    orchestrator.take_turn()
+    return transport.sent[0]
+
+
+def test_our_turn_carries_every_field_the_reference_requires():
+    """`timestamp` was missing, and its parser treats that as fatal."""
+    message = built_turn(Role.COP, moves=[Move.SOUTH])
+
+    assert set(message) >= REFERENCE_TURN_REQUIRED, (
+        f"missing {sorted(REFERENCE_TURN_REQUIRED - set(message))}"
+    )
+
+
+@pytest.mark.parametrize("role", [Role.COP, Role.THIEF])
+def test_we_never_send_a_field_the_reference_cannot_parse(role):
+    """Its parser rejects unknown keys outright, so our vocabulary must be a
+    subset of its own — `claimed_cell` used to break exactly this."""
+    message = built_turn(role, moves=[Move.SOUTH])
+
+    assert set(message) <= REFERENCE_TURN_FIELDS, (
+        f"we send {sorted(set(message) - REFERENCE_TURN_FIELDS)}, which it declares no field for"
+    )
+
+
+def test_a_capture_claim_is_sent_as_the_claimed_cell():
+    """The reference reads `capture_claim` as [r, c], not as a boolean."""
+    orchestrator, transport, _ = _claiming_cop()
+
+    claim = transport.sent[0]["capture_claim"]
+
+    assert isinstance(claim, list) and len(claim) == 2
+    assert claim == list(orchestrator.state.own_position)
+
+
+def test_a_claim_answer_is_sent_in_the_reference_shape():
+    from tests.fakes.orchestration import build_orchestrator
+
+    orchestrator, transport, _ = build_orchestrator(
+        role=Role.THIEF, position=(3, 3), moves=[Move.STAY]
+    )
+    orchestrator._transport.inbox.append(
+        {"step": 1, "sender": "police", "commit": "a" * 64, "capture_claim": [3, 3]}
+    )
+    orchestrator.receive_turn()
+    orchestrator.take_turn()
+
+    assert transport.sent[-1]["claim_response"] == {"claim": [3, 3], "caught": True}
+
+
+def _claiming_cop():
+    from tests.fakes.orchestration import build_orchestrator
+
+    orchestrator, transport, brain = build_orchestrator(role=Role.COP, moves=[Move.STAY])
+    orchestrator.state.opponent_estimate = orchestrator.state.own_position
+    orchestrator.take_turn()
+    return orchestrator, transport, brain

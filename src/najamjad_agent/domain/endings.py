@@ -72,15 +72,33 @@ def _their_declaration(state: GameState, message: dict[str, Any]) -> EndReason |
     way we learn about an ending only they could see — whether our capture
     claim landed, or that they have outlasted the survival clock.
     """
-    if state.role is Role.COP and message.get("claim_response") is True:
+    if state.role is Role.COP and _answer_says_caught(message.get("claim_response")):
         return EndReason.CAPTURE
-    claimed = message.get("win_claim")
-    if isinstance(claimed, str) and claimed:
+    claimed = _win_type(message.get("win_claim"))
+    if claimed:
         try:
             return EndReason(claimed)
         except ValueError:
             return None
     return None
+
+
+def _answer_says_caught(answer: Any) -> bool:
+    """Did the thief's answer confirm our claim landed?
+
+    The reference answers `{"claim": [r, c], "caught": bool}`; our earlier form
+    was a bare boolean. Both are understood.
+    """
+    if isinstance(answer, dict):
+        return answer.get("caught") is True
+    return answer is True
+
+
+def _win_type(claim: Any) -> str:
+    """The ending an opponent declared, from either shape it may arrive in."""
+    if isinstance(claim, dict):
+        return str(claim.get("type") or "")
+    return claim if isinstance(claim, str) else ""
 
 
 def _barrier_traps_us(state: GameState, message: dict[str, Any]) -> bool:

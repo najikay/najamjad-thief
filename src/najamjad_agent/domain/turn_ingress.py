@@ -19,6 +19,7 @@ hidden information now, verifiable honesty later.
 """
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from .game_state import GameState
@@ -108,9 +109,11 @@ def _absorb_capture_claim(
     position for nothing, which is what makes bluffed claims expensive.
     """
     claim = message.get("capture_claim")
-    if not isinstance(claim, bool) or not claim:
+    if claim is None or claim is False:
         return
-    state.claimed_cell = _parse_cell(message.get("claimed_cell"))
+    # The reference sends the cell as the claim itself; our earlier form sent
+    # `true` beside a separate `claimed_cell`. Read whichever arrived.
+    state.claimed_cell = _parse_cell(claim) or _parse_cell(message.get("claimed_cell"))
     # The answer is decided HERE, against the cell we occupy at the moment the
     # claim is made — not when we get round to replying. Deciding it later meant
     # answering from the cell we had already moved to, so a claim that truly
@@ -150,12 +153,18 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
         #
         # `is not None`, not truthiness: an honest "no" is False, and a falsy
         # check would silently swallow exactly the answers we are obliged to give.
-        extras["claim_response"] = state.pending_capture_claim
+        # The reference's shape: the cell claimed, and whether it landed. Richer
+        # than a bare boolean, and it lets the cop check the answer refers to
+        # the claim it actually made.
+        extras["claim_response"] = {
+            "claim": list(state.claimed_cell or ()),
+            "caught": bool(state.pending_capture_claim),
+        }
         state.pending_capture_claim = None
     if state.pending_end is not None and "claim_response" not in extras:
         # An ending only we can see — survival, or an immobilised thief. Declare
         # it so the opponent closes on the same reason instead of timing out.
-        extras["win_claim"] = state.pending_end.value
+        extras["win_claim"] = {"type": state.pending_end.value}
     return extras
 
 
@@ -175,16 +184,20 @@ def build_turn_message(
         "commit": commit,
         "hint": payload.get("hint", ""),
         "smell_grid": payload.get("smell_grid", {}),
+        # Mandatory per move (book), and a *required* field in the reference's
+        # parser — omitting it made every one of our turns unreadable to it.
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     if "barrier_placed" in payload:
         message["barrier_placed"] = payload["barrier_placed"]
-    if "capture_claim" in payload:
-        message["capture_claim"] = payload["capture_claim"]
-        if payload["capture_claim"]:
-            # Claiming necessarily discloses where we stand; that cost is what
-            # stops a cop claiming speculatively every turn.
-            message["claimed_cell"] = list(state.own_position)
-    if "claim_response" in payload:
+    if payload.get("capture_claim"):
+        # The claim IS the cell — that is the reference's shape, and it is the
+        # better one: a bare `true` plus a separate `claimed_cell` field made
+        # the message unparseable by a reference peer, whose parser rejects any
+        # field it does not declare. Claiming still discloses where we stand,
+        # which is what stops a cop claiming speculatively every turn.
+        message["capture_claim"] = list(state.own_position)
+    if payload.get("claim_response") is not None:
         message["claim_response"] = payload["claim_response"]
     if payload.get("win_claim"):
         message["win_claim"] = payload["win_claim"]

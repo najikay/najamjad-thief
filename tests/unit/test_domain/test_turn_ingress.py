@@ -130,10 +130,24 @@ def test_the_answer_survives_us_moving_away(state: GameState) -> None:
     assert state.pending_capture_claim is True
 
 
-def test_a_non_boolean_capture_claim_is_ignored(state: GameState) -> None:
+def test_an_unparseable_capture_claim_cannot_land(state: GameState) -> None:
+    """A claim we cannot read names no cell, so it cannot be confirmed."""
     _, record = _events()
+
     absorb_turn(state, _turn(capture_claim="yes"), record)
-    assert state.pending_capture_claim is None
+
+    assert state.pending_capture_claim is False
+    assert state.claimed_cell is None
+
+
+def test_a_reference_style_capture_claim_carries_the_cell(state: GameState) -> None:
+    """The reference sends the claimed cell AS the claim."""
+    _, record = _events()
+
+    absorb_turn(state, _turn(capture_claim=list(state.own_position)), record)
+
+    assert state.claimed_cell == tuple(state.own_position)
+    assert state.pending_capture_claim is True
 
 
 def test_a_malformed_scent_map_is_partially_absorbed_and_reported(state: GameState) -> None:
