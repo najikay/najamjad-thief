@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -25,10 +26,10 @@ MANIFEST = (
     "LICENSE",
 )
 SKIP_PARTS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
-# pyproject.toml is role-specific in its [project] block but must stay identical
-# from the first tooling section onward — a drifted ruff/pytest/coverage config
-# means the two repos are no longer being held to the same standard.
-TOOLING_ANCHOR = "[tool."
+# Only these two pyproject fields may differ between the cop and thief repos;
+# every other line — dependencies, dev dependencies, ruff/pytest/coverage
+# config — must match, or the repos are no longer held to the same standard.
+ROLE_SPECIFIC = re.compile(r"^\s*(name|description)\s*=")
 
 
 def _files_under(base: Path, entry: str) -> list[Path]:
@@ -45,24 +46,42 @@ def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _tooling_section(path: Path) -> str:
-    """The `[tool.*]` half of a pyproject, which must match across repos."""
-    text = path.read_text(encoding="utf-8")
-    index = text.find(TOOLING_ANCHOR)
-    return text[index:] if index >= 0 else ""
+def _shared_lines(path: Path) -> list[str]:
+    """Every pyproject line that must be identical across the two repos.
+
+    Only `name` and `description` are legitimately role-specific. Everything
+    else — runtime dependencies, dev dependencies, and the whole `[tool.*]`
+    half — has to match, because a difference there means the two repos are no
+    longer being held to the same standard. A dev dependency that exists in one
+    repo and not the other is the quiet version of that: a test imports it,
+    passes where it was declared, and fails in the twin for reasons that look
+    unrelated to the change that exposed it.
+    """
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [line for line in lines if not ROLE_SPECIFIC.match(line)]
 
 
 def check_tooling(source: Path, sibling: Path, push: bool) -> int:
-    """Compare (or copy) the shared tooling config; return 1 on drift."""
+    """Compare (or copy) the shared pyproject config; return 1 on drift."""
     ours, theirs = source / "pyproject.toml", sibling / "pyproject.toml"
-    if not theirs.exists() or _tooling_section(ours) == _tooling_section(theirs):
+    if not theirs.exists() or _shared_lines(ours) == _shared_lines(theirs):
         return 0
     if not push:
-        print("DRIFT  pyproject.toml [tool.*] configuration")
+        print("DRIFT  pyproject.toml shared configuration")
         return 1
-    head = theirs.read_text(encoding="utf-8")
-    theirs.write_text(head[: head.find(TOOLING_ANCHOR)] + _tooling_section(ours), encoding="utf-8")
-    print("SYNCED pyproject.toml [tool.*] configuration")
+    # Keep the twin's own name/description, take every other line from ours.
+    # Matched by position rather than by field name: `name =` is not unique in
+    # a TOML file, so keying on it would let a `[tool.*]` entry overwrite the
+    # project's own identity.
+    preserved = iter(
+        line for line in theirs.read_text(encoding="utf-8").splitlines() if ROLE_SPECIFIC.match(line)
+    )
+    merged = [
+        next(preserved, line) if ROLE_SPECIFIC.match(line) else line
+        for line in ours.read_text(encoding="utf-8").splitlines()
+    ]
+    theirs.write_text("\n".join(merged) + "\n", encoding="utf-8")
+    print("SYNCED pyproject.toml shared configuration")
     return 1
 
 

@@ -7,8 +7,13 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      # Both target the node24 runtime. The previous pins (checkout@v4,
+      # setup-uv@v5) ran on node20, which GitHub deprecated in Sept 2025 and
+      # now force-migrates — a warning today, a broken pipeline whenever they
+      # stop compensating. setup-uv v8+ also publishes immutable tags, so the
+      # ref we depend on cannot be repointed under us.
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
       - name: Install dependencies (locked)
         run: uv sync --frozen
       - name: Ruff — zero violations (guidelines §7.1)

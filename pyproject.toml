@@ -29,6 +29,10 @@ dev = [
     "ruff>=0.4",
     "pyright>=1.1.360",
     "pytest-asyncio>=1.4.0",
+    # Used by the tests that hold `scripts/check_all.py` and `ci.yml` in step.
+    # Present transitively today; declared so a parent dropping it cannot break
+    # CI in a way that looks unrelated to the change that triggered it.
+    "pyyaml>=6.0",
 ]
 
 [build-system]

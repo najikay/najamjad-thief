@@ -22,6 +22,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Mandated by guidelines E6; CI checks the same list in its structure step.
+MANDATED_FILES = (
+    "README.md",
+    "docs/PRD.md",
+    "docs/PLAN.md",
+    "docs/TODO.md",
+    "docs/CORE_SYNC.md",
+    ".env-example",
+    "uv.lock",
+    "LICENSE",
+    "config/rate_limits.json",
+)
+
 Gate = tuple[str, list[str], bool]
 GATES: list[Gate] = [
     ("ruff", ["uv", "run", "ruff", "check", "."], False),
@@ -30,6 +43,11 @@ GATES: list[Gate] = [
     ("pyright", ["uv", "run", "pyright"], False),
     ("tests", ["uv", "run", "pytest", "tests/", "-q"], True),
 ]
+
+
+def missing_mandated_files() -> list[str]:
+    """Mandated files that are absent — CI's structure step, run locally."""
+    return [name for name in MANDATED_FILES if not (ROOT / name).exists()]
 
 
 def run(name: str, command: list[str]) -> tuple[bool, float, str]:
@@ -49,6 +67,13 @@ def main(argv: list[str] | None = None) -> int:
 
     gates = [gate for gate in GATES if not (args.fast and gate[2])]
     failures: list[str] = []
+
+    missing = missing_mandated_files()
+    print(f"→ structure …\n  {'PASS' if not missing else 'FAIL'}")
+    if missing:
+        failures.append("structure")
+        print(f"\nmissing mandated files: {', '.join(missing)}\n")
+
     for name, command, _slow in gates:
         print(f"→ {name} …", flush=True)
         passed, elapsed, tail = run(name, command)
