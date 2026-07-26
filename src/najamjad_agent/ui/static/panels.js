@@ -87,8 +87,11 @@ export function renderGatekeepers(node, services) {
 }
 
 export function renderProvider(node, provider) {
-  node.textContent = `provider: ${provider && provider.active ? provider.active : '—'}`;
-  node.className = 'tag ok';
+  const active = provider && provider.available && provider.active;
+  node.textContent = `provider: ${active || '—'}`;
+  // Green only when a router is actually answering. A badge that is green
+  // whatever happens is decoration, not status.
+  node.className = active ? 'tag ok' : 'tag';
 }
 
 // A6's report simply never went out when we were not the initiating side, and

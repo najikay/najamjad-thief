@@ -77,6 +77,27 @@ def test_the_only_timer_in_the_client_is_the_reconnect_backoff():
     assert "setTimeout(connect, backoff)" in source
 
 
+def test_snapshot_requests_are_coalesced_to_one_in_flight():
+    """A burst of events must not become a burst of HTTP round-trips — that is
+    the polling this page exists to avoid, triggered by the socket instead of a
+    timer. Events arriving mid-request set a dirty flag and are picked up after.
+    """
+    source = (STATIC / "dashboard.js").read_text(encoding="utf-8")
+
+    assert "if (syncing) {" in source
+    assert "dirty = true;" in source
+    assert "if (dirty) {" in source
+
+
+def test_history_is_backfilled_before_the_socket_opens():
+    """Both paths prepend, so a late history fetch would stack older entries
+    above newer live ones — a feed that is silently out of order."""
+    source = (STATIC / "dashboard.js").read_text(encoding="utf-8")
+
+    assert "await Promise.allSettled([resync(), backfillEvents()]);" in source
+    assert source.index("allSettled") < source.index("connect();\n}")
+
+
 def test_a_dropped_socket_marks_the_panels_stale_rather_than_lying():
     """Stale numbers that still look live are worse than an obvious gap."""
     source = (STATIC / "dashboard.js").read_text(encoding="utf-8")

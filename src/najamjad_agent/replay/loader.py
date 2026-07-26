@@ -67,8 +67,12 @@ def normalise_record(record: Any) -> dict[str, Any]:
     if payload is not None and isinstance(payload[1], dict):
         body = payload[1]
     else:
-        skip = {name for name, _ in (commit, nonce) if name} if commit or nonce else set()
-        body = {key: value for key, value in record.items() if key not in skip}
+        # Only the sealed fields that were actually found are removed. A record
+        # carrying one of them and not the other is a real shape — a truncated
+        # log, or a peer that names its nonce something we do not recognise —
+        # and it must reach the verifier to be judged, not fail on the way in.
+        sealed = {entry[0] for entry in (commit, nonce) if entry is not None}
+        body = {key: value for key, value in record.items() if key not in sealed}
     return {
         "payload": body,
         "nonce": nonce[1] if nonce else "",

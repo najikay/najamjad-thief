@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from .frames import validate_frame
 from .views import STATIC, register_routes
@@ -30,6 +31,7 @@ class ConnectionHub:
         self._sockets: list[WebSocket] = []
         self._loop: asyncio.AbstractEventLoop | None = None
         self.dropped = 0
+        self.invalid = 0
 
     @property
     def viewers(self) -> int:
@@ -55,8 +57,18 @@ class ConnectionHub:
 
         Each socket is sent to independently, so one slow or dead viewer costs
         the others nothing but its own failed send.
+
+        A frame that fails validation is dropped, never sent: the guard exists
+        to stop a forbidden field reaching a browser, so "send it anyway" is
+        the one response that is never right. Drops are counted rather than
+        silent, because a panel that stops updating with no trace is the A6
+        failure mode this whole layer was built to avoid.
         """
-        frame = validate_frame(message)
+        try:
+            frame = validate_frame(message)
+        except (ValueError, ValidationError):
+            self.invalid += 1
+            return
         for socket in list(self._sockets):
             try:
                 await socket.send_json(frame)
@@ -73,8 +85,12 @@ class ConnectionHub:
         """
         if self._loop is None or not self._sockets:
             return
+        # `type` last: an event that happens to carry its own `type` field would
+        # otherwise rename the frame, and the renamed frame fails validation and
+        # vanishes. The bus belongs to the game, so it may legitimately publish
+        # any keys it likes; the envelope is ours and must win.
         asyncio.run_coroutine_threadsafe(
-            self.broadcast({"type": "event", **event}), self._loop
+            self.broadcast({**event, "type": "event"}), self._loop
         )
 
 

@@ -35,12 +35,31 @@ function setConnection(state, text) {
   });
 }
 
+// At most one snapshot request is ever in flight. Without this, a burst of
+// events becomes a burst of HTTP round-trips — which is the polling this page
+// exists to avoid, just triggered by the socket instead of a timer. Events
+// arriving mid-request set `dirty`, so the final state is always fetched once
+// the current request lands; no update is dropped and none is duplicated.
+let syncing = false;
+let dirty = false;
+
 async function resync() {
+  if (syncing) {
+    dirty = true;
+    return;
+  }
+  syncing = true;
   try {
     const response = await fetch('/api/snapshot');
     paint(await response.json());
   } catch (error) {
     console.warn('snapshot failed', error);
+  } finally {
+    syncing = false;
+    if (dirty) {
+      dirty = false;
+      resync();
+    }
   }
 }
 
@@ -83,7 +102,13 @@ function connect() {
   socket.onerror = () => socket.close();
 }
 
-setConnection('warn', 'connecting…');
-resync();
-backfillEvents();
-connect();
+// Backfill completes before the socket opens. Both paths prepend, so a history
+// fetch that landed after a live event would stack older entries on top of
+// newer ones — a feed that reads correctly but is silently out of order.
+async function boot() {
+  setConnection('warn', 'connecting…');
+  await Promise.allSettled([resync(), backfillEvents()]);
+  connect();
+}
+
+boot();

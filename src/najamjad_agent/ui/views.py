@@ -12,6 +12,8 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
+from .frames import validate_frame
+
 STATIC = Path(__file__).parent / "static"
 FALLBACK_PAGE = "<h1>NajAmjad agent</h1><p>Dashboard assets are missing.</p>"
 
@@ -45,7 +47,10 @@ def register_routes(app: FastAPI, sdk: Any, hub: Any) -> None:
         """Push updates as they happen; the client never polls."""
         await hub.join(socket)
         try:
-            await socket.send_json({"type": "snapshot", **sdk.snapshot()})
+            # Validated like every other frame. This one carries the whole
+            # board, so exempting it would have left the largest payload as the
+            # only one the local-truth guard never sees (book rules 8-9).
+            await socket.send_json(validate_frame({**sdk.snapshot(), "type": "snapshot"}))
             while True:
                 await socket.receive_text()
         except WebSocketDisconnect:

@@ -11,6 +11,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from .loader import ReplayLoadError
 from .verifier import verify_log
 
 
@@ -29,8 +30,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def check(log: Path) -> int:
-    """Verify a log and report the verdict; the exit code is the answer."""
-    result = verify_log(log)
+    """Verify a log and report the verdict; the exit code is the answer.
+
+    An unreadable file is a usage error (exit 2), deliberately distinct from a
+    log that read fine and failed verification (exit 1) — a script must be able
+    to tell "your file is broken" from "this game was tampered with".
+    """
+    try:
+        result = verify_log(log)
+    except ReplayLoadError as failure:
+        print(f"cannot read {log}: {failure}", file=sys.stderr)
+        return 2
     print(f"{result.banner}: {len(result.steps)} steps, {len(result.failed_indices)} failed")
     for step in result.steps:
         if not step.verified:

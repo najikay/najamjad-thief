@@ -48,7 +48,8 @@ def _disagreement(parsed: dict[str, Any], payload: dict[str, Any]) -> str:
 
 def step_view(record: dict[str, Any], verdict: Any, index: int) -> dict[str, Any]:
     """Everything the viewer draws for one step."""
-    payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
+    body = record.get("payload")
+    payload: dict[str, Any] = body if isinstance(body, dict) else {}
     parsed = parse_state(payload.get("state"))
     return {
         "index": index,

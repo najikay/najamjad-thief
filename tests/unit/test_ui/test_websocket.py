@@ -118,6 +118,71 @@ def test_the_bus_subscription_survives_a_broken_dashboard():
     assert bus.history[0]["event"] == "turn.sent"
 
 
+@pytest.mark.asyncio
+async def test_an_event_carrying_its_own_type_cannot_rename_the_frame():
+    """The bus belongs to the game and may publish any keys; the envelope is
+    ours. A shadowed `type` would fail validation and the frame would vanish."""
+    hub = ConnectionHub()
+    hub.bind_loop(asyncio.get_running_loop())
+    socket = RecordingSocket()
+    hub._sockets.append(socket)
+
+    await hub.broadcast({**{"event": "audit.done", "type": "system_spec"}, "type": "event"})
+
+    assert socket.frames[0]["type"] == "event"
+    assert socket.frames[0]["event"] == "audit.done"
+
+
+@pytest.mark.asyncio
+async def test_a_frame_that_would_leak_is_dropped_rather_than_sent():
+    """Never send it, and never drop it silently."""
+    hub = ConnectionHub()
+    socket = RecordingSocket()
+    hub._sockets.append(socket)
+
+    await hub.broadcast({"type": "event", "event": "turn", "opponent_position": [2, 2]})
+
+    assert socket.frames == []
+    assert hub.invalid == 1
+    assert hub.viewers == 1, "the viewer keeps its connection; only the frame is refused"
+
+
+@pytest.mark.asyncio
+async def test_an_unknown_frame_type_is_dropped_without_killing_the_broadcast():
+    hub = ConnectionHub()
+    socket = RecordingSocket()
+    hub._sockets.append(socket)
+
+    await hub.broadcast({"type": "nonsense"})
+    await hub.broadcast({"type": "event", "event": "recovered"})
+
+    assert hub.invalid == 1
+    assert [frame["event"] for frame in socket.frames] == ["recovered"]
+
+
+def test_the_opening_snapshot_is_validated_like_every_other_frame(client, sdk):
+    """The largest payload must not be the one the guard never sees."""
+    sdk.record_message("in", "hello", provider="peer")
+
+    with client.websocket_connect("/ws") as socket:
+        frame = socket.receive_json()
+
+    assert frame["type"] == "snapshot"
+    assert "opponent_position" not in str(frame)
+
+
+def test_a_leaking_snapshot_is_refused_rather_than_served(client, sdk, hub):
+    """If a future query ever added a forbidden field, the socket must not
+    quietly hand it to a browser. The connection is closed with nothing sent."""
+    sdk.snapshot = mock.Mock(return_value={"board": {"opponent_position": [1, 1]}})
+
+    with contextlib.suppress(Exception), client.websocket_connect("/ws"):
+        pass
+
+    assert sdk.snapshot.called
+    assert hub.viewers == 0
+
+
 def test_leaving_twice_is_safe(hub):
     socket = RecordingSocket()
     hub._sockets.append(socket)

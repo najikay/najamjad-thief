@@ -31,6 +31,27 @@ def test_a_tampered_log_exits_non_zero_and_names_the_step(capsys):
     assert "step 7 (record 7)" in output
 
 
+def test_a_malformed_log_is_reported_cleanly_not_as_a_traceback(capsys, tmp_path):
+    """Exit 2 (unreadable file) is deliberately distinct from exit 1 (tampered):
+    a script must be able to tell a broken file from a proven forgery."""
+    broken = tmp_path / "log_broken.json"
+    broken.write_text("{not json", encoding="utf-8")
+
+    code = main(["--log", str(broken), "--check"])
+    captured = capsys.readouterr()
+
+    assert code == 2
+    assert "cannot read" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_a_log_with_no_records_is_a_usage_error_not_a_verdict(capsys, tmp_path):
+    empty = tmp_path / "log_empty.json"
+    empty.write_text('{"records": []}', encoding="utf-8")
+
+    assert main(["--log", str(empty), "--check"]) == 2
+
+
 def test_a_missing_log_is_reported_on_stderr(capsys, tmp_path):
     code = main(["--log", str(tmp_path / "absent.json"), "--check"])
 

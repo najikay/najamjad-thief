@@ -63,6 +63,38 @@ def test_a_flattened_record_is_read_as_payload_plus_nonce_and_commit():
     assert record["nonce"] == sealed.nonce
 
 
+@pytest.mark.parametrize(
+    ("record", "nonce", "commit"),
+    [
+        ({"step": 1, "move": "MOVE:N", "commit": "abc"}, "", "abc"),
+        ({"step": 1, "move": "MOVE:N", "nonce": "ff"}, "ff", ""),
+        ({"step": 1, "move": "MOVE:N"}, "", ""),
+    ],
+)
+def test_a_flattened_record_missing_one_sealed_field_still_loads(record, nonce, commit):
+    """A truncated log, or a peer whose nonce key we do not recognise, must
+    reach the verifier to be judged — failing on the way in would report a
+    load error where the honest answer is "this does not verify".
+    """
+    normalised = normalise_record(record)
+
+    assert normalised["nonce"] == nonce
+    assert normalised["commit"] == commit
+    assert normalised["payload"]["step"] == 1
+    assert "commit" not in normalised["payload"]
+    assert "nonce" not in normalised["payload"]
+
+
+def test_a_record_missing_its_nonce_fails_verification_rather_than_loading():
+    """The end-to-end consequence of the case above."""
+    from najamjad_agent.replay.verifier import verify_log
+
+    result = verify_log({"records": [{"step": 1, "move": "MOVE:N", "commit": "abc"}]})
+
+    assert result.passed is False
+    assert result.banner == "TAMPERED"
+
+
 def test_a_flattened_record_still_verifies_after_normalisation():
     """Tolerance must preserve the bytes, or it would break honest peers."""
     from najamjad_agent.domain.crypto import verify
