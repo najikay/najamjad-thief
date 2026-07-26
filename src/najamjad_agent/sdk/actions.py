@@ -28,6 +28,7 @@ class AgentActions:
         workspace: Path | None = None,
         emit: Any = None,
         dashboard: Any = None,
+        match: Any = None,
     ) -> None:
         """Hold the services; all are optional before a match is configured."""
         self._server = server
@@ -37,6 +38,7 @@ class AgentActions:
         self._workspace = workspace or Path("workspace")
         self._emit = emit or (lambda _event: None)
         self._dashboard = dashboard
+        self._match = match
 
     @property
     def public_url(self) -> str:
@@ -88,6 +90,24 @@ class AgentActions:
         if self._tunnel is not None:
             self._tunnel.stop()
         self._emit({"event": "agent.offline"})
+
+    def attach_match(self, runner: Any) -> None:
+        """Wire in the match runner once the opponent URL is known."""
+        self._match = runner
+
+    def play_match(self) -> Any:
+        """Play the agreed series against the opponent and return the result."""
+        if self._match is None:
+            raise RuntimeError("no match configured — set network.opponent_url first")
+        self._emit({"event": "match.starting"})
+        result = self._match.play_series()
+        self._emit({"event": "match.finished", "games": len(self._match.games)})
+        return result
+
+    @property
+    def games(self) -> list[dict[str, Any]]:
+        """Every mini-game played so far, for the report and the dashboard."""
+        return list(getattr(self._match, "games", []))
 
     def preflight(self) -> PreflightReport:
         """Run the match-day checks and report what is not ready."""

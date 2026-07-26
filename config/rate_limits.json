@@ -19,12 +19,13 @@
         "queue_depth": 100
       },
       "mcp_peer": {
-        "requests_per_minute": 60,
-        "requests_per_hour": 2000,
+        "requests_per_minute": 600,
+        "requests_per_hour": 20000,
         "concurrent_max": 2,
         "retry_after_seconds": 5,
         "max_retries": 3,
-        "queue_depth": 100
+        "queue_depth": 100,
+        "_note": "The opponent is our protocol partner, not a metered third-party API. The gatekeeper exists to be a good citizen towards Anthropic and Gmail; applying those limits here only risks delaying our own reply past the opponent's 30s deadline and forfeiting a game to our own throttle. Rate raised so it never shapes a legitimate match; concurrency stays at the Appendix F ceiling of 2."
       },
       "anthropic": {
         "requests_per_minute": 30,

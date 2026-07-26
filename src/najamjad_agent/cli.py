@@ -49,6 +49,22 @@ def peer(
 
 
 @app.command()
+def match(
+    config: ConfigOption = None,
+    role: RoleOption = "",
+    tunnel: Annotated[bool, typer.Option("--tunnel/--no-tunnel")] = False,
+    dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = False,
+) -> None:
+    """Serve, then play the agreed series against the configured opponent."""
+    sdk = build_sdk(config=config, role=role, dashboard=dashboard)
+    typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
+    result = sdk.actions.play_match()
+    for game in sdk.actions.games:
+        typer.echo(f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} {game['audit']}")
+    typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
+
+
+@app.command()
 def preflight(config: ConfigOption = None, role: RoleOption = "") -> None:
     """Run the match-day checks and print the checklist."""
     report = build_sdk(config=config, role=role, dashboard=False).actions.preflight()

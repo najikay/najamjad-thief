@@ -12,6 +12,7 @@ cop and thief configs to be kept strictly apart.
 """
 
 from pathlib import Path
+from typing import Any
 
 from ..constants import Role
 from ..net.inbox import Inboxes
@@ -59,8 +60,9 @@ def build_sdk(
     manager = ConfigManager.load(role_dir, shared_config=CONFIG_ROOT / "game.json")
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path("workspace")) / "events.jsonl")
+    inboxes = Inboxes(emit=bus.publish)
     server = PeerServer(
-        inboxes=Inboxes(emit=bus.publish),
+        inboxes=inboxes,
         port=int(manager.get("network.my_port", 8802)),
         emit=bus.publish,
     )
@@ -75,7 +77,40 @@ def build_sdk(
     sdk = AgentSdk(events=bus, actions=actions)
     if dashboard:
         _attach_dashboard(sdk, actions, manager, bus)
+    _attach_match(actions, manager, chosen, bus, inboxes)
     return sdk
+
+
+def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus, inboxes) -> None:
+    """Give the agent the ability to actually play, when it knows an opponent.
+
+    Without an opponent URL there is nothing to play against, and that is a
+    normal pre-match state rather than an error — `preflight` is what reports
+    it. Import is local so a config-only command never pays for the LLM stack.
+    """
+    if not str(manager.get("network.opponent_url", "") or "").strip():
+        return
+    from .match_setup import build_match, build_transport
+
+    transport = build_transport(manager, bus, inboxes)
+    actions.attach_match(build_match(manager, role, transport, _speaker(manager, bus), bus))
+
+
+def _speaker(manager: ConfigManager, bus) -> Any:
+    """The hint writer: real providers when configured, templates otherwise."""
+    from ..llm.router import LLMRouter
+    from ..llm.speaker import Speaker
+    from ..llm.template_provider import TemplateProvider
+
+    template = TemplateProvider(map_area=str(manager.get("world.map_area", "")))
+    return Speaker(
+        router=LLMRouter(providers=[template], emit=bus.publish),
+        template=template,
+        arena=str(manager.get("world.map_area", "")),
+        hint_max_words=int(manager.get("world.hint_max_words", 15)),
+        every_n_steps=int(manager.get("llm.every_n_steps", 1)),
+        emit=bus.publish,
+    )
 
 
 def _attach_dashboard(

@@ -55,7 +55,11 @@ def load_rate_limits(path: Path) -> dict[str, RateLimitConfig]:
         raise ValueError(f"rate_limits version {version!r} is not supported {SUPPORTED_VERSIONS}")
     services: dict[str, RateLimitConfig] = {}
     for name, values in section.get("services", {}).items():
-        config = RateLimitConfig(**values)
+        # Underscore-prefixed keys are comments — the convention this project
+        # and the reference both use to explain a setting where it lives.
+        # Passing one into the dataclass raised `unexpected keyword argument`,
+        # so documenting a limit broke loading it.
+        config = RateLimitConfig(**{k: v for k, v in values.items() if not k.startswith("_")})
         config.validate(name)
         services[name] = config
     if "default" not in services:
