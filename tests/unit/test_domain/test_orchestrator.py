@@ -145,8 +145,17 @@ def test_the_thief_answers_a_landing_capture_claim_honestly() -> None:
     """Rules 21-22: the claim settles only if the cop is truly on our cell."""
     orchestrator, _, _ = build_orchestrator(role=Role.THIEF, position=(3, 3))
     orchestrator._transport.inbox.append(_turn(capture_claim=True, claimed_cell=[3, 3]))
-    assert orchestrator.receive_turn() is EndReason.CAPTURE
+
+    # The game does not close on receipt: the cop is owed an honest answer and
+    # cannot otherwise learn whether its claim landed. The answer rides on our
+    # next turn, and the game closes once it has gone out.
+    assert orchestrator.receive_turn() is None
+    assert orchestrator.state.pending_end is EndReason.CAPTURE
+
+    assert orchestrator.take_turn() is EndReason.CAPTURE
     assert orchestrator.fsm.phase is Phase.GAME_END
+    sent = orchestrator._transport.sent[-1]
+    assert sent["claim_response"] is True
 
 
 def test_a_capture_claim_from_elsewhere_does_not_end_the_game() -> None:
@@ -167,7 +176,14 @@ def test_barrier_capture_ends_the_game() -> None:
 def test_survival_threshold_ends_the_game() -> None:
     orchestrator, _, _ = build_orchestrator(role=Role.COP, inbox=[_turn()])
     orchestrator.state.full_turns = 34
-    assert orchestrator.receive_turn() is EndReason.SURVIVAL
+
+    assert orchestrator.receive_turn() is None
+    assert orchestrator.state.pending_end is EndReason.SURVIVAL
+
+    # Declared to the opponent, so both sides close on survival rather than one
+    # of them timing out and filing a contradictory result.
+    assert orchestrator.take_turn() is EndReason.SURVIVAL
+    assert orchestrator._transport.sent[-1]["win_claim"] == "survival"
 
 
 def test_events_carry_step_correlation() -> None:

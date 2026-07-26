@@ -157,7 +157,12 @@ def test_capture_ends_the_game_and_scores_the_series(link) -> None:
     cop.receive_turn()
     cop.state.opponent_estimate = (3, 3)
     cop.take_turn()
-    ended = thief.receive_turn()
+
+    # The thief sees the claim land but owes an honest answer before the game
+    # can close (rules 21-22): the cop cannot otherwise learn whether it won.
+    assert thief.receive_turn() is None
+    ended = thief.take_turn()
+    assert cop.receive_turn() is EndReason.CAPTURE, "the cop must learn its claim landed"
 
     assert ended is EndReason.CAPTURE
     tracker = SeriesTracker("najamjad", "rival", ScoreTable.from_config(SCORING), Role.COP)

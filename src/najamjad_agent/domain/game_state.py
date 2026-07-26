@@ -8,7 +8,7 @@ logic.
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..constants import Move, Role
+from ..constants import EndReason, Move, Role
 from .belief import BeliefGrid
 from .board import Board
 from .ledger import CommitLedger
@@ -49,6 +49,12 @@ class GameState:
     opponent_estimate: Position | None = None
     pending_capture_claim: bool | None = None
     claimed_cell: Position | None = None
+    # An ending we have detected but not yet told the opponent about. Both peers
+    # must record the same reason or rules 33-35 void the game, and they cannot
+    # detect every ending at the same moment: the turn order means one side sees
+    # it a half-turn earlier. So the side that sees it first announces it on one
+    # final sealed turn, and only then closes the game.
+    pending_end: EndReason | None = None
     barriers_used: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
 

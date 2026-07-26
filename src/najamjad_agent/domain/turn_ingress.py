@@ -127,7 +127,26 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
         extras["barrier_placed"] = [barrier[0], barrier[1]]
     if state.role.value == "police":
         extras["capture_claim"] = claim
+    elif state.pending_capture_claim:
+        # Rules 21-22: a claim must be answered, and answered honestly. Without
+        # this the cop never learns whether its claim landed — it waits out the
+        # deadline and records a timeout for a game the thief has recorded as a
+        # capture, and two contradictory reports void the game for both (rules
+        # 33-35). The answer is sealed like everything else, so a lie here is
+        # provable at the audit.
+        extras["claim_response"] = _claim_lands(state)
+        state.pending_capture_claim = None
+    if state.pending_end is not None and "claim_response" not in extras:
+        # An ending only we can see — survival, or an immobilised thief. Declare
+        # it so the opponent closes on the same reason instead of timing out.
+        extras["win_claim"] = state.pending_end.value
     return extras
+
+
+def _claim_lands(state: GameState) -> bool:
+    """Whether the cop's claimed cell really is ours."""
+    claimed = state.claimed_cell
+    return claimed is not None and tuple(claimed) == tuple(state.own_position)
 
 
 def build_turn_message(
@@ -155,6 +174,10 @@ def build_turn_message(
             # Claiming necessarily discloses where we stand; that cost is what
             # stops a cop claiming speculatively every turn.
             message["claimed_cell"] = list(state.own_position)
+    if "claim_response" in payload:
+        message["claim_response"] = payload["claim_response"]
+    if payload.get("win_claim"):
+        message["win_claim"] = payload["win_claim"]
     return message
 
 

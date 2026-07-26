@@ -89,6 +89,13 @@ class Orchestrator:
             extra=outgoing_extras(self.state, barrier, self._capture_claim()),
         )
         self._commit_and_send(payload)
+        announced = self.state.pending_end
+        if announced is not None:
+            # The declaration has now gone out with this turn, so both sides
+            # close on the same reason at the same point in the game.
+            self.state.pending_end = None
+            self.event("game.declared", reason=announced.value)
+            return self._resolve(announced)
         return self._resolve(own_barrier_capture(self.state, barrier))
 
     def receive_turn(self) -> EndReason | None:
