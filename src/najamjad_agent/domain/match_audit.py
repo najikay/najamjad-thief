@@ -16,10 +16,19 @@ from .audit import AuditReport, audit_records
 from .ledger import CommitLedger
 
 
-def send_reveal(ledger: CommitLedger, transport: Any) -> list[dict[str, Any]]:
-    """Open our ledger and hand the peer everything they need to check us."""
+def send_reveal(ledger: CommitLedger, transport: Any, sender: str = "") -> dict[str, Any]:
+    """Open our ledger and hand the peer everything they need to check us.
+
+    Enveloped as `{"sender": …, "records": […]}`, which is what the wire schema
+    declares and what `receive_reveal` reads back. We used to send the bare
+    list: the peer's validator rejected it, the reveal never arrived, and both
+    sides recorded TAMPERED for a game neither had cheated in.
+
+    Every in-memory test passed throughout, because the fake transport wrapped
+    the list on the way past and the real one did not.
+    """
     ledger.open_audit()
-    payload = ledger.audit_payload()
+    payload = {"sender": sender, "records": ledger.audit_payload()}
     transport.send_audit(payload)
     return payload
 
@@ -33,12 +42,14 @@ def receive_reveal(transport: Any, timeout: float) -> AuditReport:
     return audit_records(records)
 
 
-def exchange_audit(ledger: CommitLedger, transport: Any, timeout: float = 30.0) -> AuditReport:
+def exchange_audit(
+    ledger: CommitLedger, transport: Any, timeout: float = 30.0, sender: str = ""
+) -> AuditReport:
     """Reveal ours, verify theirs, and report on theirs.
 
     Ours goes first unconditionally. Withholding our nonces until we have seen
     theirs would be indistinguishable, from their side, from preparing to
     forge — and rule 18 only protects a nonce until the audit, not through it.
     """
-    send_reveal(ledger, transport)
+    send_reveal(ledger, transport, sender)
     return receive_reveal(transport, timeout)

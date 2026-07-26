@@ -125,7 +125,7 @@ class MatchRunner:
         if reason in SKIP_AUDIT_REASONS:
             self._emit({"event": "audit.skipped", "reason": reason.value})
             return AuditReport(passed=False, skipped=True)
-        return exchange_audit(state.ledger, self._transport, self._audit_timeout)
+        return exchange_audit(state.ledger, self._transport, self._audit_timeout, state.role.value)
 
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:

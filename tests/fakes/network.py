@@ -43,9 +43,16 @@ class BlockingLink:
             return None
 
     def send_audit(self, payload: Any) -> None:
-        """Hand our revealed records to the peer."""
+        """Hand our revealed records to the peer, exactly as sent.
+
+        Forwarded untouched. This fake used to wrap the payload in a
+        `{"records": …}` envelope the real transport never added, so the domain
+        sent a bare list, every in-memory test passed, and the reveal was
+        rejected by the peer's validator in every real match. A fake kinder
+        than the wire tests nothing.
+        """
         assert self.peer is not None, "link was never connected"
-        self.peer.audits.put({"records": payload})
+        self.peer.audits.put(payload)
 
     def receive_audit(self, timeout: float) -> Any:
         """Wait for the peer's revealed records; None once the deadline passes."""

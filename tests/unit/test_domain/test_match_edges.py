@@ -48,9 +48,28 @@ def test_we_reveal_our_own_records_even_to_a_silent_peer():
     state.ledger.commit(1, {"step": 1, "move": "MOVE:S"})
     peer = SilentPeer()
 
-    exchange_audit(state.ledger, peer, timeout=0.01)
+    exchange_audit(state.ledger, peer, timeout=0.01, sender="police")
 
-    assert peer.received and len(peer.received[0]) == 1
+    assert peer.received, "our reveal must go out even if theirs never comes"
+    assert len(peer.received[0]["records"]) == 1
+
+
+def test_the_reveal_is_enveloped_the_way_the_wire_schema_declares():
+    """The bug this shape exists for: we sent a bare list, the peer's validator
+    rejected it, the reveal never arrived, and both sides recorded TAMPERED for
+    a game neither had cheated in. Only the fake transport wrapped it."""
+    from najamjad_agent.protocol.schemas_wire import AuditPayload
+
+    state = build_state(Role.COP)
+    state.ledger.commit(1, {"step": 1, "move": "MOVE:S"})
+    peer = SilentPeer()
+
+    exchange_audit(state.ledger, peer, timeout=0.01, sender="police")
+
+    # Parses as the wire schema — which a bare list does not.
+    parsed = AuditPayload.model_validate(peer.received[0])
+    assert parsed.sender == "police"
+    assert len(parsed.records) == 1
 
 
 def test_an_audit_reply_without_the_usual_envelope_is_still_read():
