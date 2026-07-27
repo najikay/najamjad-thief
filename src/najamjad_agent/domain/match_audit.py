@@ -51,7 +51,17 @@ def receive_reveal(transport: Any, timeout: float) -> AuditReport:
     """Re-hash whatever the peer revealed; silence is a failed audit, not a crash."""
     reply = transport.receive_audit(timeout)
     if reply is None:
-        return AuditReport(passed=False, errors=["opponent revealed nothing before the deadline"])
+        # Silence is not forgery. `TAMPERED` is an accusation that voids the
+        # game for the accused (rule 19), and an opponent who never answered
+        # has proved nothing except that they stopped talking — which the end
+        # reason already records. We reached this from a *disagreement*, not a
+        # forgery: they were still waiting for a move while we thought the game
+        # was over, so they never got as far as revealing anything.
+        return AuditReport(
+            passed=False,
+            skipped=True,
+            errors=["opponent revealed nothing before the deadline"],
+        )
     records = reply.get("records") if isinstance(reply, dict) else reply
     return audit_records(records)
 

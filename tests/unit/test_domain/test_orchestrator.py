@@ -167,13 +167,22 @@ def test_a_capture_claim_from_elsewhere_does_not_end_the_game() -> None:
     assert orchestrator.receive_turn() is None
 
 
-def test_barrier_capture_ends_the_game() -> None:
-    orchestrator, _, _ = build_orchestrator(
+def test_a_barrier_on_the_believed_thief_is_claimed_not_concluded() -> None:
+    """The cop names the cell and waits to be told; it does not end the game.
+
+    Concluding from `opponent_estimate` agreed only with opponents who share
+    our barrier-trap rule. The claim names a cell the thief checks against its
+    own true position, which every implementation understands.
+    """
+    orchestrator, transport, _ = build_orchestrator(
         role=Role.COP, moves=[Move.STAY], barriers=[(0, 1)], position=(0, 0)
     )
     orchestrator.state.opponent_estimate = (0, 1)
-    assert orchestrator.take_turn() is EndReason.CAPTURE
-    assert orchestrator.state.ledger.vault.audit_open, "audit opens on game end"
+
+    assert orchestrator.take_turn() is None, "their answer ends the game, not our belief"
+    sent = transport.sent[-1]
+    assert sent["barrier_placed"] == [0, 1], "the barrier is declared (rules 15-16)"
+    assert "capture_claim" not in sent, "we do not claim a cell we are not standing on"
 
 
 def test_survival_threshold_ends_the_game() -> None:

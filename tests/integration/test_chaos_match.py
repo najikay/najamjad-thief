@@ -84,7 +84,14 @@ def test_an_opponent_that_never_speaks_at_all_resolves_without_hanging():
 
 
 def test_a_peer_that_stops_revealing_still_lets_us_record_the_game():
-    """Silence at audit is their forfeit, not our exception (rules 18-20)."""
+    """Silence at audit is not forgery, and must not be recorded as one.
+
+    `TAMPERED` is an accusation: under rule 19 it voids the game for the
+    accused. An opponent who never answered has proved nothing except that they
+    stopped talking, and the end reason already records that. We reached this
+    state once from a plain *disagreement* — they were still waiting for a move
+    while we thought the game was over — and called them forgers for it.
+    """
     left, right = linked_pair()
     ours, theirs = runner(left, Role.COP, games=1), runner(right, Role.THIEF, games=1)
     original = theirs._transport.send_audit
@@ -93,7 +100,8 @@ def test_a_peer_that_stops_revealing_still_lets_us_record_the_game():
     errors = play(ours, theirs)
 
     assert not errors
-    assert ours.games[0]["audit"] == "TAMPERED", "an unrevealed audit cannot pass"
+    assert ours.games[0]["audit"] != "TAMPERED", "silence is not evidence of forgery"
+    assert ours.games[0]["audit"] == "AUDIT SKIPPED"
     assert original is not None
 
 

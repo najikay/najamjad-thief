@@ -165,22 +165,31 @@ def test_an_empty_message_is_survivable(state: GameState) -> None:
 
 def test_extras_include_the_scent_snapshot_without_a_position(state: GameState) -> None:
     state.own_scent.deposit((0, 0))
-    extras = outgoing_extras(state, None, claim=False)
+    extras = outgoing_extras(state, None, claim=None)
     assert "smell_grid" in extras
     assert "position" not in extras
 
 
-def test_cop_extras_carry_the_capture_claim(state: GameState) -> None:
-    assert outgoing_extras(state, None, claim=True)["capture_claim"] is True
+def test_cop_extras_carry_the_claimed_cell_not_a_flag(state: GameState) -> None:
+    """The reference compares `tuple(capture_claim)` against the thief's true
+    position, so a bare `True` raises in its process — a claim it cannot read is
+    a capture it can never confirm."""
+    assert outgoing_extras(state, None, claim=(2, 3))["capture_claim"] == [2, 3]
+
+
+def test_not_claiming_sends_no_claim_at_all(state: GameState) -> None:
+    """An empty claim is not a claim; the opponent should not have to tell them
+    apart, and a falsy value is one more shape for a strict parser to trip on."""
+    assert "capture_claim" not in outgoing_extras(state, None, claim=None)
 
 
 def test_thief_extras_never_carry_a_capture_claim() -> None:
     thief = build_state(Role.THIEF)
-    assert "capture_claim" not in outgoing_extras(thief, None, claim=True)
+    assert "capture_claim" not in outgoing_extras(thief, None, claim=(2, 3))
 
 
 def test_barrier_extras_declare_the_exact_cell(state: GameState) -> None:
-    assert outgoing_extras(state, (1, 2), claim=False)["barrier_placed"] == [1, 2]
+    assert outgoing_extras(state, (1, 2), claim=None)["barrier_placed"] == [1, 2]
 
 
 def test_a_peer_recommitting_a_step_is_refused_not_fatal(state: GameState) -> None:

@@ -5,11 +5,20 @@ from najamjad_agent.domain.endings import opponent_end_reason, own_barrier_captu
 from tests.fakes.orchestration import build_state
 
 
-def test_a_barrier_dropped_on_the_believed_thief_captures() -> None:
-    """Book rule 46: the barrier itself ends the game."""
+def test_a_barrier_on_the_believed_thief_does_not_end_the_game_by_itself() -> None:
+    """A capture is a claim the thief confirms, never a conclusion we draw.
+
+    `opponent_estimate` is a belief. Ending on it agreed with our own thief,
+    which concedes barrier traps, and disagreed with the course reference,
+    whose thief has no such rule — it played on while we filed a capture, and a
+    game the opponent does not agree ended is void for both (rules 33-35).
+
+    The cop now *claims* the cell instead; `test_orchestrator` covers the claim
+    going out, and `_answer_says_caught` closes the game on their answer.
+    """
     state = build_state(Role.COP)
     state.opponent_estimate = (0, 1)
-    assert own_barrier_capture(state, (0, 1)) is EndReason.CAPTURE
+    assert own_barrier_capture(state, (0, 1)) is None
 
 
 def test_a_barrier_placed_elsewhere_does_not_capture() -> None:
@@ -31,17 +40,20 @@ def test_a_thief_cannot_capture_by_barrier() -> None:
     assert own_barrier_capture(state, (3, 4)) is None
 
 
-def test_the_cop_wins_when_the_believed_thief_is_walled_in() -> None:
-    """Book rule 47: a thief with no move that changes its cell is captured."""
+def test_the_cop_does_not_declare_a_win_over_a_thief_it_only_believes_is_walled_in() -> None:
+    """The same rule as the barrier, and one sharper reason.
+
+    This ending used to be announced as a `win_claim` — and in the reference's
+    protocol a win claim from either side is read as the *thief* winning, so
+    declaring a cop capture that way would have had the opponent record a
+    victory for the wrong team.
+    """
     state = build_state(Role.COP, position=(6, 6))
     state.board = state.board.with_barrier((1, 0)).with_barrier((0, 1))
     state.opponent_estimate = (0, 0)
 
-    # Deferred, not returned: only we can see this ending, so it is announced
-    # on one final sealed turn. Closing here left the opponent timing out and
-    # filing a contradictory report (rules 33-35).
     assert opponent_end_reason(state, {}) is None
-    assert state.pending_end is EndReason.CAPTURE
+    assert state.pending_end is None
 
 
 def test_an_unconfined_thief_is_not_captured() -> None:

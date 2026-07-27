@@ -87,7 +87,7 @@ class Orchestrator:
             intent=intent,
             hint=hint,
             state=self.state.state_string(),
-            extra=outgoing_extras(self.state, barrier, self._capture_claim()),
+            extra=outgoing_extras(self.state, barrier, self._capture_claim(barrier)),
         )
         self._commit_and_send(payload)
         announced = self.state.pending_end
@@ -146,11 +146,28 @@ class Orchestrator:
             return None
         return self._brain.pick_barrier(facts)
 
-    def _capture_claim(self) -> bool:
-        """Claim only from our own true cell — never a foreign one (rule 22)."""
+    def _capture_claim(self, barrier: Position | None = None) -> Position | None:
+        """The cell we are claiming the thief occupies, if we are claiming one.
+
+        Only ever **our own true cell** (rule 22). Claiming a cell we are not
+        standing on would let a cop probe the board for free; the disclosure is
+        the price of claiming, and it is what makes a speculative claim
+        expensive.
+
+        A barrier dropped on the believed thief is therefore *not* claimed here.
+        It is declared (rules 15-16), and a thief that finds itself under it
+        concedes on its own next turn — which is both the honest mechanism and
+        the only one an opponent who does not share our barrier rule can be
+        expected to take part in.
+
+        `None` when we are not claiming: an empty claim is not a claim, and the
+        opponent should not have to distinguish the two.
+        """
+        del barrier
         if self.state.role is not Role.COP:
-            return False
-        return self.state.opponent_estimate == self.state.own_position
+            return None
+        target = self.state.opponent_estimate
+        return target if target is not None and target == self.state.own_position else None
 
     def _commit_and_send(self, payload: dict[str, Any]) -> None:
         """Seal the step and transmit only what a peer is entitled to see.

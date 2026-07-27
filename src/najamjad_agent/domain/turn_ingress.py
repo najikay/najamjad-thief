@@ -131,7 +131,7 @@ def _absorb_capture_claim(
     )
 
 
-def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, Any]:
+def outgoing_extras(state: GameState, barrier: Any, claim: Any = None) -> dict[str, Any]:
     """Optional sealed fields carried alongside our move.
 
     The scent snapshot is what the opponent absorbs; it deliberately contains
@@ -142,7 +142,13 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
     if barrier:
         extras["barrier_placed"] = [barrier[0], barrier[1]]
     if state.role.value == "police":
-        extras["capture_claim"] = claim
+        if claim is not None:
+            # The cell, not a boolean. The reference does `tuple(capture_claim)`
+            # to compare it against the thief's true position, so a bare `true`
+            # raises in its process — and a claim it cannot read is a capture it
+            # can never confirm. We send nothing at all when we are not
+            # claiming, rather than a falsy value.
+            extras["capture_claim"] = [claim[0], claim[1]]
     elif state.pending_capture_claim is not None:
         # Rules 21-22: a claim must be answered, and answered honestly. Without
         # this the cop never learns whether its claim landed — it waits out the
@@ -213,7 +219,7 @@ def build_turn_message(
         # the message unparseable by a reference peer, whose parser rejects any
         # field it does not declare. Claiming still discloses where we stand,
         # which is what stops a cop claiming speculatively every turn.
-        message["capture_claim"] = list(state.own_position)
+        message["capture_claim"] = list(payload["capture_claim"])
     if payload.get("claim_response") is not None:
         message["claim_response"] = payload["claim_response"]
     if payload.get("win_claim"):

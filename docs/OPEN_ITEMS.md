@@ -1,6 +1,6 @@
 # Open items
 
-**Version 1.40 · 2026-07-27**
+**Version 1.50 · 2026-07-27**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
@@ -8,37 +8,20 @@ can see we know.
 
 ---
 
-## T-2307 — rehearsal vs the reference: one game agrees, game 2 audits TAMPERED
+## T-2307 — rehearsal vs the reference: a two-game series now fully agrees
 
-**Settled.** A single mini-game against the course reference simulator now ends
-in **complete agreement**:
+Both peers, both mini-games, role swap included:
 
-| | reference | us |
-|---|---|---|
-| result | `survival` | `survival` |
-| winner | `najamjad` (thief) | `najamjad` |
-| score | `{segal-police-team: 5, najamjad: 10}` | `{najamjad: 10, them: 5}` |
-| audit | — | `Verified OK` |
-| steps | 35 | 35 |
+| game | our role | reference says | we say | audit |
+|---|---|---|---|---|
+| g01 | thief | `survival`, najamjad, 10-5 | `survival`, 35 steps | `Verified OK` |
+| g02 | police | `survival`, segal, 10-5 | `survival`, 34 steps | `Verified OK` |
 
-Four defects had to be fixed to get there; they are described in the commit and
-summarised below.
+Series 15-15 on both sides. No `TAMPERED`, no disagreement.
 
-**Still open.** In a three-game series, game 1 agrees as above, **game 2 plays 11
-steps and then audits `TAMPERED`**, after which the reference exits and our game
-3 handshake finds nobody. A `TAMPERED` verdict against an opponent who has not
-cheated is the most serious kind of wrong answer we can produce — under rule 19
-it voids their game — so this blocks multi-game matches against reference-based
-opponents.
-
-**What is known.** Game 1's audit verifies, so the record shapes and the
-re-hashing are right in principle; whatever differs is specific to the *second*
-mini-game. The obvious candidates are the reference's per-sub-game peer rebuild
-(its records restart, and it re-runs the agreement exchange each game), and our
-own handling of an audit that arrives around the sub-game boundary.
-
-**Do not play a counted multi-game match against a reference-based opponent
-until this is understood.** A single-game match is verified end to end.
+What is still unproven is a **full six-game** series against the reference, and
+any series against an opponent that is not the reference. The warm-up policy
+exists for the second of those.
 
 ## COMPETITIVE RISK — our thief loses to a strong cop
 

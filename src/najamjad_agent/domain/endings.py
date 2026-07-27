@@ -10,7 +10,7 @@ end-of-game special cases.
 from typing import Any
 
 from ..constants import EndReason, Role
-from .capture import evaluate_barrier_capture, evaluate_capture, resolve_survival
+from .capture import evaluate_barrier_capture, resolve_survival
 from .game_state import GameState
 from .params import Position
 
@@ -21,12 +21,26 @@ def return_reason(reason: EndReason) -> EndReason:
 
 
 def own_barrier_capture(state: GameState, barrier: Position | None) -> EndReason | None:
-    """Did our own move end the mini-game?"""
-    target = state.opponent_estimate
-    if not (state.role is Role.COP and barrier and target):
-        return None
-    captured = evaluate_barrier_capture(barrier, target).captured
-    return return_reason(EndReason.CAPTURE) if captured else None
+    """Whether a barrier we just placed ends the mini-game. It never does.
+
+    We used to end the game here, on `opponent_estimate` — our *belief* about
+    where the thief is. Against ourselves that agreed, because our own thief
+    concedes a barrier trap from its true cell and both sides reached the same
+    verdict. Against the course reference it did not: its thief has no concept
+    of losing by being walled in, so it kept playing while we closed the game,
+    filed the capture, and then read its silence at audit time as tampering.
+
+    A capture is a *claim the thief confirms* (rules 21-22). One we conclude
+    from a guess is worth nothing even when the guess is right: a game the
+    opponent does not agree ended is void for both of us (rules 33-35), which
+    scores zero — strictly worse than playing on and taking the survival.
+
+    So the barrier is placed, declared (rules 15-16), and the thief decides. If
+    it really is trapped and says so, `_their_declaration` closes the game on
+    their word; if it says nothing, the game runs to its horizon.
+    """
+    del state, barrier
+    return None
 
 def opponent_end_reason(state: GameState, message: dict[str, Any]) -> EndReason | None:
     """Did their move (or the clock) end the mini-game?
@@ -41,23 +55,30 @@ def opponent_end_reason(state: GameState, message: dict[str, Any]) -> EndReason 
         return return_reason(declared)
     if state.role is Role.THIEF and _barrier_traps_us(state, message):
         # Rules 15-16 make the barrier declaration mandatory, so we can evaluate
-        # it from our own true cell the moment it arrives — both sides reach the
-        # same verdict on the same turn, with nothing to announce. Without this
-        # the cop ended on a barrier capture and we sat waiting, then filed a
-        # timeout against its capture.
-        return return_reason(EndReason.CAPTURE)
+        # it from our own true cell the moment it arrives. But we must *say so*
+        # rather than simply closing: the cop no longer concludes a barrier
+        # capture from its own belief, so a silent concession leaves it waiting
+        # out the deadline against a game we have already ended.
+        #
+        # The concession travels as an answered capture claim — "your barrier
+        # landed on me" — because that is the one shape every implementation
+        # reads as a police capture. A `win_claim` would not do: in the
+        # reference's protocol a win claim from the thief means the *thief* won.
+        state.claimed_cell = tuple(message["barrier_placed"])
+        state.pending_capture_claim = True
+        state.pending_end = EndReason.CAPTURE
     if state.role is Role.THIEF and message.get("capture_claim"):
         # Rules 21-22: answered from our own true cell, and honestly. The claim
         # names a cell, so it lands only if that cell is ours.
         claimed = state.claimed_cell
         if claimed is not None and tuple(claimed) == tuple(state.own_position):
             state.pending_end = EndReason.CAPTURE
-    if state.role is Role.COP and state.opponent_estimate:
-        verdict = evaluate_capture(
-            state.board, state.own_position, state.opponent_estimate, True
-        )
-        if verdict.captured and verdict.reason == "immobilised":
-            state.pending_end = EndReason.CAPTURE
+    # A cop used to conclude an immobilisation capture here, from
+    # `opponent_estimate` — a belief the thief never confirmed. It is gone for
+    # the same reason as the barrier capture in `own_barrier_capture`, plus a
+    # sharper one: this ending was *announced* as a `win_claim`, and in the
+    # reference's protocol a `win_claim` means the **thief** won. Declaring a
+    # cop capture that way would have had the opponent record a thief victory.
     params = state.board.params
     survived = resolve_survival(state.full_turns, params.survival_threshold, params.max_moves)
     if survived is not None and state.pending_end is None:
