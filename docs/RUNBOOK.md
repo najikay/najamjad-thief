@@ -17,6 +17,7 @@ run on one machine. Substitute the verb for whichever side you are running.
 |---|---|---|
 | Both repos current | `git pull && uv sync` | no changes pending |
 | All gates green | `uv run python scripts/check_all.py` | `ALL GATES PASSED` |
+| Pre-match smoke | `uv run python scripts/pre_match_smoke.py` | `MATCH READY` (~50 s) |
 | Tunnel resolves | `curl -sI https://cop.4laboratory.com/mcp` | any HTTP response, not DNS failure |
 | Gmail token valid | `uv run python scripts/authorise_gmail.py --check` | scope is `gmail.send` only |
 

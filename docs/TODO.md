@@ -633,25 +633,25 @@
 - [x] **T-2105** (P0) Assert both peers' result `mutual_agreement` hashes are identical in the CI series — DoD: assertion green [FR-REP-6]
 - [x] **T-2106** (P1) Build the self-play harness: seeded headless N-game runner with pluggable brains, JSONL results output — DoD: 100-game run completes with reproducible seed [FR-STR-7]
 - [x] **T-2107** (P1) Port the reference greedy brains as baseline opponents inside the harness — DoD: baseline-vs-baseline games run deterministically under seed [ADR-012]
-- [ ] **T-2108** (P1) Implement the win-rate gate: our cop vs reference thief AND our thief vs reference cop, each ≥ 70% over 100 seeded games (M4 exit; nightly job, not PR-blocking) — DoD: nightly job publishes pass/fail vs threshold [deps: T-0217, T-2106]
+- [x] **T-2108** (P1) Implement the win-rate gate: our cop vs reference thief AND our thief vs reference cop, each ≥ 70% over 100 seeded games (M4 exit; nightly job, not PR-blocking) — DoD: nightly job publishes pass/fail vs threshold [deps: T-0217, T-2106]
 - [x] **T-2109** (P2) Add statistical reporting to the harness: win-rate confidence intervals + per-end-reason breakdown for the notebook — DoD: stats JSON emitted per run
 - [x] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
 - [x] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [x] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]
 - [ ] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]
 - [x] **T-2114** (P0) Chaos test — opponent crash mid-game: kill the peer process → our side resolves a clean technical outcome, artifacts written, no hang — DoD: test green [PRD §4 reliability]
-- [ ] **T-2115** (P0) Chaos test — tunnel drop mid-series: supervised restart reconnects OR deadline path resolves cleanly — DoD: test green [FR-NET-3/4]
-- [ ] **T-2116** (P0) Chaos test — total LLM outage mid-match: both providers down → template floor, game continues, provider events emitted — DoD: test green [FR-LLM-1]
-- [ ] **T-2117** (P0) Chaos test — Gmail 429 storm during reporting: backoff + eventual send OR dead-letter + operator alert; never account-endangering blind resends — DoD: test green [FR-REP-3]
-- [ ] **T-2118** (P1) Chaos test — clock skew injected: deadline logic remains sane; preflight flags the skew — DoD: test green [FR-NET-8]
+- [x] **T-2115** (P0) Chaos test — tunnel drop mid-series: supervised restart reconnects OR deadline path resolves cleanly — DoD: test green [FR-NET-3/4]
+- [x] **T-2116** (P0) Chaos test — total LLM outage mid-match: both providers down → template floor, game continues, provider events emitted — DoD: test green [FR-LLM-1]
+- [x] **T-2117** (P0) Chaos test — Gmail 429 storm during reporting: backoff + eventual send OR dead-letter + operator alert; never account-endangering blind resends — DoD: test green [FR-REP-3]
+- [x] **T-2118** (P1) Chaos test — clock skew injected: deadline logic remains sane; preflight flags the skew — DoD: test green [FR-NET-8]
 - [x] **T-2119** (P1) Chaos test — schema fuzzing against the live server: randomized malformed/hostile payloads on all 4 tools → zero crashes, structured errors only — DoD: fuzz run green [FR-NET-7]
-- [ ] **T-2120** (P2) Soak test: 3 consecutive series without restart — no memory growth, queues return to zero — DoD: soak metrics within bounds
-- [ ] **T-2121** (P0) Verify coverage ≥ 90% overall (floor 85 enforced) with branch coverage on critical domain paths (crypto, scoring, fsm, movement) — DoD: coverage report ≥ 90% in both repos (E3 gate)
-- [ ] **T-2122** (P0) Run the honest-omit audit: coverage omit list contains ONLY ui/static assets (at most the `cli.py` entry wiring; there is no `main.py`); every integration seam (mcp, gmail, tunnel supervision) covered via in-process fakes — DoD: audit checklist green, omit list matches the real tree (risk R7, A6 lesson 10)
-- [ ] **T-2123** (P1) Add the performance test: move computation ≤ 5 s typical on the largest negotiated board under a loaded event bus — DoD: timed test green [PRD §4]
-- [ ] **T-2124** (P0) Add the cross-repo mirror integration check: core manifest byte-identical across repos at integration time (pre-merge on both) — DoD: CI green on both repos simultaneously [ADR-002]
+- [x] **T-2120** (P2) Soak test: 3 consecutive series without restart — no memory growth, queues return to zero — DoD: soak metrics within bounds
+- [x] **T-2121** (P0) Verify coverage ≥ 90% overall (floor 85 enforced) with branch coverage on critical domain paths (crypto, scoring, fsm, movement) — DoD: coverage report ≥ 90% in both repos (E3 gate)
+- [x] **T-2122** (P0) Run the honest-omit audit: coverage omit list contains ONLY ui/static assets (at most the `cli.py` entry wiring; there is no `main.py`); every integration seam (mcp, gmail, tunnel supervision) covered via in-process fakes — DoD: audit checklist green, omit list matches the real tree (risk R7, A6 lesson 10)
+- [x] **T-2123** (P1) Add the performance test: move computation ≤ 5 s typical on the largest negotiated board under a loaded event bus — DoD: timed test green [PRD §4]
+- [x] **T-2124** (P0) Add the cross-repo mirror integration check: core manifest byte-identical across repos at integration time (pre-merge on both) — DoD: CI green on both repos simultaneously [ADR-002]
 - [ ] **T-2125** (P1) Build the failure-path traceability table: every PRD §4 reliability scenario mapped to a test id; close any gaps found — DoD: table complete in docs; zero unmapped scenarios
-- [ ] **T-2126** (P0) Write the pre-match smoke script: ONE command running preflight + localhost interop + goldens, to be run before every league match — DoD: script green end-to-end; the match runbook (T-2233) references it
+- [x] **T-2126** (P0) Write the pre-match smoke script: ONE command running preflight + localhost interop + goldens, to be run before every league match — DoD: script green end-to-end; the match runbook (T-2233) references it
 
 ## E22 — Documentation deliverables (33 tasks)
 
