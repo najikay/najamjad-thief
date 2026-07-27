@@ -56,33 +56,61 @@ def test_the_inbox_rejects_a_replayed_step_within_a_game():
     assert replayed.errors and "stale or replayed" in replayed.errors[0]
 
 
-def test_the_same_guard_rejects_the_next_mini_game_until_the_transport_resets():
+def test_step_one_opens_a_new_mini_game_rather_than_reading_as_a_replay():
     """The defect itself, in the production class.
 
-    Game 1 ends at step 11; game 2 opens at step 1. Without a reset the guard
-    reads that as a replay and the series stops after one mini-game.
+    Game 1 ends at step 11; game 2 opens at step 1, and the guard used to read
+    that as a replay — which stopped every real series after one mini-game.
+
+    Accepting it does not depend on the transport having reset first, and that
+    matters: the peer who finishes a game first sends the next one's opening
+    turn immediately, so relying on a reset makes the series depend on who won
+    a race.
     """
     inboxes = Inboxes()
     for step in range(1, 12):
         assert inboxes.accept("turn", turn(step)).errors == []
 
-    blocked = inboxes.accept("turn", turn(1))
-    assert blocked.errors, "this is what killed every real series after game 1"
-    assert "last accepted was 11" in blocked.errors[0]
-
-    inboxes.drain()
-
     assert inboxes.accept("turn", turn(1)).errors == [], "game 2 must be playable"
 
 
-def test_draining_also_clears_a_turn_that_arrived_after_the_game_ended():
-    """A late turn belongs to a finished game and must not open the next one."""
+def test_a_replay_inside_a_mini_game_is_still_refused():
+    """The protection that must survive the fix."""
+    inboxes = Inboxes()
+    for step in (1, 2, 3):
+        inboxes.accept("turn", turn(step))
+
+    replayed = inboxes.accept("turn", turn(2))
+
+    assert replayed.errors and "stale or replayed" in replayed.errors[0]
+
+
+def test_starting_a_sub_game_keeps_the_opening_turn_and_drops_the_leftovers():
+    """The other half of the same race.
+
+    Draining everything is the obvious implementation and deletes the very turn
+    the new game needs, because the faster peer has already sent it.
+    """
+    inboxes = Inboxes()
+    inboxes.accept("turn", turn(9))    # leftover from the finished game
+    inboxes.accept("turn", turn(1))    # the next game's opening turn, already here
+
+    dropped = inboxes.begin_sub_game()
+
+    assert dropped == {"turn": 1}
+    opening = inboxes.poll("turn", timeout=0.01)
+    assert opening is not None and opening.step == 1
+    assert inboxes.poll("turn", timeout=0.01) is None
+
+
+def test_the_opening_turn_we_kept_is_not_then_rejected_as_a_replay():
+    """Holding it must move the mark with it."""
     inboxes = Inboxes()
     inboxes.accept("turn", turn(1))
+    inboxes.begin_sub_game()
 
-    inboxes.drain()
-
-    assert inboxes.poll("turn", timeout=0.01) is None
+    assert inboxes.poll("turn", timeout=0.01) is not None
+    assert inboxes.accept("turn", turn(2)).errors == []
 
 
 # --------------------------------------------------------------- the runner calls it

@@ -16,19 +16,33 @@ from .audit import AuditReport, audit_records
 from .ledger import CommitLedger
 
 
-def send_reveal(ledger: CommitLedger, transport: Any, sender: str = "") -> dict[str, Any]:
+def send_reveal(
+    ledger: CommitLedger, transport: Any, sender: str = "", result_claim: str = ""
+) -> dict[str, Any]:
     """Open our ledger and hand the peer everything they need to check us.
 
-    Enveloped as `{"sender": …, "records": […]}`, which is what the wire schema
-    declares and what `receive_reveal` reads back. We used to send the bare
-    list: the peer's validator rejected it, the reveal never arrived, and both
-    sides recorded TAMPERED for a game neither had cheated in.
+    Enveloped as `{"sender": …, "records": […], "result_claim": …}` — exactly
+    the three fields the reference's `AuditPayload` declares, and no more. It
+    builds the payload with `cls(**data)`, so a missing field raises `TypeError`
+    in their process and an extra one does the same; this envelope is not a
+    place to be generous in either direction.
 
-    Every in-memory test passed throughout, because the fake transport wrapped
-    the list on the way past and the real one did not.
+    `result_claim` is how we ended the game in our own view. Stating it here is
+    what lets the two peers detect a disagreement at audit time rather than
+    discovering it in two contradictory reports, which void the game for both
+    (rules 33-35).
+
+    We used to send the bare list: the peer's validator rejected it, the reveal
+    never arrived, and both sides recorded TAMPERED for a game neither had
+    cheated in. Every in-memory test passed throughout, because the fake
+    transport wrapped the list on the way past and the real one did not.
     """
     ledger.open_audit()
-    payload = {"sender": sender, "records": ledger.audit_payload()}
+    payload = {
+        "sender": sender,
+        "records": ledger.audit_payload(),
+        "result_claim": result_claim,
+    }
     transport.send_audit(payload)
     return payload
 
@@ -43,7 +57,11 @@ def receive_reveal(transport: Any, timeout: float) -> AuditReport:
 
 
 def exchange_audit(
-    ledger: CommitLedger, transport: Any, timeout: float = 30.0, sender: str = ""
+    ledger: CommitLedger,
+    transport: Any,
+    timeout: float = 30.0,
+    sender: str = "",
+    result_claim: str = "",
 ) -> AuditReport:
     """Reveal ours, verify theirs, and report on theirs.
 
@@ -51,5 +69,5 @@ def exchange_audit(
     theirs would be indistinguishable, from their side, from preparing to
     forge — and rule 18 only protects a nonce until the audit, not through it.
     """
-    send_reveal(ledger, transport, sender)
+    send_reveal(ledger, transport, sender, result_claim)
     return receive_reveal(transport, timeout)

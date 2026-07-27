@@ -107,3 +107,28 @@ def _barrier_traps_us(state: GameState, message: dict[str, Any]) -> bool:
     if not (isinstance(cell, list | tuple) and len(cell) == 2):
         return False
     return evaluate_barrier_capture(tuple(cell), state.own_position).captured
+
+
+def claim_survival_if_outlasted(state: GameState) -> None:
+    """As thief, declare survival on the very move that reaches the horizon.
+
+    This has to happen on *our own* turn, not while absorbing theirs. The
+    opponent's police loop ends a game only when the thief announces a win; our
+    silence is read as `timeout` and scores 0-0 for both, which under rules
+    33-35 is a disagreement that voids the game.
+
+    Absorbing an incoming turn was too late in two ways. It counted
+    `full_turns`, which is incremented *after* the check, and by the time the
+    horizon was reached the turn loop had no iteration left to send the
+    announcement in — so we recorded survival privately and told nobody. Our own
+    series never caught it because every game we played ended in a capture.
+
+    The opponent's rule is `step_number >= max_steps` evaluated straight after
+    applying its move, so the counter and the moment both match here.
+    """
+    if state.role is not Role.THIEF or state.pending_end is not None:
+        return
+    params = state.board.params
+    outlasted = resolve_survival(state.step, params.survival_threshold, params.max_moves)
+    if outlasted is not None:
+        state.pending_end = outlasted

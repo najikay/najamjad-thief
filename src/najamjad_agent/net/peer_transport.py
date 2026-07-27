@@ -77,7 +77,7 @@ class PeerTransport:
           arrives after a capture belongs to a game that is over and must not
           be read as the opening move of the next one.
         """
-        dropped = self._inboxes.drain()
+        dropped = self._inboxes.begin_sub_game()
         self._emit({"event": "transport.reset", "dropped": dropped})
 
     @staticmethod

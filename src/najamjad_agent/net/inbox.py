@@ -24,6 +24,7 @@ from ..protocol.schemas_wire import (
 )
 from ..shared.events import Emit
 from .session_guard import SessionGuard
+from .sub_game_boundary import FIRST_STEP, clear_finished_game
 
 # One queue per message kind: a flood of control messages must not delay a turn.
 KINDS: dict[str, type[BaseModel]] = {
@@ -84,17 +85,58 @@ class Inboxes:
         return result
 
     def _check_sequence(self, message: Any) -> str | None:
-        """Reject replayed or stale turns before they reach the game state."""
+        """Reject replayed or stale turns before they reach the game state.
+
+        Step 1 is the exception, and it has to be: every mini-game restarts
+        numbering at 1, so after a game ending at step 11 the next game's
+        opening turn is a legitimate step 1 that this guard would otherwise
+        read as a replay.
+
+        The transport also clears the mark between mini-games, but that alone
+        is a race — the peer who finishes first sends its next game's opening
+        turn before the slower peer has reset, and the turn is dropped by a
+        guard that is merely a moment out of date. Whoever wins that race
+        should not decide whether the series continues.
+
+        Nothing on the wire distinguishes the two cases: the reference's
+        `TurnMessage` has no sub-game field, and it builds messages with
+        `cls(**data)`, so adding one would make every turn we send raise a
+        `TypeError` in their process. Step 1 is the only signal available, and
+        treating it as "a new mini-game started" costs only the ability to
+        detect a replayed *first* turn — whose payload is sealed and whose
+        duplicate the game's own state machine refuses anyway.
+        """
         step = getattr(message, "step", None)
         if step is None:
             return None
         with self._lock:
+            if step == FIRST_STEP and self._last_step > FIRST_STEP:
+                # A game that has already run past its opening turn cannot
+                # receive another one; this is the next mini-game beginning.
+                # Requiring `> FIRST_STEP` keeps a replayed *first* turn
+                # rejected, which a bare "step 1 always resets" would not.
+                self._last_step = step
+                return None
             if step <= self._last_step:
                 return (
                     f"step {step} is stale or replayed (last accepted was {self._last_step})"
                 )
             self._last_step = step
         return None
+
+    def begin_sub_game(self) -> dict[str, int]:
+        """Prepare for the next mini-game without discarding its opening turn.
+
+        The rule for what survives the boundary lives in `sub_game_boundary`.
+        """
+        dropped, held_opening = clear_finished_game(self._queues)
+        with self._lock:
+            # If the opening turn is already in hand, the mark moves with it —
+            # otherwise accepting it off the queue would read as a replay.
+            self._last_step = FIRST_STEP if held_opening else -1
+        if dropped:
+            self._emit({"event": "inbox.sub_game_started", "dropped": dropped})
+        return dropped
 
     def poll(self, kind: str, timeout: float) -> Any | None:
         """Wait up to `timeout` for the next message of `kind`."""

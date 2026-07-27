@@ -49,6 +49,7 @@ class MatchRunner:
         audit_timeout: float = 30.0,
         response_timeout: float = 30.0,
         max_retries: int = 3,
+        handshake: Callable[[], Any] | None = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -68,6 +69,7 @@ class MatchRunner:
         self._clock = clock
         self._emit = emit or (lambda _event: None)
         self._audit_timeout = audit_timeout
+        self._handshake = handshake
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
@@ -88,6 +90,12 @@ class MatchRunner:
         next one unplayable.
         """
         self._transport.reset()
+        if self._handshake is not None:
+            # Per mini-game, not per match: the opponent rebuilds its peer for
+            # every sub-game and re-runs the agreement exchange, so a handshake
+            # done once at match start leaves it waiting from game 2 onward with
+            # "Opponent never sent its agreement".
+            self._handshake()
         state = self._build_state(self.params, role, sub_game)
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
         orchestrator = self._new_orchestrator(state, fsm, role)
@@ -132,7 +140,10 @@ class MatchRunner:
         if reason in SKIP_AUDIT_REASONS:
             self._emit({"event": "audit.skipped", "reason": reason.value})
             return AuditReport(passed=False, skipped=True)
-        return exchange_audit(state.ledger, self._transport, self._audit_timeout, state.role.value)
+        return exchange_audit(
+            state.ledger, self._transport, self._audit_timeout,
+            state.role.value, reason.value,
+        )
 
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:

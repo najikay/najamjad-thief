@@ -106,6 +106,7 @@ def build_match(
     speaker: Speaker | Any,
     bus: EventBus,
     scoring: dict[str, Any] | None = None,
+    handshake: Any = None,
 ) -> MatchRunner:
     """A runner ready to play the agreed series against one opponent."""
     params = GameParams.from_config(manager.as_dict())
@@ -127,6 +128,7 @@ def build_match(
         clock=time.monotonic,
         first_role=role,
         emit=bus.publish,
+        handshake=handshake,
         response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
         max_retries=int(manager.get("network.max_retries", 3)),
     )

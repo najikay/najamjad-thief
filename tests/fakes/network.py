@@ -44,7 +44,9 @@ class BlockingLink:
         assert self.peer is not None, "link was never connected"
         step = message.get("step")
         if isinstance(step, int):
-            if step <= self.peer._last_step:
+            if step == 1:
+                self.peer._last_step = step  # a new mini-game, as the real inbox reads it
+            elif step <= self.peer._last_step:
                 # Dropped, exactly as the real inbox drops it: rejected at
                 # ingress and never queued. Raising here would be louder but
                 # wrong — on the wire the sender learns nothing and simply waits,
@@ -82,12 +84,23 @@ class BlockingLink:
             return None
 
     def reset(self) -> None:
-        """Forget the previous mini-game, as the real transport does."""
+        """Forget the previous mini-game, as the real transport does.
+
+        The new game's opening turn may already be queued — the peer who
+        finished first sends it immediately — so it is kept while the finished
+        game's leftovers are dropped.
+        """
         self.resets += 1
-        self._last_step = -1
-        for box in (self.turns, self.audits):
-            while not box.empty():
-                box.get_nowait()
+        kept = []
+        while not self.turns.empty():
+            message = self.turns.get_nowait()
+            if message.get("step") == 1:
+                kept.append(message)
+        while not self.audits.empty():
+            self.audits.get_nowait()
+        for message in kept:
+            self.turns.put(message)
+        self._last_step = 1 if kept else -1
 
 
 def linked_pair() -> tuple[BlockingLink, BlockingLink]:

@@ -161,11 +161,28 @@ def outgoing_extras(state: GameState, barrier: Any, claim: bool) -> dict[str, An
             "caught": bool(state.pending_capture_claim),
         }
         state.pending_capture_claim = None
-    if state.pending_end is not None and "claim_response" not in extras:
+    if state.pending_end is not None and not _admitting_capture(extras):
         # An ending only we can see — survival, or an immobilised thief. Declare
         # it so the opponent closes on the same reason instead of timing out.
+        #
+        # This used to be suppressed whenever a `claim_response` was present at
+        # all, which looked cautious and was wrong. The reference's police
+        # attaches a `capture_claim` to *every* move it makes, so our thief
+        # almost always owes it an answer — and the two fields together meant we
+        # never once declared survival on the wire. It reached the horizon,
+        # recorded survival privately, and its opponent timed the game out.
+        #
+        # The fields are independent in the reference's handler, and a capture
+        # already outranks a survival there, so the only answer that must
+        # silence the declaration is one admitting we were caught.
         extras["win_claim"] = {"type": state.pending_end.value}
     return extras
+
+
+def _admitting_capture(extras: dict[str, Any]) -> bool:
+    """Whether this turn concedes a capture, which outranks any win we claim."""
+    answer = extras.get("claim_response")
+    return bool(answer and answer.get("caught"))
 
 
 def build_turn_message(

@@ -31,7 +31,6 @@ class AgentActions:
         dashboard: Any = None,
         match: Any = None,
         opponent_url: str = "",
-        handshake: Any = None,
     ) -> None:
         """Hold the services; all are optional before a match is configured."""
         self._server = server
@@ -43,7 +42,6 @@ class AgentActions:
         self._dashboard = dashboard
         self._match = match
         self._opponent_url = opponent_url
-        self._handshake = handshake
 
     @property
     def public_url(self) -> str:
@@ -100,10 +98,6 @@ class AgentActions:
         """Wire in the match runner once the opponent URL is known."""
         self._match = runner
 
-    def attach_handshake(self, handshake: Any) -> None:
-        """Wire in the pre-game agreement exchange."""
-        self._handshake = handshake
-
     def play_match(self, wait_seconds: float = 120.0) -> Any:
         """Play the agreed series against the opponent and return the result.
 
@@ -117,10 +111,6 @@ class AgentActions:
             raise RuntimeError("no match configured — set network.opponent_url first")
         if self._opponent_url and wait_seconds > 0:
             wait_for_opponent(self._opponent_url, timeout=wait_seconds, emit=self._emit)
-        if self._handshake is not None:
-            # Most opponents are built on the reference, which sends its signed
-            # terms and waits for ours before playing a single move.
-            self._handshake()
         self._emit({"event": "match.starting"})
         result = self._match.play_series()
         self._emit({"event": "match.finished", "games": len(self._match.games)})

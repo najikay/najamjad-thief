@@ -15,7 +15,7 @@ from typing import Any
 from ..constants import EndReason, Move, Phase, Role
 from ..shared.events import Emit
 from .crypto import step_payload
-from .endings import opponent_end_reason, own_barrier_capture
+from .endings import claim_survival_if_outlasted, opponent_end_reason, own_barrier_capture
 from .fsm import GameStateMachine
 from .game_state import GameState, TurnFacts
 from .movement import apply_move, legal_moves, place_barrier
@@ -77,6 +77,7 @@ class Orchestrator:
         move = Move.STAY if barrier else self._legal_move(facts, legal)
         hint, intent = self._speaker.compose(facts)
         self._apply_own_action(move, barrier)
+        claim_survival_if_outlasted(self.state)
         payload = step_payload(
             step=self.state.step,
             role=self.state.role.value,

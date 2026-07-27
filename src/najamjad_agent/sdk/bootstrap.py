@@ -114,8 +114,10 @@ def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus
     from .match_setup import build_match, build_transport
 
     transport = build_transport(manager, bus, inboxes)
-    actions.attach_match(build_match(manager, role, transport, _speaker(manager, bus), bus))
-    actions.attach_handshake(_handshake(manager, bus, inboxes, transport))
+    actions.attach_match(build_match(
+        manager, role, transport, _speaker(manager, bus), bus,
+        handshake=_handshake(manager, bus, inboxes, transport),
+    ))
 
 
 def _handshake(manager: ConfigManager, bus, inboxes, transport):

@@ -1,6 +1,6 @@
 # Open items
 
-**Version 1.30 · 2026-07-27**
+**Version 1.40 · 2026-07-27**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
@@ -8,39 +8,37 @@ can see we know.
 
 ---
 
-## T-2307 — rehearsal vs the reference: plays, but the ending disagrees
+## T-2307 — rehearsal vs the reference: one game agrees, game 2 audits TAMPERED
 
-**Where it got to.** Our thief and the course reference simulator now complete a
-full match as two OS processes: handshake locked, **59 turns sent, 63 messages
-accepted, zero rejections**, capture claims and barriers observed on both sides,
-both processes exiting 0 and writing their reports.
+**Settled.** A single mini-game against the course reference simulator now ends
+in **complete agreement**:
 
-**What is wrong.** The two sides do not agree on how the game *ended*. The
-reference records `result: timeout, winner: police`; we score the series 0–0.
-Under rules 33-35 a disagreement voids the game for both, so this must be
-settled before a counted match.
+| | reference | us |
+|---|---|---|
+| result | `survival` | `survival` |
+| winner | `najamjad` (thief) | `najamjad` |
+| score | `{segal-police-team: 5, najamjad: 10}` | `{najamjad: 10, them: 5}` |
+| audit | — | `Verified OK` |
+| steps | 35 | 35 |
 
-**What it is not.** Not connectivity, not argument binding, not the terms, not
-the audit envelope, and not the step guard — all of those are fixed and
-verified. The turn traffic itself is clean in both directions.
+Four defects had to be fixed to get there; they are described in the commit and
+summarised below.
 
-**Next step.** Compare their `logs/result_*.json` ending against ours turn by
-turn: the likely candidates are the survival horizon being counted from
-different step numbers, or a capture claim we answer in a shape their parser
-reads as no answer.
+**Still open.** In a three-game series, game 1 agrees as above, **game 2 plays 11
+steps and then audits `TAMPERED`**, after which the reference exits and our game
+3 handshake finds nobody. A `TAMPERED` verdict against an opponent who has not
+cheated is the most serious kind of wrong answer we can produce — under rule 19
+it voids their game — so this blocks multi-game matches against reference-based
+opponents.
 
-**Getting here fixed four real defects**, each of which would have cost every
-counted match, and none of which any in-process test could see:
+**What is known.** Game 1's audit verifies, so the record shapes and the
+re-hashing are right in principle; whatever differs is specific to the *second*
+mini-game. The obvious candidates are the reference's per-sub-game peer rebuild
+(its records restart, and it re-runs the agreement exchange each game), and our
+own handling of an audit that arrives around the sub-game boundary.
 
-1. `match` never negotiated — the reference exits with *"Opponent never sent its
-   agreement"* before a move is played.
-2. Our terms were grouped by section; the reference signs a **flat 14-key
-   dictionary** and compares for equality.
-3. Our identity block omitted `group_name`, `members`, `repos`, `mcp_servers`,
-   `llm_model` and `spec` — the reference indexes them directly and raised
-   `KeyError` *after* the games were played.
-4. Neither peer waited for the other, so the first to start burned its retries
-   on a dead port and exited before the second was listening.
+**Do not play a counted multi-game match against a reference-based opponent
+until this is understood.** A single-game match is verified end to end.
 
 ## COMPETITIVE RISK — our thief loses to a strong cop
 
