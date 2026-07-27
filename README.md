@@ -246,16 +246,44 @@ cell, so a false capture claim hands the thief our exact position for nothing.
 Instead we do **online opponent modelling** sized to the ~210 observations a series actually
 provides — hint credibility, move tendencies, barrier response.
 
-**Measured** through the real match machinery, over seeded games:
+**Measured** through the real match machinery on **held-out games** — seed 11,
+never used while tuning, 60 games per matchup:
 
-| matchup | result |
-|---|---|
-| our cop vs greedy thief | **100 % captures** (greedy cop: 0–4 %) |
-| our thief vs greedy cop | **96–100 % survival** |
+| matchup | captures | rate | 95 % Wilson CI |
+|---|---|---|---|
+| greedy cop vs our thief | 0/60 | **0 %** (100 % survival) | 0–6 % |
+| our cop vs greedy thief | 60/60 | **100 %** | 94–100 % |
+| greedy vs greedy (reference) | 4/60 | 6.7 % | 2.6–16 % |
 
-Reproduce with `uv run python scripts/self_play.py --games 100 --seed 7`, and see
-`results/latest.json` for the parameter sweep that got us there — the barrier
-threshold alone moved the cop from 43-75 % to 100 %.
+Zero peer disagreements and zero audit failures across all 180 games.
+
+![our brains vs the greedy baseline](assets/baseline-comparison.png)
+
+**The caveat this repository is obliged to state.** Our thief's 100 % survival
+is measured against the *greedy* cop. Against our own cop it survives about 4 %
+of games, and sweeping `thief.horizon` across 1–5 does not move it — every value
+is caught in 23 or 24 of 24 games, differences well inside the confidence
+intervals. So this is not a tuning problem, and the headline number is a
+statement about the opponent rather than about the evader. An opponent whose cop
+is as good as ours should be expected to catch our thief. It is recorded as the
+project's largest competitive risk in `docs/OPEN_ITEMS.md`.
+
+For the cop side, one tunable decides the match:
+
+![which knob decides the game](assets/sensitivity-tornado.png)
+
+`barrier_threshold` swings the capture rate from **4 % to 100 %** across its
+range, because a barrier is impassable for *both* sides — a cop that walls on
+weak evidence fences itself away from the thief it is chasing.
+
+Full derivations, confidence intervals, the token-cost table and the references
+are in **`notebooks/analysis.ipynb`**. Reproduce with:
+
+```bash
+uv run python scripts/baselines.py --games 60 --seed 11   # held-out comparison
+uv run python scripts/sweep.py --games 24 --seed 7        # sensitivity sweeps
+uv run python scripts/measure_tokens.py                   # token census
+```
 
 ### What testing against a stranger taught us
 
@@ -288,7 +316,12 @@ agrees with your assumptions, not that your assumptions are right.**
 | `docs/PROTOCOL.md` | What crosses the wire, and what never does |
 | `docs/SECURITY.md` | Threat model, prompt-injection defences, secret handling |
 | `docs/UX.md` | Nielsen heuristics mapped to dashboard decisions; accessibility |
-| `docs/TOKEN_BUDGET.md` | Token estimates and the cost model |
+| `docs/EXTENDING.md` | The four extension seams, with a worked plugin |
+| `docs/ISO25010.md` | ISO/IEC 25010 quality characteristics mapped to evidence |
+| `docs/edge-cases.md` | Every handled boundary condition, each linking its test |
+| `docs/TOKEN_BUDGET.md` | Measured token consumption and the cost model |
+| `docs/OPEN_ITEMS.md` | What is known to be incomplete, with the evidence |
+| `notebooks/analysis.ipynb` | Sensitivity studies, baselines, cost table, references |
 | `docs/PRD_belief_engine.md` · `PRD_commit_reveal.md` · `PRD_llm_router.md` | Mechanism designs |
 | `docs/runbook-network.md` | Tunnel and connectivity procedures |
 | `docs/research/` | Source digests (book, guidelines, reference simulator, A6 retrospective) |

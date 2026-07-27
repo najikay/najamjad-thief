@@ -36,20 +36,29 @@ from tests.fakes.baselines import GreedyCop, GreedyThief  # noqa: E402
 from tests.fakes.orchestration import build_state  # noqa: E402
 
 # The E14/E15 tunables, with the shipped value first in each list.
+#
+# `opponent` matters as much as the values. Swept against the greedy baseline,
+# the cop captures 100 % and the thief survives 100 % at *every* setting of the
+# two secondary knobs — a saturated result measures the opponent, not the knob.
+# Those two are therefore swept against our own counterpart brain, which is the
+# only opponent in reach that is strong enough to leave room to move.
 SWEEPS = {
     "cop.barrier_threshold": {
         "values": [0.15, 0.05, 0.10, 0.25, 0.40, 0.60],
         "role": "cop",
+        "opponent": "greedy",
         "why": "How confident the cop must be before spending one of 14 barriers.",
     },
     "cop.lookahead": {
         "values": [2, 1, 3, 4],
         "role": "cop",
+        "opponent": "ours",
         "why": "How far belief is diffused forward before choosing a move.",
     },
     "thief.horizon": {
         "values": [3, 1, 2, 4, 5],
         "role": "thief",
+        "opponent": "ours",
         "why": "How many steps ahead the thief protects its escape routes.",
     },
 }
@@ -68,16 +77,18 @@ def brain_factory(role: str, knob: str, value: float):
     return make
 
 
-def run_point(knob: str, value: float, role: str, starts: list) -> dict:
-    """Play every seeded start at one tunable value."""
+def run_point(knob: str, value: float, role: str, starts: list, opponent: str = "greedy") -> dict:
+    """Play every seeded start at one tunable value against one opponent."""
     rows = []
+    rival_cop = GreedyCop if opponent == "greedy" else CopBrain
+    rival_thief = GreedyThief if opponent == "greedy" else ThiefBrain
     for cop_start, thief_start in starts:
         if cop_start == thief_start:
             continue
         if role == "cop":
-            cop, thief = brain_factory("cop", knob, value), GreedyThief
+            cop, thief = brain_factory("cop", knob, value), rival_thief
         else:
-            cop, thief = GreedyCop, brain_factory("thief", knob, value)
+            cop, thief = rival_cop, brain_factory("thief", knob, value)
         rows.append(play_one(cop, thief, cop_start, thief_start))
 
     played = len(rows)
@@ -116,13 +127,15 @@ def run(games: int, seed: int, out_dir: Path) -> dict:
         for knob, spec in SWEEPS.items():
             points = []
             for value in spec["values"]:
-                point = run_point(knob, value, spec["role"], starts)
+                point = run_point(knob, value, spec["role"], starts, spec["opponent"])
                 rows = point.pop("rows")
                 lines.write(json.dumps({**point, "rows": rows}) + "\n")
                 points.append(point)
                 print(f"  {knob}={value!s:<6} win_rate={point['win_rate']:.2f} "
                       f"({point['captures']}/{point['played']} captures)")
-            summary["sweeps"][knob] = {"why": spec["why"], "points": points}
+            summary["sweeps"][knob] = {
+                "why": spec["why"], "opponent": spec["opponent"], "points": points
+            }
     finally:
         lines.close()
     (out_dir / f"summary-{stamp}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")

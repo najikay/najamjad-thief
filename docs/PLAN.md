@@ -11,6 +11,12 @@
 
 ## 1. Architecture overview
 
+> Every Mermaid block below is also exported to `assets/` as a PNG for printing
+> and for the report, by `uv run python scripts/export_diagrams.py`. The blocks
+> are the source of truth; the images are derived — editing an exported image
+> instead of the block it came from puts a diagram in the report that no longer
+> describes the system.
+
 ### 1.1 C4 Level 1 — System context
 
 ```mermaid
@@ -63,6 +69,51 @@ directly; the Orchestrator is the single conductor. SDK-facade and Gatekeeper ar
 guidelines-mandated.
 
 ### 1.3 C4 Level 3 — Component/package map with file-size budgets
+
+The gateway is the whole point of this level: **peripheral packages never call each
+other**. Strategy cannot reach the transport, the transport cannot reach the rules, and
+the belief engine knows about neither. Every arrow below passes through the orchestrator,
+which is what makes each package testable against a fake (book rule 3).
+
+```mermaid
+graph TB
+    ORCH["orchestrator.py<br/><i>the only conductor</i>"]
+
+    subgraph domain["domain/ — the rules"]
+        FSM["fsm.py<br/>legal transitions"]
+        BEL["belief.py · scent.py<br/>hint_evidence.py"]
+        CRY["crypto.py · audit.py<br/>commit-reveal"]
+        BRD["board.py · movement.py<br/>capture.py · scoring.py"]
+    end
+
+    subgraph strategy["strategy/ — the policy"]
+        COP["cop_brain.py<br/>cop_barriers.py"]
+        THF["thief_brain.py<br/>thief_escape.py"]
+        HNT["hint_policy.py<br/>opponent_model.py"]
+    end
+
+    subgraph edge["the outside world"]
+        NET["net/ — MCP client + server<br/>deadlines, rate limits"]
+        LLM["llm/ — router, speaker<br/>guards, token meter"]
+        REP["reporting/ — Gmail<br/>artifacts, archive"]
+        UI["ui/ — dashboard<br/><i>read-only</i>"]
+    end
+
+    ORCH --> FSM
+    ORCH --> BEL
+    ORCH --> CRY
+    ORCH --> BRD
+    ORCH --> COP
+    ORCH --> THF
+    ORCH --> HNT
+    ORCH --> NET
+    ORCH --> LLM
+    ORCH --> REP
+    ORCH -. "events only" .-> UI
+
+    classDef gate fill:#1f4e79,color:#fff,stroke:#0d2b44,stroke-width:2px
+    class ORCH gate
+```
 
 Design budget: **≤ 120 code lines per file** (hard course cap 150). Every planned file below
 carries a budget; CI fails at > 150, warns at > 120.
@@ -198,6 +249,46 @@ sequenceDiagram
 ```
 
 ### 2.3 Match lifecycle
+
+```mermaid
+stateDiagram-v2
+    direction TB
+    [*] --> WarmUp
+    WarmUp: Warm-up game (uncounted)
+    note right of WarmUp
+        Rule 52 — first contact is
+        NEVER counted. Ours or theirs.
+    end note
+    WarmUp --> Declare
+    Declare: Counted-game-count declaration
+    Declare --> Negotiate
+    Negotiate: Propose / counter terms
+    Negotiate --> Negotiate: raise only (rule 12)
+    Negotiate --> Locked: both signatures match
+    Negotiate --> Abandoned: no agreement
+    Locked: Contract locked (SHA-256 over terms)
+    Locked --> StepZero
+    StepZero: Step-0 — hardware, LLM, github_commit
+    StepZero --> Series
+    Series: 6 mini-games, roles swap each game
+    Series --> Audit: each game ends
+    Audit: Mutual reveal + re-hash
+    Audit --> Series: games remain
+    Audit --> Voided: records fail to re-hash (rule 19)
+    Audit --> Reconcile: series complete
+    Reconcile: Compare our result with theirs
+    Reconcile --> Report
+    Report: BOTH teams email result_[game_id].json
+    note right of Report
+        Rule 35 — not reporting is
+        punished like reporting falsely.
+    end note
+    Report --> Archive
+    Archive: Archive workspace + commit match config
+    Archive --> [*]
+    Abandoned --> [*]
+    Voided --> Reconcile
+```
 
 Warm-up (uncounted) → counted-game-count declarations → negotiation → contract lock →
 Step-0 (hardware+LLM+commit hash, signed) → 6 mini-games with role swaps → mutual audit per

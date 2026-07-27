@@ -1,0 +1,8 @@
+{
+  "_note": "Published list prices in USD per million tokens. These are the ONLY numbers in the cost table that are not measured by us — the token counts are. Re-check before submission; vendors change prices without notice.",
+  "_as_of": "2026-07-27",
+  "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0, "vendor": "Anthropic"},
+  "claude-sonnet-5": {"input": 3.0, "output": 15.0, "vendor": "Anthropic"},
+  "deepseek-chat": {"input": 0.27, "output": 1.1, "vendor": "DeepSeek"},
+  "template": {"input": 0.0, "output": 0.0, "vendor": "local"}
+}

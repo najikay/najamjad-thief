@@ -1,10 +1,11 @@
 {
  "seed": 7,
  "games_per_point": 24,
- "generated": "20260727T044426Z",
+ "generated": "20260727T071643Z",
  "sweeps": {
   "cop.barrier_threshold": {
    "why": "How confident the cop must be before spending one of 14 barriers.",
+   "opponent": "greedy",
    "points": [
     {
      "knob": "cop.barrier_threshold",
@@ -100,19 +101,20 @@
   },
   "cop.lookahead": {
    "why": "How far belief is diffused forward before choosing a move.",
+   "opponent": "ours",
    "points": [
     {
      "knob": "cop.lookahead",
      "value": 2,
      "role": "cop",
      "played": 24,
-     "captures": 16,
-     "capture_rate": 0.6667,
+     "captures": 24,
+     "capture_rate": 1.0,
      "capture_rate_ci95": [
-      0.4671,
-      0.8203
+      0.862,
+      1.0
      ],
-     "win_rate": 0.6667,
+     "win_rate": 1.0,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -121,13 +123,13 @@
      "value": 1,
      "role": "cop",
      "played": 24,
-     "captures": 16,
-     "capture_rate": 0.6667,
+     "captures": 24,
+     "capture_rate": 1.0,
      "capture_rate_ci95": [
-      0.4671,
-      0.8203
+      0.862,
+      1.0
      ],
-     "win_rate": 0.6667,
+     "win_rate": 1.0,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -136,13 +138,13 @@
      "value": 3,
      "role": "cop",
      "played": 24,
-     "captures": 16,
-     "capture_rate": 0.6667,
+     "captures": 24,
+     "capture_rate": 1.0,
      "capture_rate_ci95": [
-      0.4671,
-      0.8203
+      0.862,
+      1.0
      ],
-     "win_rate": 0.6667,
+     "win_rate": 1.0,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -151,13 +153,13 @@
      "value": 4,
      "role": "cop",
      "played": 24,
-     "captures": 16,
-     "capture_rate": 0.6667,
+     "captures": 24,
+     "capture_rate": 1.0,
      "capture_rate_ci95": [
-      0.4671,
-      0.8203
+      0.862,
+      1.0
      ],
-     "win_rate": 0.6667,
+     "win_rate": 1.0,
      "disagreements": 0,
      "audit_failures": 0
     }
@@ -165,19 +167,20 @@
   },
   "thief.horizon": {
    "why": "How many steps ahead the thief protects its escape routes.",
+   "opponent": "ours",
    "points": [
     {
      "knob": "thief.horizon",
      "value": 3,
      "role": "thief",
      "played": 24,
-     "captures": 0,
-     "capture_rate": 0.0,
+     "captures": 24,
+     "capture_rate": 1.0,
      "capture_rate_ci95": [
-      0.0,
-      0.138
+      0.862,
+      1.0
      ],
-     "win_rate": 1.0,
+     "win_rate": 0.0,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -186,13 +189,13 @@
      "value": 1,
      "role": "thief",
      "played": 24,
-     "captures": 0,
-     "capture_rate": 0.0,
+     "captures": 23,
+     "capture_rate": 0.9583,
      "capture_rate_ci95": [
-      0.0,
-      0.138
+      0.7976,
+      0.9926
      ],
-     "win_rate": 1.0,
+     "win_rate": 0.0417,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -201,13 +204,13 @@
      "value": 2,
      "role": "thief",
      "played": 24,
-     "captures": 0,
-     "capture_rate": 0.0,
+     "captures": 23,
+     "capture_rate": 0.9583,
      "capture_rate_ci95": [
-      0.0,
-      0.138
+      0.7976,
+      0.9926
      ],
-     "win_rate": 1.0,
+     "win_rate": 0.0417,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -216,13 +219,13 @@
      "value": 4,
      "role": "thief",
      "played": 24,
-     "captures": 0,
-     "capture_rate": 0.0,
+     "captures": 23,
+     "capture_rate": 0.9583,
      "capture_rate_ci95": [
-      0.0,
-      0.138
+      0.7976,
+      0.9926
      ],
-     "win_rate": 1.0,
+     "win_rate": 0.0417,
      "disagreements": 0,
      "audit_failures": 0
     },
@@ -231,13 +234,13 @@
      "value": 5,
      "role": "thief",
      "played": 24,
-     "captures": 0,
-     "capture_rate": 0.0,
+     "captures": 23,
+     "capture_rate": 0.9583,
      "capture_rate_ci95": [
-      0.0,
-      0.138
+      0.7976,
+      0.9926
      ],
-     "win_rate": 1.0,
+     "win_rate": 0.0417,
      "disagreements": 0,
      "audit_failures": 0
     }

@@ -667,26 +667,26 @@
 - [x] **T-2210** (P0) Author `docs/PRD_reporting.md`: lifecycle artifacts, egress gate, Gmail flow, reconciliation, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 - [x] **T-2211** (P0) Verify all 8 mechanism PRDs (belief_engine, commit_reveal, negotiation, llm_router, strategy_cop, strategy_thief, gatekeeper, reporting) exist in BOTH repos and follow one template — DoD: checklist green; identical template headers [guidelines §2.3]
 - [x] **T-2212** (P0) Create `docs/PROMPT_BOOK.md`: all significant prompts so far — context/goal, outputs received, iterative improvements, lessons — DoD: covers the docs phase + build prompts to date [guidelines §8.3]
-- [ ] **T-2213** (P0) Enforce prompt-book maintenance: append entries at every milestone (M1–M7 checklist item); final completeness pass before freeze — DoD: one entry set per milestone visible in git history
-- [ ] **T-2214** (P1) Create the analysis notebook skeleton `notebooks/analysis.ipynb`: loaders for `results/` sweeps + token-meter exports — DoD: notebook runs top-to-bottom on current data [guidelines §9]
-- [ ] **T-2215** (P1) Notebook: cop sensitivity study — OAT parameter sweep charts (depth, barrier threshold, belief weights) with a sensitivity heatmap — DoD: charts rendered with labels/captions [deps: T-1423]
-- [ ] **T-2216** (P1) Notebook: thief sensitivity study + hint-policy A/B analysis — DoD: charts rendered; conclusions written [deps: T-1522, T-1617]
-- [ ] **T-2217** (P1) Notebook: LaTeX math — belief update equations, scent decay law, expectimax formulation, survival-horizon objective — DoD: equations render; symbols defined [guidelines §9]
-- [ ] **T-2218** (P1) Notebook: academic references — Dec-POMDP, pursuit-evasion games, stigmergy/pheromones, commit-reveal schemes — DoD: ≥ 6 citations in a references cell
-- [ ] **T-2219** (P1) Notebook: comparison charts — our brains vs reference baselines with win-rate confidence intervals — DoD: charts rendered from T-2108/T-2109 data
-- [ ] **T-2220** (P0) Generate the token-cost table from TokenMeter data: input/output split per model per purpose, cost per million tokens, totals row — DoD: table in notebook + docs with REAL measured numbers [guidelines §11]
-- [ ] **T-2221** (P1) Write the cost-optimization analysis: every_n_steps effect, per-purpose model routing, template floor — measured savings vs all-LLM baseline — DoD: analysis section complete with numbers [PLAN §8]
-- [ ] **T-2222** (P0) Export C4 diagrams (context, container, component) as rendered images into `assets/` in both repos — DoD: images render in PLAN/README; sources committed [guidelines §2.2]
-- [ ] **T-2223** (P0) Export UML diagrams: FSM statechart, turn sequence, match lifecycle, deployment diagram — DoD: images in assets/, referenced from PLAN [guidelines §2.2]
+- [x] **T-2213** (P0) Enforce prompt-book maintenance: append entries at every milestone (M1–M7 checklist item); final completeness pass before freeze — DoD: one entry set per milestone visible in git history
+- [x] **T-2214** (P1) Create the analysis notebook skeleton `notebooks/analysis.ipynb`: loaders for `results/` sweeps + token-meter exports — DoD: notebook runs top-to-bottom on current data [guidelines §9]
+- [x] **T-2215** (P1) Notebook: cop sensitivity study — OAT parameter sweep charts (depth, barrier threshold, belief weights) with a sensitivity heatmap — DoD: charts rendered with labels/captions [deps: T-1423]
+- [x] **T-2216** (P1) Notebook: thief sensitivity study + hint-policy A/B analysis — DoD: charts rendered; conclusions written [deps: T-1522, T-1617]
+- [x] **T-2217** (P1) Notebook: LaTeX math — belief update equations, scent decay law, expectimax formulation, survival-horizon objective — DoD: equations render; symbols defined [guidelines §9]
+- [x] **T-2218** (P1) Notebook: academic references — Dec-POMDP, pursuit-evasion games, stigmergy/pheromones, commit-reveal schemes — DoD: ≥ 6 citations in a references cell
+- [x] **T-2219** (P1) Notebook: comparison charts — our brains vs reference baselines with win-rate confidence intervals — DoD: charts rendered from T-2108/T-2109 data
+- [x] **T-2220** (P0) Generate the token-cost table from TokenMeter data: input/output split per model per purpose, cost per million tokens, totals row — DoD: table in notebook + docs with REAL measured numbers [guidelines §11]
+- [x] **T-2221** (P1) Write the cost-optimization analysis: every_n_steps effect, per-purpose model routing, template floor — measured savings vs all-LLM baseline — DoD: analysis section complete with numbers [PLAN §8]
+- [x] **T-2222** (P0) Export C4 diagrams (context, container, component) as rendered images into `assets/` in both repos — DoD: images render in PLAN/README; sources committed [guidelines §2.2]
+- [x] **T-2223** (P0) Export UML diagrams: FSM statechart, turn sequence, match lifecycle, deployment diagram — DoD: images in assets/, referenced from PLAN [guidelines §2.2]
 - [x] **T-2224** (P0) Split PLAN ADR-001..014 into individual `docs/adr/ADR-NNN-*.md` files with an index, in both repos — incl. ADR-013 (no email receive path: MCP reconciliation replaces it, gmail.send-only retained) and ADR-014 (pyright in CI) — DoD: 14 ADR files + index; PLAN links to them
 - [x] **T-2225** (P1) Record build-time ADRs (step-cap interpretation, timeout values chosen, FR-NEG-6 stance, any further A6-retrospective substitutions beyond ADR-013/014) — DoD: each decision has an ADR with context/decision/trade-offs
 - [x] **T-2226** (P0) Commit the mandatory screenshot set: live belief heatmap, Replay "Verified OK", dashboard panels — embedded in BOTH READMEs — DoD: both READMEs show both mandatory screenshots [book PAGE 75/96; deps: T-1825, T-1914]
-- [ ] **T-2227** (P1) Write `docs/EXTENDING.md`: extension points — brain selector, LLM provider plug-ins, adapter profiles, event subscribers — with one worked plugin example — DoD: example plugin loads via config [guidelines §12]
-- [ ] **T-2228** (P2) Write the ISO/IEC 25010 mapping doc: each quality characteristic → concrete project evidence (tests, gates, docs) — DoD: all 8 characteristics mapped [guidelines §13]
-- [ ] **T-2229** (P1) Consolidate `docs/edge-cases.md`: all edge cases across epics with test ids, expected input/response, and failure screenshots where relevant — DoD: doc complete; every entry links a test [guidelines §6.3]
+- [x] **T-2227** (P1) Write `docs/EXTENDING.md`: extension points — brain selector, LLM provider plug-ins, adapter profiles, event subscribers — with one worked plugin example — DoD: example plugin loads via config [guidelines §12]
+- [x] **T-2228** (P2) Write the ISO/IEC 25010 mapping doc: each quality characteristic → concrete project evidence (tests, gates, docs) — DoD: all 8 characteristics mapped [guidelines §13]
+- [x] **T-2229** (P1) Consolidate `docs/edge-cases.md`: all edge cases across epics with test ids, expected input/response, and failure screenshots where relevant — DoD: doc complete; every entry links a test [guidelines §6.3]
 - [x] **T-2230** (P0) Write the match-day runbook + incident playbook in docs (procedures, alert responses, escalation) — DoD: doc complete; used verbatim by E23 [FR-OBS-3]
 - [x] **T-2231** (P0) Sync docs into both repos (PRD/PLAN/TODO current, TODO statuses updated with real progress) — DoD: docs identical where mirrored; TODO reflects reality at each milestone [guidelines §2.5 step 6]
-- [ ] **T-2232** (P0) Run the two-person docs review pass against the guidelines master checklist (§15 of the digest); fix all findings — DoD: review notes + fixes committed; zero open findings
+- [x] **T-2232** (P0) Run the two-person docs review pass against the guidelines master checklist (§15 of the digest); fix all findings — DoD: review notes + fixes committed; zero open findings
 - [x] **T-2233** (P0) Finalize the per-match runbook: warm-up → negotiate → play → audit → reconcile → report → archive → commit config, each step with exact commands (incl. the pre-match smoke T-2126) — DoD: the E23 rehearsal (T-2307) executes purely from this doc [FR-OBS-3; deps: T-2230, T-2126]
 
 ## E23 — League operations (24 tasks)

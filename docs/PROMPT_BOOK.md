@@ -99,6 +99,66 @@ not suggest this on its own.
 
 ---
 
+## M6 — Hardening: chaos, gates, and the pre-match smoke
+
+**Goal:** stop trusting that the agent survives a bad day, and check it.
+
+**What worked:** framing each prompt as a *hostile event* rather than a feature —
+"the tunnel dies mid-series", "both LLM providers are down", "Gmail returns 429
+forever", "the laptop resumes from sleep". Each produced a test with an
+unambiguous pass condition, because the acceptable outcome of a hostile event is
+narrow: the game continues, or it ends cleanly.
+
+**What we corrected:** three of the assistant's own test expectations were
+wrong, and it initially proposed changing the *code* to match them. `Tunnel.check()`
+returns `True` when it restarted; `send_report` parks a report **and** re-raises;
+a backwards clock jump is impossible against `time.monotonic`. The prompt that
+fixed this was "before changing the code, prove the test's expectation is the
+correct one" — the third case then became an assertion about the invariant that
+makes the failure impossible, rather than arithmetic defending against a case
+the real clock cannot produce.
+
+**Lesson:** a failing test is not evidence that the code is wrong. Ask which of
+the two is making the false claim.
+
+## M7 — Measurement: the analysis notebook
+
+**Goal:** put a number next to every claim in the report.
+
+**What worked:** demanding an explicit **honesty boundary** — which figures are
+measured, which are approximated, and which belong to a vendor. Writing that
+section first changed the work: it is why the token census counts real prompts
+built by the real `Speaker` instead of estimating from assumed prompt sizes, and
+why the tokenizer being a proxy is stated in the notebook, the docs and the
+script rather than quietly ignored.
+
+**What we corrected, and it mattered most:** the assistant was ready to plot
+`results/latest.json` as it stood. Two of the three sweeps showed a flat line,
+and the honest-looking conclusion — "these knobs do not matter" — would have
+been **wrong twice over**:
+
+* the file was **stale**, generated before the `barrier_threshold` retune, so the
+  baseline in it was a configuration we no longer ship;
+* even regenerated, two knobs were measured against an opponent they beat 100 %
+  of the time. A saturated result measures the opponent, not the knob.
+
+The prompt that caught it: *"identical counts at every value is suspicious —
+prove the knob reaches the decision before reporting that it does not matter."*
+That produced the diffusion probe, which showed the belief field genuinely
+changing with depth while the chosen move did not — an isotropic kernel
+preserving the ranking. A real null result with a mechanism, instead of a flat
+chart with a wrong caption.
+
+**What the measurement then exposed**, which no one had asked for: our thief
+survives the greedy cop 60/60 and our own cop about 1 in 24. The headline
+survival number was a statement about the opponent. It is now the first entry in
+`docs/OPEN_ITEMS.md`.
+
+**Lesson:** ask the assistant to attack its own data before it plots it. "Is this
+number suspicious?" is a better prompt than "make the chart".
+
+---
+
 ## What we would tell the next team
 
 1. **Make the AI write the digest before the plan.** Sourced decisions survive
@@ -113,3 +173,7 @@ not suggest this on its own.
 5. **Keep the commit messages honest.** Ours record what broke and why, including
    the times the assistant reported a gate as passing when it had not looked. That
    history is what made later work trustworthy.
+6. **Make it attack its own output before presenting it.** The single highest-value
+   prompt in the whole project was "is this number suspicious?", which caught a
+   stale results file and a saturated experiment that between them would have put
+   two false conclusions in the report.

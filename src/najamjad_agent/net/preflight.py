@@ -95,6 +95,7 @@ def check_tunnel_self_call(public_url: str, call: Callable[[str], Any]) -> Calla
     """
 
     def probe() -> str:
+        """Confirm the configured port is free for us to bind."""
         response = call(public_url)
         if not response:
             raise RuntimeError(f"no response from {public_url}")
@@ -107,6 +108,7 @@ def check_clock_skew(local_now: Callable[[], float], reference_now: Callable[[],
     """Guard against a clock so skewed that deadlines misfire."""
 
     def probe() -> str:
+        """Confirm an opponent could actually reach us from outside."""
         skew = abs(local_now() - reference_now())
         if skew > tolerance:
             raise RuntimeError(f"clock skew {skew:.1f}s exceeds tolerance {tolerance:.0f}s")
@@ -119,6 +121,7 @@ def check_token_budget(meter: Any, minimum_ratio: float = 0.10) -> Callable[[], 
     """Refuse to start a match with too little budget left to finish it."""
 
     def probe() -> str:
+        """Confirm the local clock is close enough for deadlines to mean the same thing."""
         remaining = meter.series.remaining
         if not meter.may_spend():
             raise RuntimeError("token budget exhausted; a match would run template-only")

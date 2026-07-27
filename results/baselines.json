@@ -1,0 +1,56 @@
+{
+ "games": 60,
+ "seed": 11,
+ "held_out_from_tuning": true,
+ "matchups": {
+  "ours_cop_vs_greedy_thief": {
+   "played": 60,
+   "captures": 60,
+   "capture_rate": 1.0,
+   "capture_rate_ci95": [
+    0.9398,
+    1.0
+   ],
+   "mean_steps": 9.62,
+   "by_end_reason": {
+    "capture": 60
+   },
+   "disagreements": 0,
+   "stalled": 0,
+   "audit_failures": 0
+  },
+  "ours_thief_vs_greedy_cop": {
+   "played": 60,
+   "captures": 0,
+   "capture_rate": 0.0,
+   "capture_rate_ci95": [
+    0.0,
+    0.0602
+   ],
+   "mean_steps": 35.0,
+   "by_end_reason": {
+    "survival": 60
+   },
+   "disagreements": 0,
+   "stalled": 0,
+   "audit_failures": 0
+  },
+  "greedy_vs_greedy": {
+   "played": 60,
+   "captures": 4,
+   "capture_rate": 0.0667,
+   "capture_rate_ci95": [
+    0.0262,
+    0.1593
+   ],
+   "mean_steps": 32.73,
+   "by_end_reason": {
+    "survival": 56,
+    "capture": 4
+   },
+   "disagreements": 0,
+   "stalled": 0,
+   "audit_failures": 0
+  }
+ }
+}

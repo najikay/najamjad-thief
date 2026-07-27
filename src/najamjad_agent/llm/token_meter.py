@@ -14,8 +14,10 @@ an expense. The thresholds below protect that agreement:
   legally rather than stopping;
 * **stop** at 100% — no further paid calls in that scope.
 
-In practice none of these bind: measured usage is ~25% of the series cap (see
-`docs/TOKEN_BUDGET.md`), so the safety net exists for a runaway loop, not for
+In practice none of these can bind. Measured usage is **2.3% of the series cap**
+— 4,577 tokens for a six-game series, or 6.8% in the worst case where every game
+runs the full survival horizon (`docs/TOKEN_BUDGET.md`, measured by
+`scripts/measure_tokens.py`). The safety net exists for a runaway loop, not for
 normal play. The project ceiling is set generously for the same reason — it
 should never be the thing that decides a match.
 """

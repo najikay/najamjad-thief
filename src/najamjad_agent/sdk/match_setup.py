@@ -30,6 +30,7 @@ from ..shared.gatekeeper import ApiGatekeeper
 from ..shared.rate_limits import for_service, load_rate_limits
 from ..strategy.cop_brain import CopBrain
 from ..strategy.thief_brain import ThiefBrain
+from .plugins import resolve
 
 
 def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
@@ -48,16 +49,30 @@ def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
     )
 
 
-def build_brain(role: Role, state: GameState) -> Any:
-    """The policy for this role, reading the board as it changes.
+def brain_factory(manager: Any = None) -> Any:
+    """The policy for each role, honouring a brain named in configuration.
 
-    `board_supplier` rather than a captured board: barriers appear mid-game,
-    and a brain reasoning over a stale board walks into walls it declared.
+    `strategy.cop_brain` / `strategy.thief_brain` accept a
+    `"module:Attribute"` path (see `docs/EXTENDING.md`); unset means the brains
+    that ship. Resolution happens **here, once, at wiring time** rather than per
+    turn, so a bad path fails while starting up instead of mid-match.
+
+    `board_supplier` rather than a captured board: barriers appear mid-game, and
+    a brain reasoning over a stale board walks into walls it declared.
     """
-    supplier = lambda: state.board  # noqa: E731 - a one-line accessor is clearer inline
-    return CopBrain(board_supplier=supplier) if role is Role.COP else ThiefBrain(
-        board_supplier=supplier
-    )
+    cop = resolve(manager.get("strategy.cop_brain") if manager else None, CopBrain)
+    thief = resolve(manager.get("strategy.thief_brain") if manager else None, ThiefBrain)
+
+    def build(role: Role, state: GameState) -> Any:
+        """Instantiate the brain for one mini-game."""
+        supplier = lambda: state.board  # noqa: E731 - a one-line accessor is clearer inline
+        return (cop if role is Role.COP else thief)(board_supplier=supplier)
+
+    return build
+
+
+#: The default factory, for callers with no configuration to consult.
+build_brain = brain_factory()
 
 
 def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
@@ -107,7 +122,7 @@ def build_match(
         tracker=tracker,
         transport=transport,
         build_state=build_state,
-        build_brain=build_brain,
+        build_brain=brain_factory(manager),
         speaker=speaker,
         clock=time.monotonic,
         first_role=role,

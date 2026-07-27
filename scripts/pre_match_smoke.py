@@ -19,7 +19,24 @@ import sys
 import time
 from pathlib import Path
 
+import tomllib
+
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def console_script() -> str:
+    """This repo's console-script name, read rather than hardcoded.
+
+    The file is byte-identical in both repos, so it cannot name `najamjad-cop`
+    or `najamjad-thief`. Reading it from `pyproject.toml` keeps the checks
+    running the *installed entry point* — the thing a grader and an operator
+    actually invoke — instead of reaching past it into a module.
+    """
+    manifest = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    return next(iter(manifest["project"]["scripts"]))
+
+
+CLI = console_script()
 GOLDEN = ROOT / "tests/goldens/artifacts/log_segal-police-team-vs-segal-thief-team_g01.json"
 TAMPERED = ROOT / "tests/goldens/artifacts/log_tampered_step7.json"
 
@@ -30,9 +47,9 @@ CHECKS: list[tuple[str, list[str], int]] = [
         "from najamjad_agent.sdk.bootstrap import default_config_path;"
         "ConfigManager.load(default_config_path(), shared_config=Path('config/game.json'))"], 0),
     ("golden log verifies (crypto matches the reference)",
-        ["uv", "run", "python", "-m", "najamjad_agent.replay", "--log", str(GOLDEN), "--check"], 0),
+        ["uv", "run", CLI, "replay", str(GOLDEN)], 0),
     ("tampered log is caught (the audit still bites)",
-        ["uv", "run", "python", "-m", "najamjad_agent.replay", "--log", str(TAMPERED), "--check"], 1),
+        ["uv", "run", CLI, "replay", str(TAMPERED)], 1),
     ("interop contract holds",
         ["uv", "run", "pytest", "tests/integration/test_interop_contract.py", "-q", "--no-cov"], 0),
     ("we still play a clean audited game",
@@ -60,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     checks = list(CHECKS)
     if args.preflight:
         checks.append(("match-day preflight",
-                       ["uv", "run", "python", "-m", "najamjad_agent.cli", "preflight"], 0))
+                       ["uv", "run", CLI, "preflight"], 0))
 
     failures = []
     for label, command, expected in checks:

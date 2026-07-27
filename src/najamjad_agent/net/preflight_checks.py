@@ -26,6 +26,7 @@ def required_setting(manager: ConfigManager, dotted: str) -> Callable[[], str]:
     """
 
     def probe() -> str:
+        """Confirm the setting is present and not blank."""
         value = str(manager.get(dotted, "") or "").strip()
         if not value:
             raise ValueError(f"{dotted} is not set — fill it in before the match")
@@ -38,6 +39,7 @@ def config_check(manager: ConfigManager) -> Callable[[], str]:
     """Re-validate the loaded configuration and say so."""
 
     def probe() -> str:
+        """Confirm the config loads and its version is one we support."""
         manager.validate()
         return f"version {manager.get('version', 'unknown')} valid"
 
@@ -48,6 +50,7 @@ def port_check(server: Any) -> Callable[[], str]:
     """Confirm our MCP port is actually free."""
 
     def probe() -> str:
+        """Confirm nothing else already holds our port."""
         server.preflight()
         return f"{server.host}:{server.port} free"
 
@@ -62,6 +65,7 @@ def tunnel_check(tunnel: Any) -> Callable[[], Any]:
     """
 
     def probe() -> Any:
+        """Confirm the tunnel hostname resolves to a live endpoint."""
         return tunnel.public_url if tunnel is not None else None
 
     return probe

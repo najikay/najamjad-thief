@@ -8,8 +8,8 @@ that any of it works.
 
 | File | What it shows | How to reproduce |
 |---|---|---|
-| `replay-verified-ok.png` | The mandatory **Verified OK** banner (book rule 20), replaying the lecturer's own sample log — all 19 records re-hash to their stored commits. Step 9 is selected so the reconstructed board is visible. | `uv run python -m najamjad_agent.replay --log tests/goldens/artifacts/log_segal-police-team-vs-segal-thief-team_g01.json` then open `/replay?step=9` |
-| `replay-tampered.png` | The **TAMPERED — GAME VOID (rule 19)** banner on a deliberately corrupted copy of that same log. Record 7's revealed move and position were edited while its commit was left intact; the viewer localises the forgery to exactly that step and shows the stored and recomputed hashes side by side. | `uv run python -m najamjad_agent.replay --log tests/goldens/artifacts/log_tampered_step7.json` then open `/replay?step=7` |
+| `replay-verified-ok.png` | The mandatory **Verified OK** banner (book rule 20), replaying the lecturer's own sample log — all 19 records re-hash to their stored commits. Step 9 is selected so the reconstructed board is visible. | `uv run najamjad-cop replay tests/goldens/artifacts/log_segal-police-team-vs-segal-thief-team_g01.json --serve` then open `/replay?step=9` |
+| `replay-tampered.png` | The **TAMPERED — GAME VOID (rule 19)** banner on a deliberately corrupted copy of that same log. Record 7's revealed move and position were edited while its commit was left intact; the viewer localises the forgery to exactly that step and shows the stored and recomputed hashes side by side. | `uv run najamjad-cop replay tests/goldens/artifacts/log_tampered_step7.json --serve` then open `/replay?step=7` |
 | `dashboard-live.png` | The live dashboard after a real five-turn mini-game: belief heatmap with its halo around the peak, turn banner, dialogue with per-message model provenance, the full negotiation timeline, token budget, the red *reconciled-but-not-sent* report alert, and the event feed. | `uv run python scripts/demo_dashboard.py --port 8200` then open `/` |
 
 ## One artifact worth explaining
