@@ -118,13 +118,20 @@ def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus
     from .match_setup import build_match, build_transport
 
     transport = build_transport(manager, bus, inboxes)
+    # One dict shared by the handshake and the filer: the handshake learns the
+    # opponent's identity and the locked contract hash, and the artifacts cannot
+    # be written without both.
+    session: dict[str, Any] = {}
     actions.attach_match(build_match(
         manager, role, transport, _speaker(manager, bus), bus,
-        handshake=_handshake(manager, bus, inboxes, transport),
+        handshake=_handshake(manager, bus, inboxes, transport, session),
     ))
+    from .match_filing import build_filer
+
+    actions.attach_filer(build_filer(manager, bus, session, actions))
 
 
-def _handshake(manager: ConfigManager, bus, inboxes, transport):
+def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
     """The pre-game agreement swap, as a callable the match runs first."""
     from ..negotiation.handshake import exchange_agreement
     from ..negotiation.identity import identity_from_config
@@ -132,9 +139,12 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport):
 
     def run():
         """Sign, swap and verify the terms before any move is played."""
-        return exchange_agreement(
-            terms=terms_from_config(manager),
-            identity=identity_from_config(manager),
+        terms = terms_from_config(manager)
+        session["terms"] = terms
+        session["identity"] = identity_from_config(manager)
+        peer = exchange_agreement(
+            terms=terms,
+            identity=session["identity"],
             send=lambda payload: transport.send_negotiate(payload),
             # The inbox hands back a validated pydantic model; the handshake and
             # the contract both work in plain dicts, and `verify_peer` indexes
@@ -143,6 +153,8 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport):
             timeout=float(manager.get("network.handshake_timeout_seconds", 60)),
             emit=bus.publish,
         )
+        session["peer"] = peer
+        return peer
 
     return run
 

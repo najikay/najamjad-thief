@@ -42,6 +42,9 @@ class AgentActions:
         self._dashboard = dashboard
         self._match = match
         self._opponent_url = opponent_url
+        self._file_match: Any = None
+        #: Where the last match's artifacts were written, for the CLI and dashboard.
+        self.last_artifacts: dict[str, Any] = {}
 
     @property
     def public_url(self) -> str:
@@ -114,7 +117,28 @@ class AgentActions:
         self._emit({"event": "match.starting"})
         result = self._match.play_series()
         self._emit({"event": "match.finished", "games": len(self._match.games)})
+        self._file(result)
         return result
+
+    def attach_filer(self, filer: Any) -> None:
+        """Wire in the thing that turns a finished match into its artifacts."""
+        self._file_match = filer
+
+    def _file(self, result: Any) -> None:
+        """Write the artifacts and send the report; never lose the series to it.
+
+        A match that is played but not filed scores nothing (rule 35), so the
+        failure is loud. It is caught rather than raised because the series is
+        already over and its outcome is worth keeping even if the paperwork
+        fails — the operator gets an event naming what went wrong.
+        """
+        if self._file_match is None:
+            self._emit({"event": "artifacts.skipped", "reason": "no filer configured"})
+            return
+        try:
+            self._file_match(self._match.games, self._match.tracker.outcomes, result)
+        except Exception as error:  # noqa: BLE001 - reported, never swallowed
+            self._emit({"event": "artifacts.failed", "error": f"{type(error).__name__}: {error}"})
 
     @property
     def games(self) -> list[dict[str, Any]]:

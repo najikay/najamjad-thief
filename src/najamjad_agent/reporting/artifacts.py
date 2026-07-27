@@ -57,10 +57,14 @@ class ArtifactWriter:
 
     def _write(self, kind: str, payload: dict[str, Any], filename: str) -> Path:
         """Validate then persist — never the other way round."""
-        validate_egress(MODELS[kind], payload, kind=kind, alert=self._alert)
+        parsed = validate_egress(MODELS[kind], payload, kind=kind, alert=self._alert)
         self.workspace.mkdir(parents=True, exist_ok=True)
         path = self.workspace / filename
-        path.write_text(canonical_json(payload), encoding="utf-8")
+        # The **validated model**, not the raw payload. Fields the schema
+        # supplies by default — `schema_version`, `report_type`, `timezone` —
+        # exist only on the model, so writing the payload silently dropped every
+        # one of them from the file we email. The grader reads the file.
+        path.write_text(canonical_json(parsed.model_dump(mode="json")), encoding="utf-8")
         return path
 
     def _identity(self) -> dict[str, Any]:
