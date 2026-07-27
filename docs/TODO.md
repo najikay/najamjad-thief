@@ -70,7 +70,7 @@
 - [x] **T-0118** (P0) Define the mirrored-core file list and sync procedure (which PLAN §1.3 files are core vs role-specific) in `scripts/core_manifest.json` + `docs/CORE_SYNC.md` — DoD: list matches ADR-002 (strategy modules and config defaults excluded); procedure covers "edit in cop → sync to thief → verify"
 - [x] **T-0119** (P0) Write cop repo README stub: title, one-paragraph purpose, section placeholders (install/usage/config/screenshots/academic report/license), cross-link to thief repo — DoD: renders on GitHub, thief link resolves
 - [x] **T-0120** (P0) Write thief repo README stub with cross-link to cop repo — DoD: renders; cop link resolves (book rule 49)
-- [ ] **T-0121** (P1) Add CONTRIBUTING.md with git conventions: meaningful commit messages, feature branches, PRs between members, tag policy — DoD: file exists in both repos; first feature branch + PR exercised once
+- [x] **T-0121** (P1) Add CONTRIBUTING.md with git conventions: meaningful commit messages, feature branches, PRs between members, tag policy — DoD: file exists in both repos; first feature branch + PR exercised once
 - [x] **T-0122** (P0) Copy `docs/PRD.md`, `docs/PLAN.md`, `docs/TODO.md` into both repos' `docs/` and add them to the sync procedure — DoD: guideline-mandated docs present in both repos (E6 gate) [deps: T-0118]
 - [x] **T-0123** (P0) Document canonical dev commands (uv sync / uv run pytest / uv run ruff check / uv run <cli>) in README dev section — DoD: zero `pip`/`python -m` strings anywhere in repos including docs (E4 gate)
 - [~] **T-0124** (P0) Verify walking skeleton: both repos pass `uv run pytest` and `uv run ruff check` locally from a clean clone — DoD: screenshot/log of both green runs attached to PR; M1 precondition met
@@ -102,8 +102,8 @@
 - [ ] **T-0218** (P2) Add CI status badges to both READMEs — DoD: badges render and reflect live status
 - [ ] **T-0219** (P1) Configure CI caching (uv cache) and job concurrency — DoD: typical PR pipeline completes in < 5 minutes
 - [ ] **T-0220** (P1) Ensure CI failures are loudly visible: GitHub notifications on for both members; failure-triage step in runbook — DoD: documented; test failure produced a notification to both members
-- [ ] **T-0221** (P0) Red-team every gate once: one test branch per gate (oversize file, secret, pip string, silent except, coverage drop, manifest drift) — DoD: each branch fails on exactly its intended gate; evidence linked in PR
-- [ ] **T-0222** (P1) Write `docs/CI.md`: what each job checks, thresholds, and the exact `uv run` command to reproduce each gate locally — DoD: doc exists in both repos and matches the workflow files
+- [x] **T-0221** (P0) Red-team every gate once: one test branch per gate (oversize file, secret, pip string, silent except, coverage drop, manifest drift) — DoD: each branch fails on exactly its intended gate; evidence linked in PR
+- [x] **T-0222** (P1) Write `docs/CI.md`: what each job checks, thresholds, and the exact `uv run` command to reproduce each gate locally — DoD: doc exists in both repos and matches the workflow files
 - [ ] **T-0223** (P1) Add a pyright (basic mode) CI job on both repos: `uv add --dev pyright`, `uv run pyright` over `src/` — DoD: job green; a planted type error on a test branch fails it [ADR-014]
 
 ## E03 — Config system (24 tasks)
@@ -118,7 +118,7 @@
 - [ ] **T-0308** (P0) Implement `protocol/canonical.py` canonical JSON serialization (sort_keys, ensure_ascii=False, separators `(",",":")`; ≤120 code lines, budget 60) — DoD: T-0307 green; identical output to reference simulator's canonical form on sample payloads
 - [ ] **T-0309** (P0) Author `config/setup.json` v1.00 (app-level tunables: ports, UI, paths, feature flags) for both repos — DoD: file parses; every value consumed via ConfigManager, none hardcoded
 - [ ] **T-0310** (P0) Author `config/rate_limits.json` v1.00 with services `mcp_peer`, `anthropic`, `deepseek`, `gmail` (gmail: 30 rpm, 2 concurrent, 5 s backoff, 3 retries, queue 100 — Appendix F minimums) + queue block — DoD: file parses; values match Appendix F Table 19 [ADR-009]
-- [ ] **T-0311** (P0) Author `config/logging_config.json` dictConfig payload: JSONL handler, per-subsystem loggers, correlation-id support — DoD: payload loads via `logging.config.dictConfig` in a test [FR-OBS-1]
+- [x] **T-0311** (P0) Author `config/logging_config.json` dictConfig payload: JSONL handler, per-subsystem loggers, correlation-id support — DoD: payload loads via `logging.config.dictConfig` in a test [FR-OBS-1]
 - [ ] **T-0312** (P0) Add tests validating all shipped config files parse, carry `version: "1.00"`, and match their pydantic config models — DoD: tests green; malformed fixture rejected
 - [ ] **T-0313** (P0) Create `config/police/game.toml` in cop repo: identity ([game] group NajAmjad, members), [network] my_port 8802 + opponent_url, [llm], [email] recipient `rmisegal+uoh26finalgame@gmail.com` mode=draft — DoD: cop boots from it; no secrets inside [FR-NET-6]
 - [ ] **T-0314** (P0) Create `config/thief/game.toml` in thief repo (my_port 8801, same structure) — DoD: thief boots from it; separation from cop config total [FR-NET-6]
@@ -129,7 +129,7 @@
 - [ ] **T-0319** (P0) Implement workspace helpers in `shared/config.py` (split to `shared/workspace.py` ≤120 code lines if budget exceeded; update PLAN §1.3 + manifest) — DoD: T-0318 green; two opponents' workspaces fully isolated [FR-CFG-3]
 - [ ] **T-0320** (P0) Implement `.env` secret loading (os.environ only, autoload at startup) with test that no secret value is ever read from a tracked config file — DoD: test green; grep confirms `os.environ.get` is the only secret path (E5 gate)
 - [ ] **T-0321** (P1) Add hardcoded-value meta-test: grep `src/` for tunable literals (URLs, timeouts, limits, emails) outside constants.py/config — DoD: meta-test green; each allowed constant justified by comment [guidelines §7.2]
-- [ ] **T-0322** (P1) Write `docs/CONFIG.md`: every config key, default, source file, and Appendix F negotiability status (fixed/minimum/negotiable) — DoD: doc complete for all keys in all shipped config files
+- [x] **T-0322** (P1) Write `docs/CONFIG.md`: every config key, default, source file, and Appendix F negotiability status (fixed/minimum/negotiable) — DoD: doc complete for all keys in all shipped config files
 - [ ] **T-0323** (P1) Document + test the config version-bump procedure: bumping a config version without updating `SUPPORTED_CONFIG_VERSIONS` is rejected at startup — DoD: test green; procedure in docs/CONFIG.md
 - [ ] **T-0324** (P0) Add config module + canonical.py + shipped configs (shared parts) to the core manifest; verify byte-identical across repos — DoD: cross-repo CI job green [ADR-002; deps: T-0214]
 
@@ -157,7 +157,7 @@
 - [x] **T-0420** (P0) Write failing tests for WS fanout: multiple subscribers each receive every event; a slow/stalled subscriber never blocks the bus or other subscribers — DoD: tests fail (RED) (A6 UI lesson: multi-subscriber, no frame theft)
 - [ ] **T-0421** (P0) Implement WS fanout adapter (per-subscriber async queue with bounded backlog + drop-with-event policy) — DoD: T-0420 green [ADR-005]
 - [ ] **T-0422** (P0) Write failing test for `shared/logging_setup.py`: after init, `logging.config.dictConfig` has actually been applied (root/subsystem loggers have the configured handlers) — DoD: test fails (RED) (A6 pain: config existed, never wired)
-- [ ] **T-0423** (P0) Implement `shared/logging_setup.py` (≤120 code lines) called at every entrypoint startup — DoD: T-0422 green; a log line from any subsystem lands in the JSONL file [FR-OBS-1]
+- [x] **T-0423** (P0) Implement `shared/logging_setup.py` (≤120 code lines) called at every entrypoint startup — DoD: T-0422 green; a log line from any subsystem lands in the JSONL file [FR-OBS-1]
 - [ ] **T-0424** (P0) Add degradation-event tests across shared/: every retry, fallback, timeout, and backpressure path emits an event (no silent handling) — DoD: tests enumerate and cover each degradation branch [FR-OBS-2]
 - [ ] **T-0425** (P0) Write failing tests for `shared/sysinfo.py`: returns the 6-field spec (os, cpu_type, cpu_cores, cpu_freq, ram_gb, gpu/vram), cached, subprocess via arg-list only (no shell=True) — DoD: tests fail (RED) [FR-CRY-4]
 - [ ] **T-0426** (P0) Implement `shared/sysinfo.py` (≤120 code lines) — DoD: T-0425 green; works on WSL2; meta-test greps repo for `shell=True` and finds zero
@@ -697,7 +697,7 @@
 - [ ] **T-2304** (P0) Schedule matches (scheduling from Aug 3): warm-up slots from Aug 6; confirm ≥ 3 counted-match windows in Aug 7–8 and ≥ 3 more in Aug 9–10 with named opponents — DoD: calendar holds confirmed by both sides in writing
 - [x] **T-2305** (P0) Adopt the warm-up policy: NEVER count first contact — a warm-up game is mandatory before any counted match with each opponent — DoD: policy in the runbook (T-2233); the counted-game tracker (T-1210) enforces it (risk R2, book rule 52)
 - [x] **T-2306** (P0) Create the incident-log template `matches/<opponent>/incidents.md` and the discipline of logging every retry/timeout/quirk live during matches — DoD: template exists; used in the rehearsal
-- [ ] **T-2307** (P0) Run the full match-day rehearsal vs the reference simulator using the runbook end-to-end (incl. archive + config commit) — DoD: rehearsal completes with zero undocumented steps [deps: T-2112, T-2233]
+- [x] **T-2307** (P0) Run the full match-day rehearsal vs the reference simulator using the runbook end-to-end (incl. archive + config commit) — DoD: rehearsal completes with zero undocumented steps [deps: T-2112, T-2233]
 - [x] **T-2308** (P0) Define the pre-match opponent-profile procedure: adapter profile + playbook stance filled per opponent before the match window — DoD: procedure in the runbook; template profile committed [FR-NEG-5]
 - [ ] **T-2309** (P0) Play counted match #1 per the runbook — DoD: series complete; 4 artifacts valid; both reports emailed; archive done
 - [ ] **T-2310** (P0) Hold the match #1 post-mortem: incidents → fixes/adapter updates; TODO + opponent model updated — DoD: post-mortem notes committed; actions ticketed

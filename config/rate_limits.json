@@ -1,48 +1,57 @@
 {
-  "rate_limits": {
-    "version": "1.00",
-    "services": {
-      "default": {
-        "requests_per_minute": 30,
-        "requests_per_hour": 500,
-        "concurrent_max": 2,
-        "retry_after_seconds": 5,
-        "max_retries": 3,
-        "queue_depth": 100
-      },
-      "gmail": {
-        "requests_per_minute": 30,
-        "requests_per_hour": 500,
-        "concurrent_max": 2,
-        "retry_after_seconds": 5,
-        "max_retries": 3,
-        "queue_depth": 100
-      },
-      "mcp_peer": {
-        "requests_per_minute": 600,
-        "requests_per_hour": 20000,
-        "concurrent_max": 2,
-        "retry_after_seconds": 5,
-        "max_retries": 3,
-        "queue_depth": 100,
-        "_note": "The opponent is our protocol partner, not a metered third-party API. The gatekeeper exists to be a good citizen towards Anthropic and Gmail; applying those limits here only risks delaying our own reply past the opponent's 30s deadline and forfeiting a game to our own throttle. Rate raised so it never shapes a legitimate match; concurrency stays at the Appendix F ceiling of 2."
-      },
-      "anthropic": {
-        "requests_per_minute": 30,
-        "requests_per_hour": 500,
-        "concurrent_max": 2,
-        "retry_after_seconds": 5,
-        "max_retries": 3,
-        "queue_depth": 100
-      },
-      "deepseek": {
-        "requests_per_minute": 30,
-        "requests_per_hour": 500,
-        "concurrent_max": 2,
-        "retry_after_seconds": 5,
-        "max_retries": 3,
-        "queue_depth": 100
-      }
-    }
+ "rate_limits": {
+  "version": "1.00",
+  "services": {
+   "default": {
+    "requests_per_minute": 30,
+    "requests_per_hour": 500,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100
+   },
+   "gmail": {
+    "requests_per_minute": 30,
+    "requests_per_hour": 500,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100
+   },
+   "mcp_peer": {
+    "requests_per_minute": 600,
+    "requests_per_hour": 20000,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100,
+    "_note": "The opponent is our protocol partner, not a metered third-party API. The gatekeeper exists to be a good citizen towards Anthropic and Gmail; applying those limits here only risks delaying our own reply past the opponent's 30s deadline and forfeiting a game to our own throttle. Rate raised so it never shapes a legitimate match; concurrency stays at the Appendix F ceiling of 2."
+   },
+   "anthropic": {
+    "requests_per_minute": 30,
+    "requests_per_hour": 500,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100
+   },
+   "deepseek": {
+    "requests_per_minute": 30,
+    "requests_per_hour": 500,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100
+   },
+   "inbound_peer": {
+    "requests_per_minute": 3000,
+    "requests_per_hour": 100000,
+    "concurrent_max": 2,
+    "retry_after_seconds": 5,
+    "max_retries": 3,
+    "queue_depth": 100,
+    "_note": "INBOUND messages from the opponent. This is a flood backstop, not a throttle on play: the real protection against a peer filling memory is the bounded inbox queue, which refuses politely and does not grow. The ceiling was 120/min on the assumption that turns are human-paced; they are not \u2014 a turn costs us milliseconds, so two fast peers exceed 2/sec trivially. In a six-game rehearsal against the reference we rejected its legitimate turn mid-game, then timed out waiting for the message we had thrown away ourselves. Set far above anything honest play can reach."
+   }
   }
+ }
 }

@@ -84,7 +84,7 @@ Point the config at it:
 ```toml
 # config/police/game.toml  (or config/thief/game.toml)
 [strategy]
-thief_brain = "plugins.wall_hugger:WallHugger"
+thief_class = "plugins.wall_hugger:WallHugger"
 ```
 
 That is the whole procedure. `sdk/match_setup.py:brain_factory` resolves the

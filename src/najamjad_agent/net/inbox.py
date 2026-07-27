@@ -23,7 +23,7 @@ from ..protocol.schemas_wire import (
     TurnMessage,
 )
 from ..shared.events import Emit
-from .session_guard import SessionGuard
+from .session_guard import DEFAULT_MAX_PER_MINUTE, SessionGuard
 from .sub_game_boundary import FIRST_STEP, clear_finished_game
 
 # One queue per message kind: a flood of control messages must not delay a turn.
@@ -43,13 +43,14 @@ class Inboxes:
         emit: Emit | None = None,
         maxsize: int = 1000,
         guard: SessionGuard | None = None,
+        max_per_minute: int = DEFAULT_MAX_PER_MINUTE,
     ) -> None:
         """Create the queues; `emit` receives every accept/reject event."""
         self._queues = {kind: queue.Queue(maxsize=maxsize) for kind in KINDS}
         self._emit = emit or (lambda _event: None)
         self._last_step = -1
         self._lock = threading.Lock()
-        self.guard = guard or SessionGuard(emit=emit)
+        self.guard = guard or SessionGuard(emit=emit, max_per_minute=max_per_minute)
 
     def accept(self, kind: str, raw: Any) -> ParseResult:
         """Validate and enqueue one inbound message, returning the verdict."""

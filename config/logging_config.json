@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "_config_version": "1.00",
+  "_note": "Python logging dictConfig (guidelines §7.2). This is the DIAGNOSTIC channel — library warnings, stack traces, operator messages. The GAME record is the event bus (workspace/events.jsonl, ADR-008); anything a grader or a replay needs is an event, not a log line. Keeping them apart is deliberate: a log is for a human reading a terminal, an event is evidence.",
+  "disable_existing_loggers": false,
+  "formatters": {
+    "console": {
+      "format": "%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+      "datefmt": "%H:%M:%S"
+    },
+    "jsonl": {
+      "format": "{\"ts\": \"%(asctime)s\", \"level\": \"%(levelname)s\", \"logger\": \"%(name)s\", \"message\": \"%(message)s\"}",
+      "datefmt": "%Y-%m-%dT%H:%M:%S"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "level": "INFO",
+      "formatter": "console",
+      "stream": "ext://sys.stderr"
+    },
+    "file": {
+      "class": "logging.handlers.RotatingFileHandler",
+      "level": "DEBUG",
+      "formatter": "jsonl",
+      "filename": "workspace/diagnostic.log",
+      "maxBytes": 5242880,
+      "backupCount": 3,
+      "encoding": "utf-8"
+    }
+  },
+  "loggers": {
+    "najamjad_agent": {"level": "DEBUG", "handlers": ["console", "file"], "propagate": false},
+    "najamjad_agent.net": {"level": "INFO", "handlers": ["console", "file"], "propagate": false},
+    "najamjad_agent.llm": {"level": "INFO", "handlers": ["console", "file"], "propagate": false},
+    "httpx": {"level": "WARNING", "handlers": ["console"], "propagate": false},
+    "uvicorn.access": {"level": "WARNING", "handlers": ["console"], "propagate": false}
+  },
+  "root": {"level": "WARNING", "handlers": ["console"]}
+}

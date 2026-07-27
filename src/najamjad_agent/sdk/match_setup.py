@@ -52,7 +52,7 @@ def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
 def brain_factory(manager: Any = None) -> Any:
     """The policy for each role, honouring a brain named in configuration.
 
-    `strategy.cop_brain` / `strategy.thief_brain` accept a
+    `strategy.cop_class` / `strategy.thief_class` accept a
     `"module:Attribute"` path (see `docs/EXTENDING.md`); unset means the brains
     that ship. Resolution happens **here, once, at wiring time** rather than per
     turn, so a bad path fails while starting up instead of mid-match.
@@ -60,8 +60,8 @@ def brain_factory(manager: Any = None) -> Any:
     `board_supplier` rather than a captured board: barriers appear mid-game, and
     a brain reasoning over a stale board walks into walls it declared.
     """
-    cop = resolve(manager.get("strategy.cop_brain") if manager else None, CopBrain)
-    thief = resolve(manager.get("strategy.thief_brain") if manager else None, ThiefBrain)
+    cop = resolve(manager.get("strategy.cop_class") if manager else None, CopBrain)
+    thief = resolve(manager.get("strategy.thief_class") if manager else None, ThiefBrain)
 
     def build(role: Role, state: GameState) -> Any:
         """Instantiate the brain for one mini-game."""

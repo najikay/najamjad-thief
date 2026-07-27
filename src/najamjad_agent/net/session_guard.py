@@ -30,9 +30,18 @@ from typing import Any
 
 from ..shared.events import Emit
 
-# A legitimate peer sends at most a few messages per turn. This ceiling is far
-# above honest play and far below what would exhaust the inbox queue.
-DEFAULT_MAX_PER_MINUTE = 120
+# A flood backstop, not a throttle on play. The previous value — 120/min —
+# assumed turns are human-paced, and they are not: a turn costs us milliseconds,
+# so two fast peers pass 2/sec trivially. In a six-game rehearsal we rejected the
+# opponent's legitimate turn at game 4 and then timed out waiting for the message
+# we had thrown away ourselves, forfeiting a game to our own guard.
+#
+# The real protection against a peer exhausting memory is the bounded inbox
+# queue, which refuses politely and does not grow. This ceiling only has to sit
+# above anything honest play can reach; it is overridden from
+# `config/rate_limits.json` (service `inbound_peer`), never hardcoded at a call
+# site.
+DEFAULT_MAX_PER_MINUTE = 3000
 
 
 def session_token(config_sha256: str, game_uid: str) -> str:

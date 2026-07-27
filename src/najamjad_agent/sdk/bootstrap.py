@@ -23,6 +23,7 @@ from ..net.preflight_checks import standard_checks
 from ..net.tunnel import Tunnel
 from ..shared.config import ConfigManager
 from ..shared.events import EventBus
+from ..shared.logging_setup import setup_logging
 from .actions import AgentActions
 from .sdk import AgentSdk
 
@@ -77,10 +78,13 @@ def build_sdk(
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     role_dir = config or default_config_path()
+    # Diagnostics first: everything after this point is entitled to a logger,
+    # and a failure here is reported rather than raised (guidelines §7.2).
+    setup_logging(workspace=workspace or Path("workspace"))
     manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path("workspace")) / "events.jsonl")
-    inboxes = Inboxes(emit=bus.publish)
+    inboxes = Inboxes(emit=bus.publish, max_per_minute=_inbound_ceiling(manager))
     server = PeerServer(
         inboxes=inboxes,
         port=int(manager.get("network.my_port", 8802)),
@@ -141,6 +145,18 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport):
         )
 
     return run
+
+
+def _inbound_ceiling(manager: ConfigManager) -> int:
+    """How many messages a minute we will accept from the opponent.
+
+    From `config/rate_limits.json`, never a literal at the call site: this is a
+    tunable, and the last time it was hardcoded it silently forfeited a game.
+    """
+    from ..shared.rate_limits import for_service, load_rate_limits
+
+    limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
+    return int(for_service(limits, "inbound_peer").requests_per_minute)
 
 
 def _as_dict(message: Any) -> dict[str, Any] | None:

@@ -317,6 +317,9 @@ agrees with your assumptions, not that your assumptions are right.**
 | `docs/SECURITY.md` | Threat model, prompt-injection defences, secret handling |
 | `docs/UX.md` | Nielsen heuristics mapped to dashboard decisions; accessibility |
 | `docs/EXTENDING.md` | The four extension seams, with a worked plugin |
+| `docs/CONFIG.md` | Every config key, its file, and its Appendix F negotiability |
+| `docs/CI.md` | What each gate checks and how to reproduce a failure |
+| `CONTRIBUTING.md` | Conventions: core sync, commits, tests, match-day freeze |
 | `docs/ISO25010.md` | ISO/IEC 25010 quality characteristics mapped to evidence |
 | `docs/edge-cases.md` | Every handled boundary condition, each linking its test |
 | `docs/TOKEN_BUDGET.md` | Measured token consumption and the cost model |

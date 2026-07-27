@@ -1,6 +1,6 @@
 # Open items
 
-**Version 1.50 · 2026-07-27**
+**Version 1.60 · 2026-07-27**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
@@ -8,22 +8,54 @@ can see we know.
 
 ---
 
-## T-2307 — rehearsal vs the reference: a two-game series now fully agrees
+## T-2307 — a full six-game series against the reference: CLOSED
 
-Both peers, both mini-games, role swap included:
+Both peers, all six mini-games, roles alternating, every audit `Verified OK`,
+both processes exiting 0.
 
-| game | our role | reference says | we say | audit |
+| game | our role | reference | us | audit |
 |---|---|---|---|---|
-| g01 | thief | `survival`, najamjad, 10-5 | `survival`, 35 steps | `Verified OK` |
-| g02 | police | `survival`, segal, 10-5 | `survival`, 34 steps | `Verified OK` |
+| g01 | thief | survival, najamjad 10-5 | survival, 35 steps | `Verified OK` |
+| g02 | police | survival, segal 10-5 | survival, 34 steps | `Verified OK` |
+| g03 | thief | survival, najamjad 10-5 | survival, 35 steps | `Verified OK` |
+| g04 | police | survival, segal 10-5 | survival, 34 steps | `Verified OK` |
+| g05 | thief | survival, najamjad 10-5 | survival, 35 steps | `Verified OK` |
+| g06 | police | survival, segal 10-5 | survival, 34 steps | `Verified OK` |
 
-Series 15-15 on both sides. No `TAMPERED`, no disagreement.
+**Final: 45-45.** Reproduce with `uv run python scripts/rehearsal.py --games 6`.
 
-What is still unproven is a **full six-game** series against the reference, and
-any series against an opponent that is not the reference. The warm-up policy
-exists for the second of those.
+Getting the first three games to run exposed one more self-inflicted defect: at
+game 4 **our own inbound guard rejected the opponent's legitimate turn** —
+*"inbound rate limit of 120/min exceeded"* — and we then timed out waiting for
+the message we had thrown away ourselves. Nothing shorter than a four-game
+series would have found it. Fixed, configured rather than hardcoded, and
+regression-tested in `tests/integration/test_inbound_throughput.py`.
 
-## COMPETITIVE RISK — our thief loses to a strong cop
+## COMPETITIVE RISK — every game against the reference was a survival
+
+The six-game series ended 45-45, and **not one of the twelve cop-halves produced
+a capture**. Ours never caught their thief; theirs never caught ours.
+
+Our cop scores **5 a game (survival_cop) instead of 20 (capture)** against a
+reference-based opponent, which is most of the class. A series we draw 45-45 is
+a series we could win 90-45 if the cop converted.
+
+The cause is now understood rather than suspected. Our cop's measured 100 %
+capture rate against the greedy baseline came almost entirely from **barrier
+captures** — walling the thief in — and a barrier capture only ends a game if
+the *thief* concedes it. Our thief does; the reference's thief has no such rule
+and simply plays on. Against those opponents the only capture available is the
+one the reference itself uses: **stepping onto the thief's cell and claiming
+it**, which our cop currently almost never does because the barrier policy wins
+first against opponents that accept it.
+
+This is the single highest-value strategy change left: make the cop pursue a
+*claimable* capture — stepping onto the believed cell — rather than relying on
+enclosure that a strange opponent will not honour. It is measurable before it is
+shipped (`scripts/rehearsal.py --games 6` is now the honest yardstick, not
+self-play).
+
+## COMPETITIVE RISK — our thief loses to a strong cop (unchanged)
 
 **The largest known risk in the project**, found by the E22 analysis and
 recorded here rather than left to be discovered by the league table.

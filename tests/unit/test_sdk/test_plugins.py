@@ -65,7 +65,7 @@ def test_the_documented_example_plugin_loads_from_config_and_plays():
     It is also asked for a move, because a plugin that imports and then fails on
     contact would satisfy a weaker test while being useless.
     """
-    build = brain_factory(FakeManager(**{"strategy.thief_brain": "plugins.wall_hugger:WallHugger"}))
+    build = brain_factory(FakeManager(**{"strategy.thief_class": "plugins.wall_hugger:WallHugger"}))
     state = build_state(Role.THIEF)
     brain = build(Role.THIEF, state)
 
@@ -77,7 +77,7 @@ def test_the_documented_example_plugin_loads_from_config_and_plays():
 
 def test_the_cop_side_is_unaffected_by_a_thief_plugin():
     """One override must not quietly replace both roles."""
-    build = brain_factory(FakeManager(**{"strategy.thief_brain": "plugins.wall_hugger:WallHugger"}))
+    build = brain_factory(FakeManager(**{"strategy.thief_class": "plugins.wall_hugger:WallHugger"}))
 
     assert isinstance(build(Role.COP, build_state(Role.COP)), CopBrain)
 
@@ -86,7 +86,7 @@ def test_a_bad_plugin_path_fails_while_wiring_not_mid_match():
     """The Assignment 6 failure mode: a config value naming something that does
     not exist, discovered under time pressure."""
     with pytest.raises(PluginError):
-        brain_factory(FakeManager(**{"strategy.cop_brain": "plugins.nope:Missing"}))
+        brain_factory(FakeManager(**{"strategy.cop_class": "plugins.nope:Missing"}))
 
 
 class _Facts:
