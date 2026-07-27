@@ -655,18 +655,18 @@
 
 ## E22 — Documentation deliverables (33 tasks)
 
-- [ ] **T-2201** (P0) Write the cop README installation section: system requirements, step-by-step `uv sync` install, `.env` setup from `.env-example`, troubleshooting (WSL2, ports, tunnel, OAuth) — DoD: a fresh user installs from the doc alone [guidelines §4.1]
-- [ ] **T-2202** (P0) Write the cop README usage section: `peer`/`preflight`/`replay`/`archive` verbs, run modes, flags, and the typical match-day workflow — DoD: every command copy-paste-runs [deps: T-2016]
-- [ ] **T-2203** (P0) Write the cop README configuration + license/credits + contribution sections: config files, key parameters and effects, third-party attribution — DoD: sections complete; links to docs/CONFIG.md
-- [ ] **T-2204** (P0) Write the cop README academic-report sections: chosen Dec-POMDP model, FastMCP orchestration dilemmas, strategies implemented (heuristics/expectimax, no RL — with rationale) — DoD: all mandatory items of book PAGE 97 covered [book rule 42]
-- [ ] **T-2205** (P0) Finish the cop README with examples/demos + embedded screenshots (belief heatmap + Verified OK) + cross-link to the thief repo — DoD: screenshots render on GitHub; cross-link resolves [book rule 49]
-- [ ] **T-2206** (P0) Write the thief README installation + usage sections (role-specific: port 8801, thief verbs/flow) — DoD: fresh-user install test passes on the thief repo
-- [ ] **T-2207** (P0) Write the thief README configuration + license + academic-report sections (thief strategy specifics) — DoD: PAGE 97 items covered from the thief perspective
-- [ ] **T-2208** (P0) Finish the thief README with screenshots + cross-link to the cop repo — DoD: both READMEs cross-linked and screenshot-complete
-- [ ] **T-2209** (P0) Author `docs/PRD_gatekeeper.md`: rate-limit/queue/backpressure theory, I/O contracts, per-service instances, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
-- [ ] **T-2210** (P0) Author `docs/PRD_reporting.md`: lifecycle artifacts, egress gate, Gmail flow, reconciliation, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
-- [ ] **T-2211** (P0) Verify all 8 mechanism PRDs (belief_engine, commit_reveal, negotiation, llm_router, strategy_cop, strategy_thief, gatekeeper, reporting) exist in BOTH repos and follow one template — DoD: checklist green; identical template headers [guidelines §2.3]
-- [ ] **T-2212** (P0) Create `docs/PROMPT_BOOK.md`: all significant prompts so far — context/goal, outputs received, iterative improvements, lessons — DoD: covers the docs phase + build prompts to date [guidelines §8.3]
+- [x] **T-2201** (P0) Write the cop README installation section: system requirements, step-by-step `uv sync` install, `.env` setup from `.env-example`, troubleshooting (WSL2, ports, tunnel, OAuth) — DoD: a fresh user installs from the doc alone [guidelines §4.1]
+- [x] **T-2202** (P0) Write the cop README usage section: `peer`/`preflight`/`replay`/`archive` verbs, run modes, flags, and the typical match-day workflow — DoD: every command copy-paste-runs [deps: T-2016]
+- [x] **T-2203** (P0) Write the cop README configuration + license/credits + contribution sections: config files, key parameters and effects, third-party attribution — DoD: sections complete; links to docs/CONFIG.md
+- [x] **T-2204** (P0) Write the cop README academic-report sections: chosen Dec-POMDP model, FastMCP orchestration dilemmas, strategies implemented (heuristics/expectimax, no RL — with rationale) — DoD: all mandatory items of book PAGE 97 covered [book rule 42]
+- [x] **T-2205** (P0) Finish the cop README with examples/demos + embedded screenshots (belief heatmap + Verified OK) + cross-link to the thief repo — DoD: screenshots render on GitHub; cross-link resolves [book rule 49]
+- [x] **T-2206** (P0) Write the thief README installation + usage sections (role-specific: port 8801, thief verbs/flow) — DoD: fresh-user install test passes on the thief repo
+- [x] **T-2207** (P0) Write the thief README configuration + license + academic-report sections (thief strategy specifics) — DoD: PAGE 97 items covered from the thief perspective
+- [x] **T-2208** (P0) Finish the thief README with screenshots + cross-link to the cop repo — DoD: both READMEs cross-linked and screenshot-complete
+- [x] **T-2209** (P0) Author `docs/PRD_gatekeeper.md`: rate-limit/queue/backpressure theory, I/O contracts, per-service instances, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-2210** (P0) Author `docs/PRD_reporting.md`: lifecycle artifacts, egress gate, Gmail flow, reconciliation, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-2211** (P0) Verify all 8 mechanism PRDs (belief_engine, commit_reveal, negotiation, llm_router, strategy_cop, strategy_thief, gatekeeper, reporting) exist in BOTH repos and follow one template — DoD: checklist green; identical template headers [guidelines §2.3]
+- [x] **T-2212** (P0) Create `docs/PROMPT_BOOK.md`: all significant prompts so far — context/goal, outputs received, iterative improvements, lessons — DoD: covers the docs phase + build prompts to date [guidelines §8.3]
 - [ ] **T-2213** (P0) Enforce prompt-book maintenance: append entries at every milestone (M1–M7 checklist item); final completeness pass before freeze — DoD: one entry set per milestone visible in git history
 - [ ] **T-2214** (P1) Create the analysis notebook skeleton `notebooks/analysis.ipynb`: loaders for `results/` sweeps + token-meter exports — DoD: notebook runs top-to-bottom on current data [guidelines §9]
 - [ ] **T-2215** (P1) Notebook: cop sensitivity study — OAT parameter sweep charts (depth, barrier threshold, belief weights) with a sensitivity heatmap — DoD: charts rendered with labels/captions [deps: T-1423]
@@ -678,16 +678,16 @@
 - [ ] **T-2221** (P1) Write the cost-optimization analysis: every_n_steps effect, per-purpose model routing, template floor — measured savings vs all-LLM baseline — DoD: analysis section complete with numbers [PLAN §8]
 - [ ] **T-2222** (P0) Export C4 diagrams (context, container, component) as rendered images into `assets/` in both repos — DoD: images render in PLAN/README; sources committed [guidelines §2.2]
 - [ ] **T-2223** (P0) Export UML diagrams: FSM statechart, turn sequence, match lifecycle, deployment diagram — DoD: images in assets/, referenced from PLAN [guidelines §2.2]
-- [ ] **T-2224** (P0) Split PLAN ADR-001..014 into individual `docs/adr/ADR-NNN-*.md` files with an index, in both repos — incl. ADR-013 (no email receive path: MCP reconciliation replaces it, gmail.send-only retained) and ADR-014 (pyright in CI) — DoD: 14 ADR files + index; PLAN links to them
-- [ ] **T-2225** (P1) Record build-time ADRs (step-cap interpretation, timeout values chosen, FR-NEG-6 stance, any further A6-retrospective substitutions beyond ADR-013/014) — DoD: each decision has an ADR with context/decision/trade-offs
-- [ ] **T-2226** (P0) Commit the mandatory screenshot set: live belief heatmap, Replay "Verified OK", dashboard panels — embedded in BOTH READMEs — DoD: both READMEs show both mandatory screenshots [book PAGE 75/96; deps: T-1825, T-1914]
+- [x] **T-2224** (P0) Split PLAN ADR-001..014 into individual `docs/adr/ADR-NNN-*.md` files with an index, in both repos — incl. ADR-013 (no email receive path: MCP reconciliation replaces it, gmail.send-only retained) and ADR-014 (pyright in CI) — DoD: 14 ADR files + index; PLAN links to them
+- [x] **T-2225** (P1) Record build-time ADRs (step-cap interpretation, timeout values chosen, FR-NEG-6 stance, any further A6-retrospective substitutions beyond ADR-013/014) — DoD: each decision has an ADR with context/decision/trade-offs
+- [x] **T-2226** (P0) Commit the mandatory screenshot set: live belief heatmap, Replay "Verified OK", dashboard panels — embedded in BOTH READMEs — DoD: both READMEs show both mandatory screenshots [book PAGE 75/96; deps: T-1825, T-1914]
 - [ ] **T-2227** (P1) Write `docs/EXTENDING.md`: extension points — brain selector, LLM provider plug-ins, adapter profiles, event subscribers — with one worked plugin example — DoD: example plugin loads via config [guidelines §12]
 - [ ] **T-2228** (P2) Write the ISO/IEC 25010 mapping doc: each quality characteristic → concrete project evidence (tests, gates, docs) — DoD: all 8 characteristics mapped [guidelines §13]
 - [ ] **T-2229** (P1) Consolidate `docs/edge-cases.md`: all edge cases across epics with test ids, expected input/response, and failure screenshots where relevant — DoD: doc complete; every entry links a test [guidelines §6.3]
-- [ ] **T-2230** (P0) Write the match-day runbook + incident playbook in docs (procedures, alert responses, escalation) — DoD: doc complete; used verbatim by E23 [FR-OBS-3]
-- [ ] **T-2231** (P0) Sync docs into both repos (PRD/PLAN/TODO current, TODO statuses updated with real progress) — DoD: docs identical where mirrored; TODO reflects reality at each milestone [guidelines §2.5 step 6]
+- [x] **T-2230** (P0) Write the match-day runbook + incident playbook in docs (procedures, alert responses, escalation) — DoD: doc complete; used verbatim by E23 [FR-OBS-3]
+- [x] **T-2231** (P0) Sync docs into both repos (PRD/PLAN/TODO current, TODO statuses updated with real progress) — DoD: docs identical where mirrored; TODO reflects reality at each milestone [guidelines §2.5 step 6]
 - [ ] **T-2232** (P0) Run the two-person docs review pass against the guidelines master checklist (§15 of the digest); fix all findings — DoD: review notes + fixes committed; zero open findings
-- [ ] **T-2233** (P0) Finalize the per-match runbook: warm-up → negotiate → play → audit → reconcile → report → archive → commit config, each step with exact commands (incl. the pre-match smoke T-2126) — DoD: the E23 rehearsal (T-2307) executes purely from this doc [FR-OBS-3; deps: T-2230, T-2126]
+- [x] **T-2233** (P0) Finalize the per-match runbook: warm-up → negotiate → play → audit → reconcile → report → archive → commit config, each step with exact commands (incl. the pre-match smoke T-2126) — DoD: the E23 rehearsal (T-2307) executes purely from this doc [FR-OBS-3; deps: T-2230, T-2126]
 
 ## E23 — League operations (24 tasks)
 
