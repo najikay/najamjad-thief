@@ -1,0 +1,247 @@
+{
+ "seed": 7,
+ "games_per_point": 24,
+ "generated": "20260727T044426Z",
+ "sweeps": {
+  "cop.barrier_threshold": {
+   "why": "How confident the cop must be before spending one of 14 barriers.",
+   "points": [
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.15,
+     "role": "cop",
+     "played": 24,
+     "captures": 16,
+     "capture_rate": 0.6667,
+     "capture_rate_ci95": [
+      0.4671,
+      0.8203
+     ],
+     "win_rate": 0.6667,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.05,
+     "role": "cop",
+     "played": 24,
+     "captures": 1,
+     "capture_rate": 0.0417,
+     "capture_rate_ci95": [
+      0.0074,
+      0.2024
+     ],
+     "win_rate": 0.0417,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.1,
+     "role": "cop",
+     "played": 24,
+     "captures": 2,
+     "capture_rate": 0.0833,
+     "capture_rate_ci95": [
+      0.0232,
+      0.2585
+     ],
+     "win_rate": 0.0833,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.25,
+     "role": "cop",
+     "played": 24,
+     "captures": 23,
+     "capture_rate": 0.9583,
+     "capture_rate_ci95": [
+      0.7976,
+      0.9926
+     ],
+     "win_rate": 0.9583,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.4,
+     "role": "cop",
+     "played": 24,
+     "captures": 24,
+     "capture_rate": 1.0,
+     "capture_rate_ci95": [
+      0.862,
+      1.0
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.barrier_threshold",
+     "value": 0.6,
+     "role": "cop",
+     "played": 24,
+     "captures": 24,
+     "capture_rate": 1.0,
+     "capture_rate_ci95": [
+      0.862,
+      1.0
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    }
+   ]
+  },
+  "cop.lookahead": {
+   "why": "How far belief is diffused forward before choosing a move.",
+   "points": [
+    {
+     "knob": "cop.lookahead",
+     "value": 2,
+     "role": "cop",
+     "played": 24,
+     "captures": 16,
+     "capture_rate": 0.6667,
+     "capture_rate_ci95": [
+      0.4671,
+      0.8203
+     ],
+     "win_rate": 0.6667,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.lookahead",
+     "value": 1,
+     "role": "cop",
+     "played": 24,
+     "captures": 16,
+     "capture_rate": 0.6667,
+     "capture_rate_ci95": [
+      0.4671,
+      0.8203
+     ],
+     "win_rate": 0.6667,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.lookahead",
+     "value": 3,
+     "role": "cop",
+     "played": 24,
+     "captures": 16,
+     "capture_rate": 0.6667,
+     "capture_rate_ci95": [
+      0.4671,
+      0.8203
+     ],
+     "win_rate": 0.6667,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "cop.lookahead",
+     "value": 4,
+     "role": "cop",
+     "played": 24,
+     "captures": 16,
+     "capture_rate": 0.6667,
+     "capture_rate_ci95": [
+      0.4671,
+      0.8203
+     ],
+     "win_rate": 0.6667,
+     "disagreements": 0,
+     "audit_failures": 0
+    }
+   ]
+  },
+  "thief.horizon": {
+   "why": "How many steps ahead the thief protects its escape routes.",
+   "points": [
+    {
+     "knob": "thief.horizon",
+     "value": 3,
+     "role": "thief",
+     "played": 24,
+     "captures": 0,
+     "capture_rate": 0.0,
+     "capture_rate_ci95": [
+      0.0,
+      0.138
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "thief.horizon",
+     "value": 1,
+     "role": "thief",
+     "played": 24,
+     "captures": 0,
+     "capture_rate": 0.0,
+     "capture_rate_ci95": [
+      0.0,
+      0.138
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "thief.horizon",
+     "value": 2,
+     "role": "thief",
+     "played": 24,
+     "captures": 0,
+     "capture_rate": 0.0,
+     "capture_rate_ci95": [
+      0.0,
+      0.138
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "thief.horizon",
+     "value": 4,
+     "role": "thief",
+     "played": 24,
+     "captures": 0,
+     "capture_rate": 0.0,
+     "capture_rate_ci95": [
+      0.0,
+      0.138
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    },
+    {
+     "knob": "thief.horizon",
+     "value": 5,
+     "role": "thief",
+     "played": 24,
+     "captures": 0,
+     "capture_rate": 0.0,
+     "capture_rate_ci95": [
+      0.0,
+      0.138
+     ],
+     "win_rate": 1.0,
+     "disagreements": 0,
+     "audit_failures": 0
+    }
+   ]
+  }
+ }
+}

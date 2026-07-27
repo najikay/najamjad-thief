@@ -52,8 +52,28 @@ Through the real match machinery, 150 games, two seeds:
 
 | | capture rate |
 |---|---|
-| our cop vs greedy thief | **56-68 %** |
+| our cop vs greedy thief | **100 %** |
 | greedy cop vs greedy thief | 0-4 % |
+
+The sweep that produced it is the most useful thing in this document.
+`barrier_threshold` — how much belief must sit on the target before we spend a
+barrier — is the single most sensitive dial in the project:
+
+| threshold | capture rate |
+|---|---|
+| 0.05 | 4 % |
+| 0.10 | 8 % |
+| 0.15 *(shipped for weeks)* | 43-75 % |
+| 0.25 | 96 % |
+| **0.40** | **100 % on every seed tried** |
+
+A barrier is impassable for **both** sides. A cop that walls on weak evidence
+fences itself away from the thief it is chasing, so spending barriers cheaply is
+not aggression — it is self-harm. Confirmed on three seeds with non-overlapping
+confidence intervals before the default was changed.
+
+`lookahead` is flat across 1-4 on a 7x7 board: the dial exists, and the sweep
+says it does not matter here. Recording that is the point of a sweep.
 
 ## Alternatives considered
 

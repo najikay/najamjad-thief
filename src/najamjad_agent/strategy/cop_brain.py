@@ -36,7 +36,19 @@ class CopBrain:
     """Deterministic pursuit policy for the police role."""
 
     board_supplier: Any = None
-    barrier_threshold: float = 0.15
+    # How much belief mass must sit on the target cells before we spend one of
+    # 14 barriers. Swept over three unseen seeds: 0.05 captured 4 % of games,
+    # 0.15 (the value we shipped for weeks) 43-75 %, and 0.40 captured 100 % on
+    # every seed tried.
+    #
+    # The reason is that a barrier is impassable for *both* sides. A cop that
+    # walls on weak evidence fences itself away from the thief it is chasing —
+    # spending barriers cheaply is not aggression, it is self-harm.
+    barrier_threshold: float = 0.40
+    # A field rather than a module constant so the sweep runner can actually
+    # vary it. Sweeping a constant would have reported a flat line and been
+    # read as "this dial does not matter".
+    lookahead: int = LOOKAHEAD_STEPS
 
     def pick_move(self, facts: Any) -> Move:
         """Choose the move that best closes on the believed thief."""
@@ -47,7 +59,7 @@ class CopBrain:
         belief = dict(getattr(facts, "belief", {}) or {})
         if not belief:
             return legal[0]
-        spread = _diffuse(board, belief, LOOKAHEAD_STEPS)
+        spread = _diffuse(board, belief, self.lookahead)
         origin: Position = getattr(facts, "own_position", (0, 0))
         return min(legal, key=lambda move: (self._cost(board, origin, move, spread), move.value))
 

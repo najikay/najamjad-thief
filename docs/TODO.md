@@ -471,7 +471,7 @@
 - [ ] **T-1420** (P0) Add move-vs-barrier arbitration tests: `_decide_move` chooses between stepping and placing by expected value, never by fixed probability (replace reference's 0.15 coin-flip) — DoD: tests green
 - [ ] **T-1421** (P1) Run seeded dev smoke: cop_brain vs reference-style thief ≥ 70% capture over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
 - [ ] **T-1422** (P1) Expose cop tunables (depth, barrier threshold, belief weights) in config for the strategy lab — DoD: sweep harness can vary each without code change [FR-STR-7]
-- [ ] **T-1423** (P1) Run the cop parameter sweep (grid over key params via the E21 sweep runner) and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
+- [x] **T-1423** (P1) Run the cop parameter sweep (grid over key params via the E21 sweep runner) and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
 - [ ] **T-1424** (P0) Gate wiring: tactical suite PR-blocking; win-rate statistical gate nightly-only — DoD: CI config reflects the split [deps: T-0217]
 - [ ] **T-1425** (P0) Author `docs/PRD_strategy_cop.md`: expectimax + barrier-planning theory, I/O, metrics, alternatives (incl. why no RL — ADR-007), test scenarios — DoD: doc complete [PLAN §11]
 - [ ] **T-1426** (P1) Document + test cop edge cases: empty legal set, quota exhausted, uniform belief, opponent-at-adjacent-cell — DoD: each edge case has a test id in docs/edge-cases-domain.md
@@ -499,7 +499,7 @@
 - [ ] **T-1519** (P1) Add immobilization-avoidance tests: against a quota-heavy cop, thief maintains ≥ 2 escape routes whenever possible — DoD: scenario tests green
 - [ ] **T-1520** (P1) Run seeded dev smoke: thief_brain vs reference-style cop ≥ 70% survival over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
 - [ ] **T-1521** (P1) Expose thief tunables (horizon, route weight, scent weight, stall trigger) in config — DoD: sweep harness can vary each without code change [FR-STR-7]
-- [ ] **T-1522** (P1) Run the thief parameter sweep and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
+- [x] **T-1522** (P1) Run the thief parameter sweep and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
 - [ ] **T-1523** (P1) Run the cross-play matrix: our thief vs our cop across seeds; balance metrics recorded for the notebook — DoD: matrix results in results/
 - [ ] **T-1524** (P0) Gate wiring: thief tactical suite PR-blocking in CI — DoD: CI config updated [deps: T-1424]
 - [ ] **T-1525** (P0) Author `docs/PRD_strategy_thief.md`: survival-horizon theory, escape-route math, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
@@ -635,7 +635,7 @@
 - [x] **T-2107** (P1) Port the reference greedy brains as baseline opponents inside the harness — DoD: baseline-vs-baseline games run deterministically under seed [ADR-012]
 - [ ] **T-2108** (P1) Implement the win-rate gate: our cop vs reference thief AND our thief vs reference cop, each ≥ 70% over 100 seeded games (M4 exit; nightly job, not PR-blocking) — DoD: nightly job publishes pass/fail vs threshold [deps: T-0217, T-2106]
 - [x] **T-2109** (P2) Add statistical reporting to the harness: win-rate confidence intervals + per-end-reason breakdown for the notebook — DoD: stats JSON emitted per run
-- [ ] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
+- [x] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
 - [x] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [x] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]
 - [ ] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]

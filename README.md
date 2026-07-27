@@ -246,14 +246,16 @@ cell, so a false capture claim hands the thief our exact position for nothing.
 Instead we do **online opponent modelling** sized to the ~210 observations a series actually
 provides — hint credibility, move tendencies, barrier response.
 
-**Measured**, 150 games across two seeds, through the real match machinery:
+**Measured** through the real match machinery, over seeded games:
 
 | matchup | result |
 |---|---|
-| our cop vs greedy thief | **56–68 % captures** (greedy cop: 0–4 %) |
+| our cop vs greedy thief | **100 % captures** (greedy cop: 0–4 %) |
 | our thief vs greedy cop | **96–100 % survival** |
 
-Reproduce with `uv run python scripts/self_play.py --games 100 --seed 7`.
+Reproduce with `uv run python scripts/self_play.py --games 100 --seed 7`, and see
+`results/latest.json` for the parameter sweep that got us there — the barrier
+threshold alone moved the cop from 43-75 % to 100 %.
 
 ### What testing against a stranger taught us
 

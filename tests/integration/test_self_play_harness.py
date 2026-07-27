@@ -52,7 +52,7 @@ def test_our_cop_catches_the_greedy_thief_far_more_often_than_greedy_does(summar
     ours = summary["ours_cop_vs_greedy_thief"]["capture_rate"]
     baseline = summary["greedy_vs_greedy"]["capture_rate"]
 
-    assert ours >= 0.40, f"cop capture rate fell to {ours}"
+    assert ours >= 0.80, f"cop capture rate fell to {ours}"
     assert ours > baseline, "our cop must beat the obvious strategy, not match it"
 
 

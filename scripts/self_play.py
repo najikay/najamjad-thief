@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import sys
 import threading
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -129,14 +131,37 @@ def run(games: int, seed: int, out: Path | None) -> dict:
     return summary
 
 
+def wilson_interval(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:
+    """95 % Wilson score interval for a proportion.
+
+    Wilson rather than the normal approximation because our sample sizes are
+    small and the rates land near 0 and 1, exactly where the normal interval
+    runs past those bounds and reports a confidence range that cannot occur.
+    """
+    if trials == 0:
+        return (0.0, 0.0)
+    phat = successes / trials
+    denominator = 1 + z**2 / trials
+    centre = (phat + z**2 / (2 * trials)) / denominator
+    margin = z * math.sqrt(phat * (1 - phat) / trials + z**2 / (4 * trials**2)) / denominator
+    return (round(max(0.0, centre - margin), 4), round(min(1.0, centre + margin), 4))
+
+
 def _summarise(rows: list[dict]) -> dict:
-    """Capture rate and health signals for one matchup."""
+    """Capture rate, its confidence interval, and health signals."""
     played = len(rows)
     captures = sum(1 for row in rows if row.get("outcome") == EndReason.CAPTURE.value)
+    steps = [row["steps"] for row in rows if isinstance(row.get("steps"), int)]
+    low, high = wilson_interval(captures, played)
     return {
         "played": played,
         "captures": captures,
         "capture_rate": round(captures / played, 4) if played else 0.0,
+        # Reported alongside the rate so a difference between two runs can be
+        # read as signal or noise instead of guessed at.
+        "capture_rate_ci95": [low, high],
+        "mean_steps": round(sum(steps) / len(steps), 2) if steps else 0.0,
+        "by_end_reason": dict(Counter(row.get("outcome", "?") for row in rows)),
         "disagreements": sum(1 for row in rows if row.get("agreed") is False),
         "stalled": sum(1 for row in rows if row.get("outcome") == "stalled"),
         "audit_failures": sum(1 for row in rows if row.get("audit") not in (None, "Verified OK")),
