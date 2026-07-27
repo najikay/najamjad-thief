@@ -1,6 +1,6 @@
 # Open items
 
-**Version 1.60 · 2026-07-27**
+**Version 1.70 · 2026-07-27**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
@@ -31,29 +31,36 @@ the message we had thrown away ourselves. Nothing shorter than a four-game
 series would have found it. Fixed, configured rather than hardcoded, and
 regression-tested in `tests/integration/test_inbound_throughput.py`.
 
-## COMPETITIVE RISK — every game against the reference was a survival
+## CLOSED — the cop now converts captures against the reference
 
-The six-game series ended 45-45, and **not one of the twelve cop-halves produced
-a capture**. Ours never caught their thief; theirs never caught ours.
+Was: six games, 45-45, not one capture in twelve cop-halves. Now:
 
-Our cop scores **5 a game (survival_cop) instead of 20 (capture)** against a
-reference-based opponent, which is most of the class. A series we draw 45-45 is
-a series we could win 90-45 if the cop converted.
+| game | our role | result | us | them |
+|---|---|---|---|---|
+| g01/g03/g05 | thief | survival | 10 | 5 |
+| g02/g04/g06 | police | **capture** | 20 | 5 |
 
-The cause is now understood rather than suspected. Our cop's measured 100 %
-capture rate against the greedy baseline came almost entirely from **barrier
-captures** — walling the thief in — and a barrier capture only ends a game if
-the *thief* concedes it. Our thief does; the reference's thief has no such rule
-and simply plays on. Against those opponents the only capture available is the
-one the reference itself uses: **stepping onto the thief's cell and claiming
-it**, which our cop currently almost never does because the barrier policy wins
-first against opponents that accept it.
+**90-30. Six wins from six**, both sides agreeing on every game, every audit
+`Verified OK`. Reproduce with `uv run python scripts/rehearsal.py --games 6`.
 
-This is the single highest-value strategy change left: make the cop pursue a
-*claimable* capture — stepping onto the believed cell — rather than relying on
-enclosure that a strange opponent will not honour. It is measurable before it is
-shipped (`scripts/rehearsal.py --games 6` is now the honest yardstick, not
-self-play).
+One strategy change and two protocol fixes, in that order of visibility and
+reverse order of importance:
+
+* A **capture step outranks a barrier.** Placing one costs us the move, so
+  walling while stood next to the thief traded a capture for a wall — and
+  against an opponent who does not concede enclosure, for nothing.
+* The answer to a capture claim may arrive **at the step it answers**. The
+  reference concedes with a final message without advancing its counter, and our
+  monotonic guard rejected the one message we were waiting for, stalling the
+  game at the exact moment we had won it.
+* That answer is a **reply, not a new turn.** Recording its commit as a fresh
+  one read as a peer overwriting history, so we filed `tamper_forfeit` against
+  an opponent who had just conceded honestly — while they scored the same game
+  as our capture. Contradictory reports void a game for both sides.
+
+The middle two are worth noting as a pair: the first produced a score that
+*looked* right (90-30) while our own record said `tamper_forfeit`. A result that
+comes out right for the wrong reason is not a result.
 
 ## COMPETITIVE RISK — our thief loses to a strong cop (unchanged)
 

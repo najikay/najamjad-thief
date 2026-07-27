@@ -49,9 +49,29 @@ class CopBrain:
     # vary it. Sweeping a constant would have reported a flat line and been
     # read as "this dial does not matter".
     lookahead: int = LOOKAHEAD_STEPS
+    # How much belief must sit on a cell before we step onto it and claim.
+    #
+    # Much lower than `barrier_threshold`, and deliberately so: the two actions
+    # have opposite risk profiles. A barrier is permanent and impassable for
+    # both sides, so a wrong one fences us away from the thief for the rest of
+    # the game. A step is reversible — the cost of a wrong claim is that it
+    # discloses our cell, which is a real price but a one-turn one.
+    #
+    # The value matters more than it looks. Against an opponent that concedes
+    # barrier traps, enclosure wins and this dial is nearly idle. Against one
+    # that does not — the course reference, and so most of the class — a claimed
+    # capture is the *only* capture available, and every game of a six-game
+    # rehearsal ended in survival before this existed.
+    claim_threshold: float = 0.12
 
     def pick_move(self, facts: Any) -> Move:
-        """Choose the move that best closes on the believed thief."""
+        """Choose the move that best closes on the believed thief.
+
+        A capture step comes first. Landing on the believed cell lets us claim,
+        and a claim is the one capture every implementation honours — the thief
+        answers from its own true position and the game ends on its word rather
+        than on our guess.
+        """
         board: Board = self._board(facts)
         legal = tuple(getattr(facts, "legal", ()) or ())
         if not legal:
@@ -59,15 +79,48 @@ class CopBrain:
         belief = dict(getattr(facts, "belief", {}) or {})
         if not belief:
             return legal[0]
-        spread = _diffuse(board, belief, self.lookahead)
         origin: Position = getattr(facts, "own_position", (0, 0))
+        strike = self._capture_move(board, origin, legal, belief)
+        if strike is not None:
+            return strike
+        spread = _diffuse(board, belief, self.lookahead)
         return min(legal, key=lambda move: (self._cost(board, origin, move, spread), move.value))
 
+    def _capture_move(
+        self, board: Board, origin: Position, legal: tuple, belief: dict
+    ) -> Move | None:
+        """The move that lands on the likeliest thief cell, if it is likely enough."""
+        best, mass = None, self.claim_threshold
+        for move in sorted(legal, key=lambda option: option.value):
+            landing = apply(board, origin, move)
+            weight = belief.get(landing, 0.0)
+            if weight > mass:
+                best, mass = move, weight
+        return best
+
+    def capture_step_available(self, facts: Any) -> bool:
+        """Whether a claimable capture is one move away this turn."""
+        board: Board = self._board(facts)
+        legal = tuple(getattr(facts, "legal", ()) or ())
+        belief = dict(getattr(facts, "belief", {}) or {})
+        if not legal or not belief:
+            return False
+        origin: Position = getattr(facts, "own_position", (0, 0))
+        return self._capture_move(board, origin, legal, belief) is not None
+
     def pick_barrier(self, facts: Any) -> Position | None:
-        """Place a barrier when it buys more than a step of pursuit would."""
+        """Place a barrier when it buys more than a step of pursuit would.
+
+        Never when a capture is one step away. Placing a barrier costs us the
+        move — the orchestrator does one or the other — so walling while
+        standing next to the thief trades a capture for a wall, and against an
+        opponent who does not concede enclosure it trades it for nothing.
+        """
         board: Board = self._board(facts)
         belief = dict(getattr(facts, "belief", {}) or {})
         if not belief:
+            return None
+        if self.capture_step_available(facts):
             return None
         plan = plan_barrier(
             board,

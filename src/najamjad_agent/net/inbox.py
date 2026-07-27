@@ -110,6 +110,17 @@ class Inboxes:
         step = getattr(message, "step", None)
         if step is None:
             return None
+        if getattr(message, "claim_response", None) is not None:
+            # The answer to a capture claim is allowed to arrive at the step it
+            # answers. The reference sends its concession as a *final* message
+            # without advancing its counter, so a strict monotonic guard rejects
+            # the one message we are waiting for and the game stalls at the
+            # moment we captured — which is exactly what it did.
+            #
+            # This does not reopen replay: an answer is idempotent, the game
+            # ends on the first one, and the payload behind it is sealed like
+            # every other.
+            return None
         with self._lock:
             if step == FIRST_STEP and self._last_step > FIRST_STEP:
                 # A game that has already run past its opening turn cannot

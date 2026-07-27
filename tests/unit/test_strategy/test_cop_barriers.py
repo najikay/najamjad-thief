@@ -68,10 +68,24 @@ def test_the_planner_declines_with_no_quota_left() -> None:
     assert plan_barrier(state.board, (3, 3), {(3, 4): 0.9}, barriers_left=0) is None
 
 
-def test_the_brain_places_a_barrier_when_it_captures() -> None:
+def test_the_brain_walls_from_one_ring_outside_stepping_range() -> None:
+    """The policy in one line: step if you can reach, wall if you are one ring
+    out, close in otherwise. At distance 2 a barrier cuts the escape the thief
+    would use next turn, and no claim is available yet."""
+    state = build_state(Role.COP)
+    facts = Facts(state.board, (1, 4), {(3, 4): 0.95})
+
+    assert CopBrain().pick_barrier(facts) is not None
+
+
+def test_the_brain_steps_rather_than_walls_when_the_capture_is_in_reach() -> None:
+    """Placing a barrier costs the move, so walling beside the thief trades a
+    capture for a wall — and against an opponent who does not concede enclosure,
+    for nothing at all."""
     state = build_state(Role.COP)
     facts = Facts(state.board, (3, 3), {(3, 4): 0.95})
-    assert CopBrain().pick_barrier(facts) == (3, 4)
+
+    assert CopBrain().pick_barrier(facts) is None
 
 
 def test_the_brain_places_no_barrier_without_belief() -> None:

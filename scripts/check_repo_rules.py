@@ -36,9 +36,20 @@ TEXT_SUFFIXES = {".py", ".md", ".toml", ".yml", ".yaml", ".json", ".txt", ".sh"}
 
 
 def _tracked_files(root: Path) -> list[Path]:
-    """List git-tracked files, falling back to a filesystem walk pre-init."""
+    """Files git knows about, plus new ones it does not know about *yet*.
+
+    Scanning only tracked files makes this gate blind to exactly the file most
+    likely to break it: a brand-new one. It passes locally, gets committed,
+    becomes tracked, and fails in CI — which is precisely how a test file full
+    of deliberately forbidden patterns reached a red pipeline having been green
+    on the machine that wrote it.
+
+    `--others --exclude-standard` adds untracked files while still honouring
+    `.gitignore`, so scratch files and the virtualenv stay out of it.
+    """
     result = subprocess.run(
-        ["git", "ls-files"], cwd=root, capture_output=True, text=True, check=False
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=root, capture_output=True, text=True, check=False,
     )
     if result.returncode == 0 and result.stdout.strip():
         return [root / line for line in result.stdout.splitlines()]

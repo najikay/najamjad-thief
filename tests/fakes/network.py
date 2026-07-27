@@ -43,6 +43,8 @@ class BlockingLink:
         """
         assert self.peer is not None, "link was never connected"
         step = message.get("step")
+        if message.get("claim_response") is not None:
+            step = None  # an answer may arrive at the step it answers
         if isinstance(step, int):
             if step == 1:
                 self.peer._last_step = step  # a new mini-game, as the real inbox reads it

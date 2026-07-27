@@ -34,7 +34,8 @@ def absorb_turn(
     """Fold one opponent message into `state`; return a violation reason or None."""
     step = _step_of(message, state.step)
     commit = message.get("commit")
-    if commit:
+    answering = message.get("claim_response") is not None
+    if commit and not answering:
         try:
             state.ledger.record_opponent_commit(step, str(commit))
         except ProtocolOrderError as error:
@@ -43,6 +44,14 @@ def absorb_turn(
             # error, reported rather than allowed to crash our turn loop.
             event("peer.duplicate_commit", step=step, reason=str(error))
             return f"opponent protocol error: {error}"
+    elif answering:
+        # The answer to our capture claim is a *reply*, not a new turn. The
+        # reference sends its concession as a final message at the step it is
+        # answering, so recording it as a fresh commit reads as a peer
+        # overwriting history — and we branded an honest opponent a forger for
+        # conceding, filing `tamper_forfeit` against a game they scored as our
+        # capture. Two peers disagreeing like that voids it for both.
+        event("peer.answered_claim", step=step)
 
     # A peer that leaks its own position is not a threat to us, but it is worth
     # noticing: either they are running a broken implementation, or baiting us.
