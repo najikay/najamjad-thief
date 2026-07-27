@@ -60,6 +60,26 @@ class PeerTransport:
         )
         return self._as_dict(message)
 
+    def send_negotiate(self, message: dict[str, Any]) -> None:
+        """Deliver our signed terms to the opponent's `negotiate` tool."""
+        self._client.send("negotiate", message)
+
+    def reset(self) -> None:
+        """Clear per-mini-game state between sub-games.
+
+        Two things have to go, and both bit us in a real two-process series:
+
+        * the **monotonic step guard**, which correctly rejects a replayed turn
+          within a game and just as correctly rejected step 1 of game 2 as
+          "stale, last accepted was 11" — silently ending our series after one
+          mini-game against any opponent;
+        * **queued messages** from the finished game, because a turn that
+          arrives after a capture belongs to a game that is over and must not
+          be read as the opening move of the next one.
+        """
+        dropped = self._inboxes.drain()
+        self._emit({"event": "transport.reset", "dropped": dropped})
+
     @staticmethod
     def _as_dict(message: Any) -> dict[str, Any] | None:
         """Hand the domain plain dicts, never pydantic models."""

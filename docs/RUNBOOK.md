@@ -25,6 +25,43 @@ A `406` or a JSON-RPC error from the tunnel means the agent is **healthy** — t
 is a plain HTTP client hitting an MCP endpoint. A `502` means nothing is
 listening.
 
+## 0.5 The warm-up game — MANDATORY, and never counted
+
+**Never count first contact with an opponent** (rule 52). Play them an uncounted
+warm-up game first, every time, with every team.
+
+Every interop defect this project has hit was invisible until two
+implementations that did not share authorship met: the MCP argument-name
+mismatch, four turn-message incompatibilities, an audit reveal rejected on the
+wire, and our own step guard silently ending the series after game 1. Each would
+have cost a counted game.
+
+Before the warm-up, fill in `matches/<opponent>/profile.md` — copy it from
+`matches/_template/`. After the warm-up, complete the protocol section from what
+you observed. **Anything still unknown there is a reason to run a second
+warm-up, not to start counting.**
+
+| Step | Command |
+|---|---|
+| Create the match folder | `cp -r matches/_template matches/<opponent>` |
+| Fill the profile before playing | edit `matches/<opponent>/profile.md` |
+| Play the warm-up | as §4, with `num_games` lowered if they prefer |
+| Log everything live | `matches/<opponent>/incidents.md` |
+| Mark them `warmed` | `matches/opponents.md` |
+
+## 0.7 Freeze discipline
+
+**No code changes during a match.** Rule 53 requires the `github_commit` declared
+at step zero to be the code actually played, and that is checkable.
+
+```bash
+git status          # MUST be empty before you declare the hash
+git rev-parse HEAD  # this is what you declare — paste it into profile.md now
+```
+
+Between matches, changes land as commits so each match's declared hash is exact.
+Something broken mid-match goes in `incidents.md` and gets fixed afterwards.
+
 ## 1. Warm up — 5 minutes before
 
 Cold start takes ~15 seconds (importing the MCP stack). Start early.
@@ -125,8 +162,22 @@ git add config/ && git commit -m "match vs <opponent>: agreed config" && git pus
 
 ## 9. After the match
 
-- [ ] All six mini-games audited `Verified OK`
-- [ ] Result email sent, message id recorded
+Run the mechanical half first — it re-hashes every log, checks the games share a
+`game_uid`, and refuses if the working tree is dirty:
+
+```bash
+uv run python scripts/post_match.py --opponent <name>
+```
+
+Then the half no script can do:
+
+- [ ] Our result compared with theirs **before sending** — a disagreement voids
+      the game for both of us (rules 33-35)
+- [ ] Result email sent, message id recorded in `matches/opponents.md`
 - [ ] Archive written and stored off the laptop
-- [ ] Config commit pushed
-- [ ] `docs/TODO.md` league table updated with the opponent and outcome
+- [ ] Config commit pushed; the declared `github_commit` opens on GitHub
+- [ ] `matches/<opponent>/incidents.md` triaged: defect / adapter profile / accept
+- [ ] `matches/opponents.md` counted-game ledger and standings updated
+
+The campaign around all of this — recruiting, scheduling, the contingency if too
+few opponents confirm — is `docs/LEAGUE_OPS.md`.

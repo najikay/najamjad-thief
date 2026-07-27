@@ -80,7 +80,14 @@ class MatchRunner:
         return result
 
     def play_sub_game(self, sub_game: int, role: Role) -> dict[str, Any]:
-        """Play one mini-game to its end, audit it, and record the outcome."""
+        """Play one mini-game to its end, audit it, and record the outcome.
+
+        The transport is reset first: each mini-game restarts step numbering at
+        1, and anything the transport remembers about the last game — its step
+        high-water mark, or a message that arrived after it ended — makes the
+        next one unplayable.
+        """
+        self._transport.reset()
         state = self._build_state(self.params, role, sub_game)
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
         orchestrator = self._new_orchestrator(state, fsm, role)

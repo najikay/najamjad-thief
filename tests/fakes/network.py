@@ -23,6 +23,9 @@ class BlockingLink:
         self.audits: queue.Queue[Any] = queue.Queue()
         self.peer: BlockingLink | None = None
         self.sent_turns = 0
+        self.resets = 0
+        self.rejected_stale = 0
+        self._last_step = -1
 
     def connect(self, other: "BlockingLink") -> None:
         """Point each link at the other, so a send lands in their inbox."""
@@ -30,8 +33,25 @@ class BlockingLink:
         other.peer = self
 
     def send_turn(self, message: dict[str, Any]) -> None:
-        """Deliver one turn to the peer's inbox."""
+        """Deliver one turn to the peer's inbox, enforcing the real guard.
+
+        The production inbox refuses a step it has already seen (a replay), and
+        this fake did not. That gap hid a defect that ended every real series
+        after one mini-game: game 2 restarts at step 1, which the live guard
+        read as "stale, last accepted was 11". A fake without the constraint
+        cannot fail the way the wire fails.
+        """
         assert self.peer is not None, "link was never connected"
+        step = message.get("step")
+        if isinstance(step, int):
+            if step <= self.peer._last_step:
+                # Dropped, exactly as the real inbox drops it: rejected at
+                # ingress and never queued. Raising here would be louder but
+                # wrong — on the wire the sender learns nothing and simply waits,
+                # which is precisely how the defect presented in a real match.
+                self.rejected_stale += 1
+                return
+            self.peer._last_step = step
         self.sent_turns += 1
         self.peer.turns.put(message)
 
@@ -60,6 +80,14 @@ class BlockingLink:
             return self.audits.get(timeout=timeout)
         except queue.Empty:
             return None
+
+    def reset(self) -> None:
+        """Forget the previous mini-game, as the real transport does."""
+        self.resets += 1
+        self._last_step = -1
+        for box in (self.turns, self.audits):
+            while not box.empty():
+                box.get_nowait()
 
 
 def linked_pair() -> tuple[BlockingLink, BlockingLink]:

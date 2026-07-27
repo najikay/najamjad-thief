@@ -1,0 +1,56 @@
+"""Our group identity, in the shape the opponent's declaration needs.
+
+Identity travels beside the signed terms in the handshake and is deliberately
+**not** covered by the signature: it differs per group, so it is not something
+both peers can match on. What it *is* is load-bearing for the other side —
+each peer builds the whole-series declaration from both identities, and only we
+know our own hardware.
+
+Every key here is required by the reference's `group_block()`, which indexes
+them directly. Omitting one does not degrade their report; it raises `KeyError`
+in their process *after* the games have been played, losing the series to a
+missing dictionary key. We shipped `group_id`/`agent_name` at first and did
+exactly that in a rehearsal.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from ..shared.sysinfo import collect_spec
+
+
+def identity_from_config(manager: Any) -> dict[str, Any]:
+    """The static per-group block we hand the opponent during the handshake.
+
+    Per *group*, not per role: roles alternate across mini-games, so an identity
+    tied to a role would change halfway through a series.
+    """
+    return {
+        "group_id": str(manager.get("game.group_id", "najamjad")),
+        "group_name": str(manager.get("game.group_name", "NajAmjad")),
+        "members": list(manager.get("game.members", []) or []),
+        "repos": dict(manager.get("game.repos", {}) or {}),
+        "mcp_servers": dict(manager.get("game.mcp_servers", {}) or {}),
+        "llm_model": str(manager.get("llm.model", "") or "cli-default"),
+        "spec": spec_for_declaration(),
+    }
+
+
+def spec_for_declaration() -> dict[str, Any]:
+    """Our hardware, under the names the opponent's declaration reads.
+
+    `collect_spec()` uses our own field names; the reference's `hardware_spec()`
+    reads `cpu_model`, `cpu_freq_mhz`, `cpu_cores`, `ram_gb`, `gpu_type` and
+    `vram_gb`. Both sets are provided rather than one translated into the other,
+    because our artifacts consume ours and theirs consumes theirs, and a missing
+    key on either side is a crash rather than a blank field.
+    """
+    spec = collect_spec()
+    return {
+        **spec,
+        "cpu_model": spec.get("cpu_type"),
+        "cpu_freq_mhz": spec.get("cpu_freq_mhz"),
+        "gpu_model": spec.get("gpu_type"),
+        "vram_gb": spec.get("vram_gb"),
+    }

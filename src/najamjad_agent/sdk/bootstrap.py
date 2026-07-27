@@ -14,6 +14,8 @@ cop and thief configs to be kept strictly apart.
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 from ..constants import Role
 from ..net.inbox import Inboxes
 from ..net.mcp_server import PeerServer
@@ -49,6 +51,24 @@ def resolve_role(role_dir: Path, override: str = "") -> Role:
     return Role(role_dir.name)
 
 
+def shared_config_for(role_dir: Path) -> Path:
+    """The signed terms that belong beside this private config.
+
+    `--config <dir>/police` must load `<dir>/game.json`, not the repository's
+    default. The shared file used to be read from `config/game.json`
+    unconditionally, so pointing the agent at a per-match directory loaded that
+    match's private settings alongside *our opening proposal* rather than the
+    terms we agreed with that opponent.
+
+    The signature check would have caught it as a refusal to play rather than a
+    silently wrong game, but a refusal minutes before a match is still a defect,
+    and per-opponent config directories are exactly how the runbook says to
+    prepare (`docs/LEAGUE_OPS.md`).
+    """
+    beside = role_dir.parent / "game.json"
+    return beside if beside.exists() else CONFIG_ROOT / "game.json"
+
+
 def build_sdk(
     config: Path | None = None,
     role: str = "",
@@ -57,7 +77,7 @@ def build_sdk(
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     role_dir = config or default_config_path()
-    manager = ConfigManager.load(role_dir, shared_config=CONFIG_ROOT / "game.json")
+    manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path("workspace")) / "events.jsonl")
     inboxes = Inboxes(emit=bus.publish)
@@ -73,6 +93,7 @@ def build_sdk(
         checks=standard_checks(manager, server, tunnel),
         workspace=workspace or Path("workspace"),
         emit=bus.publish,
+        opponent_url=str(manager.get("network.opponent_url", "")),
     )
     sdk = AgentSdk(events=bus, actions=actions)
     if dashboard:
@@ -94,6 +115,45 @@ def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus
 
     transport = build_transport(manager, bus, inboxes)
     actions.attach_match(build_match(manager, role, transport, _speaker(manager, bus), bus))
+    actions.attach_handshake(_handshake(manager, bus, inboxes, transport))
+
+
+def _handshake(manager: ConfigManager, bus, inboxes, transport):
+    """The pre-game agreement swap, as a callable the match runs first."""
+    from ..negotiation.handshake import exchange_agreement
+    from ..negotiation.identity import identity_from_config
+    from ..negotiation.terms import terms_from_config
+
+    def run():
+        """Sign, swap and verify the terms before any move is played."""
+        return exchange_agreement(
+            terms=terms_from_config(manager),
+            identity=identity_from_config(manager),
+            send=lambda payload: transport.send_negotiate(payload),
+            # The inbox hands back a validated pydantic model; the handshake and
+            # the contract both work in plain dicts, and `verify_peer` indexes
+            # the message directly.
+            receive=lambda timeout: _as_dict(inboxes.poll("negotiate", timeout=timeout)),
+            timeout=float(manager.get("network.handshake_timeout_seconds", 60)),
+            emit=bus.publish,
+        )
+
+    return run
+
+
+def _as_dict(message: Any) -> dict[str, Any] | None:
+    """A polled inbox message as a plain dict, or None when nothing arrived.
+
+    The inbox hands back a validated pydantic model; `Contract.verify_peer`
+    and the handshake both index a plain mapping.
+    """
+    if message is None:
+        return None
+    if isinstance(message, BaseModel):
+        return message.model_dump()
+    if isinstance(message, dict):
+        return message
+    return None
 
 
 def _speaker(manager: ConfigManager, bus) -> Any:

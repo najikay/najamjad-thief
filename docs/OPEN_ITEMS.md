@@ -1,12 +1,46 @@
 # Open items
 
-**Version 1.10 · 2026-07-27**
+**Version 1.30 · 2026-07-27**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
 can see we know.
 
 ---
+
+## T-2307 — rehearsal vs the reference: plays, but the ending disagrees
+
+**Where it got to.** Our thief and the course reference simulator now complete a
+full match as two OS processes: handshake locked, **59 turns sent, 63 messages
+accepted, zero rejections**, capture claims and barriers observed on both sides,
+both processes exiting 0 and writing their reports.
+
+**What is wrong.** The two sides do not agree on how the game *ended*. The
+reference records `result: timeout, winner: police`; we score the series 0–0.
+Under rules 33-35 a disagreement voids the game for both, so this must be
+settled before a counted match.
+
+**What it is not.** Not connectivity, not argument binding, not the terms, not
+the audit envelope, and not the step guard — all of those are fixed and
+verified. The turn traffic itself is clean in both directions.
+
+**Next step.** Compare their `logs/result_*.json` ending against ours turn by
+turn: the likely candidates are the survival horizon being counted from
+different step numbers, or a capture claim we answer in a shape their parser
+reads as no answer.
+
+**Getting here fixed four real defects**, each of which would have cost every
+counted match, and none of which any in-process test could see:
+
+1. `match` never negotiated — the reference exits with *"Opponent never sent its
+   agreement"* before a move is played.
+2. Our terms were grouped by section; the reference signs a **flat 14-key
+   dictionary** and compares for equality.
+3. Our identity block omitted `group_name`, `members`, `repos`, `mcp_servers`,
+   `llm_model` and `spec` — the reference indexes them directly and raised
+   `KeyError` *after* the games were played.
+4. Neither peer waited for the other, so the first to start burned its retries
+   on a dead port and exited before the second was listening.
 
 ## COMPETITIVE RISK — our thief loses to a strong cop
 
@@ -57,44 +91,11 @@ review by removing the key or marking the prompt reserved.
 
 ---
 
-## T-2101 / T-2102 — two-process series does not complete
-
-**What works.** `scripts/two_process_match.py` launches both repos as real OS
-processes on OS-assigned ports, each with its own MCP server. They connect, they
-exchange real turns over HTTP (`POST /mcp 200 OK` throughout), and they reach the
-audit stage — sealed records, nonces and commits appear in both logs.
-
-**What does not.** A two-game series does not finish inside a 300 s budget.
-
-**Evidence, from the peers' own event log:**
-
-| event | count |
-|---|---|
-| `inbox.accepted` | 101 |
-| `deadline.started` | 395 |
-| `deadline.met` | 101 |
-| `turn.timeout` | 88 |
-
-Messages arrive **and are accepted**, and the peers still wait each other out.
-So this is neither transport (measured at 12 ms a message) nor the audit
-envelope (fixed, and one mini-game over real MCP now takes 0.8 s in-process).
-
-**Leading hypothesis, explicitly not yet a finding:** the `match` verb plays
-without negotiating first, so the two processes never establish a shared turn
-token and both can end up waiting. Testing that means wiring negotiation into
-`match` and re-running.
-
-**Why it is not blocking.** The same series runs correctly in-process over real
-MCP, and against the reference simulator's tool surface. What is unproven is two
-*separate processes* completing a full series unattended.
-
----
-
 ## T-2104 — lifecycle-artifact assertions in a CI series
 
-Depends on T-2102. The artifact writer and its schemas are tested directly; what
-is missing is asserting all four artifacts appear with a shared `game_uid` after
-a real two-process run.
+Unblocked now that T-2102 is fixed (below). The artifact writer and its schemas
+are tested directly; what is missing is asserting all four artifacts appear with
+a shared `game_uid` after a real two-process run.
 
 ## T-2113 — golden-drift regression
 
@@ -117,6 +118,31 @@ is running it nightly rather than on demand.
 
 ## Recently closed, for context
 
+- **T-2101 / T-2102 — the two-process series now completes.** It was not
+  negotiation, as the previous version of this document guessed. Two defects,
+  both invisible in-process:
+
+  1. **The inbox step guard never reset between mini-games.** It correctly
+     refuses a replayed step, but each mini-game restarts numbering at 1, so
+     game 2's opening turn arrived as *"step 1 is stale or replayed, last
+     accepted was 11"*. Both peers then waited each other out. **Our agent could
+     not play more than one mini-game against anyone** — a series is six.
+     `Transport.reset()` is now part of the protocol and `MatchRunner` calls it
+     before every mini-game, which also discards a turn that arrived after the
+     previous game ended.
+  2. **`--config` redirected only the private config.** The signed
+     `config/game.json` was always read from the repository, so a per-opponent
+     directory paired that match's settings with *our opening proposal* rather
+     than the agreed terms. `shared_config_for()` now takes the terms sitting
+     beside the private config.
+
+  Verified: a full six-game series between two real OS processes over real
+  MCP/HTTP, every game `Verified OK`, roles alternating, both peers agreeing on
+  every outcome, 75–75. Regression tests in
+  `tests/integration/test_series_continuity.py` exercise the production
+  `Inboxes`, and `BlockingLink` now enforces the same sequence guard so this
+  class of defect fails in-process from here on — it is the **fourth** time a
+  fake being kinder than the wire hid a real bug (ADR-017).
 - **T-2110** sweep runner — found `barrier_threshold` was badly tuned; 43-75 % → 100 %.
 - **T-2115..T-2118, T-2120** chaos — tunnel restart, total LLM outage, Gmail 429
   storm, clock skew, soak.

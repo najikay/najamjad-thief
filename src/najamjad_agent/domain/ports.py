@@ -31,6 +31,16 @@ class Transport(Protocol):
         """Await the opponent's audit payload; None on timeout."""
         ...
 
+    def reset(self) -> None:
+        """Forget everything carried over from the previous mini-game.
+
+        Part of the protocol rather than an implementation detail, because a
+        transport that quietly carries state across mini-games breaks the
+        second game of every series — and a fake without this method would hide
+        exactly that, which is how the defect survived in the first place.
+        """
+        ...
+
 
 class Brain(Protocol):
     """A movement policy. Always deterministic Python (book rule 25)."""

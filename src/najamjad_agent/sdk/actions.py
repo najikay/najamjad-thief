@@ -11,6 +11,7 @@ which is only enforceable if there is one place they both have to come through.
 from pathlib import Path
 from typing import Any
 
+from ..net.opponent_wait import wait_for_opponent
 from ..net.preflight import PreflightReport, run_preflight
 from ..replay.verifier import ReplayResult, verify_log
 from ..reporting.archive import ArchiveReport, build_archive
@@ -29,6 +30,8 @@ class AgentActions:
         emit: Any = None,
         dashboard: Any = None,
         match: Any = None,
+        opponent_url: str = "",
+        handshake: Any = None,
     ) -> None:
         """Hold the services; all are optional before a match is configured."""
         self._server = server
@@ -39,6 +42,8 @@ class AgentActions:
         self._emit = emit or (lambda _event: None)
         self._dashboard = dashboard
         self._match = match
+        self._opponent_url = opponent_url
+        self._handshake = handshake
 
     @property
     def public_url(self) -> str:
@@ -95,10 +100,27 @@ class AgentActions:
         """Wire in the match runner once the opponent URL is known."""
         self._match = runner
 
-    def play_match(self) -> Any:
-        """Play the agreed series against the opponent and return the result."""
+    def attach_handshake(self, handshake: Any) -> None:
+        """Wire in the pre-game agreement exchange."""
+        self._handshake = handshake
+
+    def play_match(self, wait_seconds: float = 120.0) -> Any:
+        """Play the agreed series against the opponent and return the result.
+
+        Waits for the opponent to be listening first. Both peers dial each
+        other, so without this the result depends on who started first: the
+        earlier peer spends its retries on a dead port and exits, and the later
+        one then finds nobody. Two teams agreeing "20:00" will not both be
+        listening at 20:00:00, and a cold start is ~15 s.
+        """
         if self._match is None:
             raise RuntimeError("no match configured — set network.opponent_url first")
+        if self._opponent_url and wait_seconds > 0:
+            wait_for_opponent(self._opponent_url, timeout=wait_seconds, emit=self._emit)
+        if self._handshake is not None:
+            # Most opponents are built on the reference, which sends its signed
+            # terms and waits for ours before playing a single move.
+            self._handshake()
         self._emit({"event": "match.starting"})
         result = self._match.play_series()
         self._emit({"event": "match.finished", "games": len(self._match.games)})

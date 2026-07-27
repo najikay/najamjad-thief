@@ -626,8 +626,8 @@
 
 ## E21 — Integration, self-play & interop (26 tasks)
 
-- [ ] **T-2101** (P0) Build the two-process harness: script launches the cop-repo and thief-repo binaries on localhost ports with test configs and collects exit status + artifacts — DoD: harness runs a full series locally [FR-NET-6]
-- [ ] **T-2102** (P0) Add the CI integration test: full 6 mini-game series over localhost between the two repos' processes — DoD: series completes in CI (marked slow); M3 exit criterion
+- [x] **T-2101** (P0) Build the two-process harness: script launches the cop-repo and thief-repo binaries on localhost ports with test configs and collects exit status + artifacts — DoD: harness runs a full series locally [FR-NET-6]
+- [x] **T-2102** (P0) Add the CI integration test: full 6 mini-game series over localhost between the two repos' processes — DoD: series completes in CI (marked slow); M3 exit criterion
 - [x] **T-2103** (P0) Assert audit Verified OK for EVERY mini-game in the CI series — DoD: assertion green (goal G4) [FR-CRY-3]
 - [ ] **T-2104** (P0) Assert all 4 lifecycle artifacts per match, shared game_uid, schema-valid, correct filenames in the CI series — DoD: assertion green [FR-REP-1]
 - [x] **T-2105** (P0) Assert both peers' result `mutual_agreement` hashes are identical in the CI series — DoD: assertion green [FR-REP-6]
@@ -692,13 +692,13 @@
 ## E23 — League operations (24 tasks)
 
 - [ ] **T-2301** (P0) Run the opponent recruitment campaign from Aug 3: post public URLs + "How to play us" link in the course forum/WhatsApp; contact ≥ 8 candidate teams by Aug 5 — DoD: ≥ 8 contacts logged with responses tracked (risk R1)
-- [ ] **T-2302** (P0) Write the "How to play us" one-pager: tool surface, public URLs, negotiation defaults, warm-up offer, scent-module code offer (book-recommended) — DoD: page published in both repos and linked in outreach [FR-NEG-2]
-- [ ] **T-2303** (P0) Create the opponent tracker `matches/opponents.md`: candidate list, contact state, agreed windows, warm-up/counted status — DoD: tracker live and updated after every contact
+- [x] **T-2302** (P0) Write the "How to play us" one-pager: tool surface, public URLs, negotiation defaults, warm-up offer, scent-module code offer (book-recommended) — DoD: page published in both repos and linked in outreach [FR-NEG-2]
+- [x] **T-2303** (P0) Create the opponent tracker `matches/opponents.md`: candidate list, contact state, agreed windows, warm-up/counted status — DoD: tracker live and updated after every contact
 - [ ] **T-2304** (P0) Schedule matches (scheduling from Aug 3): warm-up slots from Aug 6; confirm ≥ 3 counted-match windows in Aug 7–8 and ≥ 3 more in Aug 9–10 with named opponents — DoD: calendar holds confirmed by both sides in writing
-- [ ] **T-2305** (P0) Adopt the warm-up policy: NEVER count first contact — a warm-up game is mandatory before any counted match with each opponent — DoD: policy in the runbook (T-2233); the counted-game tracker (T-1210) enforces it (risk R2, book rule 52)
-- [ ] **T-2306** (P0) Create the incident-log template `matches/<opponent>/incidents.md` and the discipline of logging every retry/timeout/quirk live during matches — DoD: template exists; used in the rehearsal
+- [x] **T-2305** (P0) Adopt the warm-up policy: NEVER count first contact — a warm-up game is mandatory before any counted match with each opponent — DoD: policy in the runbook (T-2233); the counted-game tracker (T-1210) enforces it (risk R2, book rule 52)
+- [x] **T-2306** (P0) Create the incident-log template `matches/<opponent>/incidents.md` and the discipline of logging every retry/timeout/quirk live during matches — DoD: template exists; used in the rehearsal
 - [ ] **T-2307** (P0) Run the full match-day rehearsal vs the reference simulator using the runbook end-to-end (incl. archive + config commit) — DoD: rehearsal completes with zero undocumented steps [deps: T-2112, T-2233]
-- [ ] **T-2308** (P0) Define the pre-match opponent-profile procedure: adapter profile + playbook stance filled per opponent before the match window — DoD: procedure in the runbook; template profile committed [FR-NEG-5]
+- [x] **T-2308** (P0) Define the pre-match opponent-profile procedure: adapter profile + playbook stance filled per opponent before the match window — DoD: procedure in the runbook; template profile committed [FR-NEG-5]
 - [ ] **T-2309** (P0) Play counted match #1 per the runbook — DoD: series complete; 4 artifacts valid; both reports emailed; archive done
 - [ ] **T-2310** (P0) Hold the match #1 post-mortem: incidents → fixes/adapter updates; TODO + opponent model updated — DoD: post-mortem notes committed; actions ticketed
 - [ ] **T-2311** (P0) Play counted match #2 by Aug 8 (minimum-to-pass secured) — DoD: match complete + verified; pass threshold met [G2, book rule 31]
@@ -707,11 +707,11 @@
 - [ ] **T-2314** (P1) Play counted match #4 — DoD: match complete + verified checklist green
 - [ ] **T-2315** (P1) Play counted match #5 — DoD: match complete + verified checklist green
 - [ ] **T-2316** (P1) Play counted match #6 by Aug 10 (target G2) — DoD: match complete + verified checklist green
-- [ ] **T-2317** (P0) Run the post-match verification checklist after EVERY match: 4 artifacts valid, email message id confirmed, reconcile matched, replay Verified OK, config committed, github_commit recorded — DoD: checklist output archived per match [FR-REP-1..6]
+- [x] **T-2317** (P0) Run the post-match verification checklist after EVERY match: 4 artifacts valid, email message id confirmed, reconcile matched, replay Verified OK, config committed, github_commit recorded — DoD: checklist output archived per match [FR-REP-1..6]
 - [ ] **T-2318** (P0) Execute post-match archive + per-match config commit for every match — DoD: `matches/<opponent>/` complete and reconstructable per match; commits visible [Appendix F §2; deps: T-2013]
 - [ ] **T-2319** (P2) Review opponent-model persistence after each match: credibility/movement stats saved and sanity-checked — DoD: model files present per opponent [FR-STR-6]
 - [ ] **T-2320** (P1) Track league standing: our points, diversity rewards earned, opponents' declared counts — DoD: standings sheet current after every match
-- [ ] **T-2321** (P1) Define the recruitment contingency: if < 4 opponents confirmed by Aug 6 → escalate (lecturer forum, flexible windows, play-anytime offer) — DoD: trigger + actions documented; executed if tripped
+- [x] **T-2321** (P1) Define the recruitment contingency: if < 4 opponents confirmed by Aug 6 → escalate (lecturer forum, flexible windows, play-anytime offer) — DoD: trigger + actions documented; executed if tripped
 - [ ] **T-2322** (P1) Prepare the second-machine backup host: thief (or cop) runs on the backup with its own tunnel; execute one failover drill — DoD: drill log shows a completed game from the backup host (risk R8)
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]
 - [ ] **T-2324** (P1) Run the weekly interop regression vs the reference simulator during the league window — DoD: regression log green each week [ADR-012; deps: T-2111]
