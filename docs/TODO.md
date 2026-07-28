@@ -178,7 +178,7 @@
 - [x] **T-0510** (P0) Write failing tests for OPPONENT-move validation: declared opponent transitions checked for one-cell orthogonal delta, no teleport, no barrier crossing, step monotonicity — we enforce physics on them — DoD: tests fail (RED) [FR-ENG-2]
 - [x] **T-0511** (P0) Implement opponent-move validation path in movement.py — DoD: T-0510 green; violation yields a physics-violation verdict for the protocol layer
 - [x] **T-0512** (P0) Add legality-filter tests: the set of legal own moves is always non-empty-or-explicit (empty set → immobilization signal), and nothing outside it can be emitted — DoD: tests green [FR-STR-2]
-- [ ] **T-0513** (P1) Add hypothesis property tests: ∀ position + validated move sequence, agent stays in bounds and never occupies a barrier cell — DoD: property suite green over ≥ 500 generated cases [PLAN §5]
+- [x] **T-0513** (P1) Add hypothesis property tests: ∀ position + validated move sequence, agent stays in bounds and never occupies a barrier cell — DoD: property suite green over ≥ 500 generated cases [PLAN §5]
 - [x] **T-0514** (P0) Write failing tests for the Barrier Law: cop only, in lieu of moving, target = own cell or orthogonally adjacent; budget from config (≥ 14) decremented; exhausted budget rejects placement — DoD: tests fail (RED) [FR-ENG-3]
 - [x] **T-0515** (P0) Implement barrier placement per the Barrier Law in movement.py/board.py — DoD: T-0514 green
 - [x] **T-0516** (P0) Add barrier-declaration-duty tests: every placement produces a truthful declaration record with the exact cell (no hidden barriers path exists in code) — DoD: tests green [book rules 15–16]
@@ -199,7 +199,7 @@
 - [x] **T-0531** (P0) Add tie-rule tests: equal cumulative series score → each team +2, `winner_group: null` — DoD: tests green [FR-ENG-6]
 - [x] **T-0532** (P0) Implement the tie rule — DoD: T-0531 green
 - [x] **T-0533** (P0) Add golden test: our aggregate output shape matches the reference simulator's `result_*.json` aggregate block — DoD: golden comparison green [ADR-012; deps: T-0126]
-- [ ] **T-0534** (P1) Write `docs/edge-cases-domain.md`: boundary conditions (corner starts, 1-move traps, quota edge, threshold-1 step) with expected input/response per guidelines §6.3 — DoD: every listed edge case has a test id next to it
+- [x] **T-0534** (P1) Write `docs/edge-cases-domain.md`: boundary conditions (corner starts, 1-move traps, quota edge, threshold-1 step) with expected input/response per guidelines §6.3 — DoD: every listed edge case has a test id next to it
 - [x] **T-0535** (P0) Add cop capture-claim honesty tests: our `capture_claim` is always derived from the cop's true own position; no code path can claim a foreign cell — DoD: tests green; meta-test confirms a single claim-source function [FR-ENG-4, book rule 22]
 
 ## E06 — Scent & belief (30 tasks)
@@ -578,8 +578,8 @@
 - [x] **T-1817** (P0) Build the incident feed panel: retries, timeouts, fallbacks, degradations as a scrolling feed — DoD: injected faults appear within 250 ms [FR-UI-5 / FR-OBS-2]
 - [x] **T-1818** (P1) Build the tunnel-health indicator + active-provider badge components — DoD: badge flips on mocked provider switch; tunnel state follows T-1108 events [FR-LLM-2 / FR-NET-3]
 - [x] **T-1819** (P1) Build the match-day cockpit strip: preflight results + opponent profile card — DoD: preflight checklist renders green/red from a mocked run [FR-UI-5 / FR-NET-8]
-- [ ] **T-1820** (P1) Build one-click start / pause-safe controls wired to SDK actions with SERVER-DRIVEN button state (no blind timeouts) — DoD: buttons reflect real FSM/permission state in tests [FR-UI-5; deps: T-0823]
-- [ ] **T-1821** (P1) Build the negotiation human-approval UI: view draft, edit, approve/send — DoD: approval flow test green end-to-end with mocked LLM [FR-NEG-4; deps: T-1229]
+- [x] **T-1820** (P1) Build one-click start / pause-safe controls wired to SDK actions with SERVER-DRIVEN button state (no blind timeouts) — DoD: buttons reflect real FSM/permission state in tests [FR-UI-5; deps: T-0823]
+- [x] **T-1821** (P1) Build the negotiation human-approval UI: view draft, edit, approve/send — DoD: approval flow test green end-to-end with mocked LLM [FR-NEG-4; deps: T-1229]
 - [x] **T-1822** (P0) Define pydantic view-models for all WS frame types; serialization tests — DoD: every panel's frame type validated; unknown frame rejected in tests [ADR-006]
 - [x] **T-1823** (P1) Add UI latency test: event published → WS frame received < 250 ms under a busy event stream — DoD: timed test green [PRD §4 performance]
 - [x] **T-1824** (P1) Add degraded-state handling: WS drop shows a reconnecting banner; stale panels visually marked until resync — DoD: manual + automated check green
@@ -638,7 +638,7 @@
 - [x] **T-2110** (P1) Build the sweep runner: executes parameter sweeps (E14/E15 tunables) and writes structured results into `results/` — DoD: one sweep spec runs end-to-end [FR-STR-7]
 - [x] **T-2111** (P0) Run the interop smoke vs the UNMODIFIED reference simulator over localhost: negotiate/turns/audit complete — DoD: smoke green; scheduled weekly + pre-match [ADR-012]
 - [x] **T-2112** (P0) Run the full match vs the reference simulator over PUBLIC tunnel URLs, with report email produced in draft mode — DoD: match completes; email draft visible; M5 exit criterion [FR-NET-3; deps: T-1109]
-- [ ] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]
+- [x] **T-2113** (P1) Add golden-drift regression: interop-run artifacts diffed against expected shapes; any drift raises a CI alarm — DoD: regression job green [ADR-012]
 - [x] **T-2114** (P0) Chaos test — opponent crash mid-game: kill the peer process → our side resolves a clean technical outcome, artifacts written, no hang — DoD: test green [PRD §4 reliability]
 - [x] **T-2115** (P0) Chaos test — tunnel drop mid-series: supervised restart reconnects OR deadline path resolves cleanly — DoD: test green [FR-NET-3/4]
 - [x] **T-2116** (P0) Chaos test — total LLM outage mid-match: both providers down → template floor, game continues, provider events emitted — DoD: test green [FR-LLM-1]
@@ -650,7 +650,7 @@
 - [x] **T-2122** (P0) Run the honest-omit audit: coverage omit list contains ONLY ui/static assets (at most the `cli.py` entry wiring; there is no `main.py`); every integration seam (mcp, gmail, tunnel supervision) covered via in-process fakes — DoD: audit checklist green, omit list matches the real tree (risk R7, A6 lesson 10)
 - [x] **T-2123** (P1) Add the performance test: move computation ≤ 5 s typical on the largest negotiated board under a loaded event bus — DoD: timed test green [PRD §4]
 - [x] **T-2124** (P0) Add the cross-repo mirror integration check: core manifest byte-identical across repos at integration time (pre-merge on both) — DoD: CI green on both repos simultaneously [ADR-002]
-- [ ] **T-2125** (P1) Build the failure-path traceability table: every PRD §4 reliability scenario mapped to a test id; close any gaps found — DoD: table complete in docs; zero unmapped scenarios
+- [x] **T-2125** (P1) Build the failure-path traceability table: every PRD §4 reliability scenario mapped to a test id; close any gaps found — DoD: table complete in docs; zero unmapped scenarios
 - [x] **T-2126** (P0) Write the pre-match smoke script: ONE command running preflight + localhost interop + goldens, to be run before every league match — DoD: script green end-to-end; the match runbook (T-2233) references it
 
 ## E22 — Documentation deliverables (33 tasks)

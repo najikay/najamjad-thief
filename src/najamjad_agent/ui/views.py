@@ -9,10 +9,18 @@ show something the rules forbid" a structural property rather than a promise.
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
 from ..sdk.match_history import match_history, standings
+from .controls import (
+    ControlDeniedError,
+    approve_terms,
+    negotiation_state,
+    peer_state,
+    start_peer,
+    stop_peer,
+)
 from .frames import validate_frame
 
 STATIC = Path(__file__).parent / "static"
@@ -65,6 +73,37 @@ def register_routes(app: FastAPI, sdk: Any, hub: Any) -> None:
         that.
         """
         return sdk.cockpit()
+
+    @app.get("/api/control")
+    async def control_state() -> dict[str, Any]:
+        """What the server believes, so the page never paints its own guess."""
+        return {"peer": peer_state(sdk), "negotiation": negotiation_state(sdk)}
+
+    @app.post("/api/control/peer")
+    async def control_peer(body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Start or stop serving — reversible, so safe behind a button.
+
+        Playing a counted match is deliberately absent: it is graded and cannot
+        be undone, and `docs/RUNBOOK.md` is the interface for it.
+        """
+        action = str((body or {}).get("action", ""))
+        try:
+            if action == "start":
+                return start_peer(sdk)
+            if action == "stop":
+                return stop_peer(sdk)
+        except ControlDeniedError as denied:
+            raise HTTPException(status_code=403, detail=str(denied)) from denied
+        raise HTTPException(status_code=400, detail="action must be 'start' or 'stop'")
+
+    @app.post("/api/control/approve")
+    async def control_approve(body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Sign terms a person has read (FR-NEG-4)."""
+        payload = body or {}
+        try:
+            return approve_terms(sdk, payload.get("terms") or {}, payload.get("identity"))
+        except ControlDeniedError as denied:
+            raise HTTPException(status_code=403, detail=str(denied)) from denied
 
     @app.websocket("/ws")
     async def stream(socket: WebSocket) -> None:

@@ -105,7 +105,8 @@ def build_sdk(
         emit=bus.publish,
         opponent_url=str(manager.get("network.opponent_url", "")),
     )
-    sdk = AgentSdk(events=bus, actions=actions)
+    sdk = AgentSdk(events=bus, actions=actions,
+                   controls_enabled=bool(setting(setup, "features.controls", False)))
     if dashboard:
         _attach_dashboard(sdk, actions, manager, bus)
     _attach_match(actions, manager, chosen, bus, inboxes)

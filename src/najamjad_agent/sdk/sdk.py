@@ -54,6 +54,7 @@ class AgentSdk:
         gatekeepers: dict[str, Any] | None = None,
         events: Any = None,
         actions: AgentActions | None = None,
+        controls_enabled: bool = False,
     ) -> None:
         """Hold the subsystems; every one of them is optional before a match."""
         self.actions = actions or AgentActions(negotiation=negotiation, emit=_emitter(events))
@@ -64,6 +65,7 @@ class AgentSdk:
         self._negotiation = negotiation
         self._gatekeepers = gatekeepers or {}
         self._events = events
+        self._controls_enabled = controls_enabled
         self._transcript: list[dict[str, Any]] = []
         self._report: tuple[Any, Any, str] = (None, None, "")
 
@@ -137,6 +139,15 @@ class AgentSdk:
             "gatekeepers": self.gatekeepers(),
             "report": self.report(),
         }
+
+    @property
+    def controls_enabled(self) -> bool:
+        """Whether the dashboard may take write actions.
+
+        Lives here rather than in the UI because the UI package may reach the
+        agent only through this facade (ADR-005) — including for a feature flag.
+        """
+        return bool(self._controls_enabled)
 
     def cockpit(self) -> dict[str, Any]:
         """Match-day readiness in one payload (T-1819).

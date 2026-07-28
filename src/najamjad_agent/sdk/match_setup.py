@@ -97,11 +97,12 @@ def _tuning(manager: Any, side: str, brain: Any) -> dict[str, Any]:
         for key, value in dict(manager.get(f"strategy.{side}", {}) or {}).items()
         if not key.startswith("_")
     }
-    accepted = {field.name for field in fields(brain)} if is_dataclass(brain) else set()
+    accepted = {field.name for field in fields(brain)} if is_dataclass(brain) else set()  # type: ignore[arg-type]
     unknown = sorted(set(section) - accepted) if accepted else []
     if unknown:
         raise ValueError(
-            f"config [strategy.{side}] names {unknown}, which {brain.__name__} does not accept; "
+            f"config [strategy.{side}] names {unknown}, which "
+            f"{getattr(brain, '__name__', brain)} does not accept; "
             f"its tunables are {sorted(accepted - {'board_supplier'})}"
         )
     return section

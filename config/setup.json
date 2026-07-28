@@ -18,7 +18,9 @@
   "features": {
     "dashboard": true,
     "tunnel": false,
-    "_note": "Both are off-by-default at the CLI (--tunnel/--dashboard); these are the values used when nothing is passed."
+    "_note": "Both are off-by-default at the CLI (--tunnel/--dashboard); these are the values used when nothing is passed.",
+    "controls": false,
+    "_controls_note": "Dashboard write actions (start/stop serving, approve terms). Off by default: a disabled write path is one fewer thing to reason about on match day. Playing a counted match is never a button \u2014 see src/najamjad_agent/ui/controls.py."
   },
   "llm": {
     "deepseek_base_url": "https://api.deepseek.com",
