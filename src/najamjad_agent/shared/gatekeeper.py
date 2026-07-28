@@ -32,7 +32,14 @@ class QueueFullError(Exception):
 
 @dataclass
 class QueueStatus:
-    """Snapshot of gatekeeper load for the dashboard."""
+    """Snapshot of gatekeeper load for the dashboard.
+
+    Input:  none — built by the gatekeeper from its own counters.
+    Output: `service`, plus how many calls are waiting and in flight. Read-only
+            and point-in-time; it describes the queue, it does not control it.
+    Setup:  none. A value object deliberately, so a panel cannot hold a
+            reference that mutates while it renders.
+    """
 
     service: str
     waiting: int
@@ -43,7 +50,21 @@ class QueueStatus:
 
 @dataclass
 class ApiGatekeeper:
-    """Token-bucket limiter, FIFO queue and bounded retries for one service."""
+    """Token-bucket limiter, FIFO queue and bounded retries for one service.
+
+    Input:  any callable plus its arguments, executed through `execute()`.
+    Output: the callable's return value, or `RuntimeError` after `max_retries`
+            transient failures. Every attempt, wait and failure is evented, so
+            queue depth and back-off are visible rather than inferred.
+    Setup:  `service` (the name used in `config/rate_limits.json`) and a
+            `RateLimitConfig`. One instance per service — Anthropic's quota and
+            Gmail's are unrelated, and sharing a bucket would make one outage
+            throttle the other.
+
+    Applies to **outbound third-party calls**. Our own protocol traffic to the
+    opponent is not metered by anyone, and throttling it only risks missing
+    their 30-second deadline — which is how a limiter forfeits a game.
+    """
 
     service: str
     config: RateLimitConfig

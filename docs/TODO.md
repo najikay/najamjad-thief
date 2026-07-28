@@ -130,7 +130,7 @@
 - [x] **T-0320** (P0) Implement `.env` secret loading (os.environ only, autoload at startup) with test that no secret value is ever read from a tracked config file — DoD: test green; grep confirms `os.environ.get` is the only secret path (E5 gate)
 - [x] **T-0321** (P1) Add hardcoded-value meta-test: grep `src/` for tunable literals (URLs, timeouts, limits, emails) outside constants.py/config — DoD: meta-test green; each allowed constant justified by comment [guidelines §7.2]
 - [x] **T-0322** (P1) Write `docs/CONFIG.md`: every config key, default, source file, and Appendix F negotiability status (fixed/minimum/negotiable) — DoD: doc complete for all keys in all shipped config files
-- [ ] **T-0323** (P1) Document + test the config version-bump procedure: bumping a config version without updating `SUPPORTED_CONFIG_VERSIONS` is rejected at startup — DoD: test green; procedure in docs/CONFIG.md
+- [x] **T-0323** (P1) Document + test the config version-bump procedure: bumping a config version without updating `SUPPORTED_CONFIG_VERSIONS` is rejected at startup — DoD: test green; procedure in docs/CONFIG.md
 - [x] **T-0324** (P0) Add config module + canonical.py + shipped configs (shared parts) to the core manifest; verify byte-identical across repos — DoD: cross-repo CI job green [ADR-002; deps: T-0214]
 
 ## E04 — Shared infrastructure (28 tasks)
@@ -162,7 +162,7 @@
 - [x] **T-0425** (P0) Write failing tests for `shared/sysinfo.py`: returns the 6-field spec (os, cpu_type, cpu_cores, cpu_freq, ram_gb, gpu/vram), cached, subprocess via arg-list only (no shell=True) — DoD: tests fail (RED) [FR-CRY-4]
 - [x] **T-0426** (P0) Implement `shared/sysinfo.py` (≤120 code lines) — DoD: T-0425 green; works on WSL2; meta-test greps repo for `shell=True` and finds zero
 - [x] **T-0427** (P0) Add integration test: a gatekeeper-gated fake call produces queue + call events consumed by a WS fake subscriber end-to-end — DoD: test green; proves gatekeeper→events→WS chain
-- [ ] **T-0428** (P1) Complete building-block docstrings (Input/Output/Setup data per guidelines §16) on all shared/ modules — DoD: every public class documents input validation, output format, setup params
+- [x] **T-0428** (P1) Complete building-block docstrings (Input/Output/Setup data per guidelines §16) on all shared/ modules — DoD: every public class documents input validation, output format, setup params
 
 ## E05 — Domain: board, movement, barriers, capture, scoring (35 tasks)
 

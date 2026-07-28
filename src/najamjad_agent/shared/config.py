@@ -38,7 +38,20 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
 
 
 class ConfigManager:
-    """Loads, validates and exposes the merged configuration."""
+    """Loads, validates and exposes the merged configuration.
+
+    Input:  a private role directory (`config/<role>/game.toml`) and the signed
+            shared terms (`config/game.json`). Both must exist and both must
+            carry a version in `SUPPORTED_CONFIG_VERSIONS`.
+    Output: dotted-path reads — `get("network.my_port", 8802)` for optional
+            values, `require(...)` for ones whose absence is a boot failure.
+            Where the two files overlap the **signed JSON wins**, so a private
+            file can never weaken a term we agreed to.
+    Setup:  `load(role_dir, shared_config=...)`. Validation happens at load, not
+            at use: a config that names a file which is not there should stop
+            the agent starting rather than surface as a missing-file error
+            thirty steps into a match.
+    """
 
     def __init__(self, values: dict[str, Any], sources: dict[str, Path] | None = None) -> None:
         """Wrap an already-merged mapping; prefer `load()` in production."""

@@ -19,7 +19,16 @@ SUPPORTED_VERSIONS = ("1.00",)
 
 @dataclass(frozen=True)
 class RateLimitConfig:
-    """Limits for one external service."""
+    """Limits for one external service.
+
+    Input:  one `services` entry from `config/rate_limits.json`.
+    Output: the ceilings a gatekeeper enforces — requests per minute and hour,
+            concurrency, retry back-off, max retries and queue depth.
+    Setup:  defaults are the conservative Appendix F floor (30 rpm, backoff 5 s,
+            concurrency 2). Values are validated against the Appendix F ceilings
+            at load, so a config that would breach a rule refuses to boot rather
+            than breaching it quietly.
+    """
 
     requests_per_minute: int = 30
     requests_per_hour: int = 500

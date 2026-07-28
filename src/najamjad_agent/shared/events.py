@@ -45,7 +45,23 @@ def _scrub(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class EventBus:
-    """Fan-out of correlated events to file and live subscribers."""
+    """Fan-out of correlated events to file and live subscribers.
+
+    Input:  event dicts carrying at least an `event` name. Anything JSON-
+            serialisable; callers add their own fields.
+    Output: one JSON line per event appended to the log, and the same dict
+            handed to every subscriber. This log is the **evidence** a replay
+            and an audit are rebuilt from — the diagnostic channel is separate
+            (`shared/logging_setup.py`, ADR-008).
+    Setup:  `path` for the log file, created with its parents on first write so
+            a fresh clone needs no preparation. The handle is held open: reopening
+            per event cost 14 ms on a Windows-mounted filesystem, which is a
+            missed deadline on a long turn.
+
+    A subscriber must never block and never raise. Subscribers run on the
+    publishing thread, so a slow one holds up a turn and a raising one would
+    take observability's failure into the game loop.
+    """
 
     def __init__(
         self,

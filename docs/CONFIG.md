@@ -24,20 +24,25 @@ enforces the direction.
 | File | Scope | Committed | Purpose |
 |---|---|---|---|
 | `config/game.json` | shared, signed | yes | The agreed terms. Byte-identical with the opponent. |
-| `config/police/game.toml` | private | yes | This agent's own settings (thief repo: `config/thief/`). |
+| `config/setup.json` | private | yes | App-level tunables: paths, the local UI port, feature flags. |
+| `config/police/game.toml` | private | yes | This agent's own match settings (thief repo: `config/thief/`). |
 | `config/rate_limits.json` | private | yes | Per-service API ceilings, validated against Appendix F at load. |
 | `config/logging_config.json` | private | yes | Python `dictConfig` for the diagnostic channel. |
 | `config/model_prices.json` | private | yes | Published list prices for the cost table. Not measured by us. |
 | `.env` | secret | **no** | API keys only. Git-ignored, CI-gated. |
 | `.env-example` | template | yes | The same keys with dummy values. |
+| `data/map_areas.json` | private | yes | Landmark vocabulary for hints. **Content, not configuration** — adding a city should not mean editing a module. |
 
-> **Deviation from the guidelines' example layout, stated deliberately.** §7.2
-> shows `config/setup.json` for app-level tunables. Ours live in the `[network]`,
-> `[tunnel]` and `[llm]` sections of the private TOML instead. A second
-> app-level file would be a second source of truth for ports and paths, and the
-> failure mode of two config files that disagree is worse than the failure mode
-> of one file with sections. Everything §7.2 asks to be configurable *is*
-> configurable and versioned; only the filename differs.
+> **Three files, three scopes, no overlap.** `game.json` is *agreed with the
+> opponent*; `<role>/game.toml` is *private but about the match*; `setup.json` is
+> about the *application* and would be the same whoever we played. Keeping them
+> apart is what stops a second source of truth for the same value.
+>
+> An earlier version of this document argued we did not need `setup.json` and
+> that the TOML covered it. That was wrong in a way worth recording: nothing
+> declared `[ui]` or `[paths]`, so every `manager.get("ui.port", 8000)` returned
+> its own default — a hardcoded tunable wearing a config lookup's clothes, which
+> the guidelines put at threshold zero.
 
 ## 2. Shared, signed terms — `config/game.json`
 
@@ -96,6 +101,14 @@ to play. See that module before editing anything here.
 | `email.recipient` | Appendix F address | Rule 30 fixes the scope at `gmail.send`. |
 | `email.mode` | `draft` | **Change to `send` for a counted match.** `draft` is the safe default while testing. |
 | `strategy.cop_class` / `thief_class` | `""` | Empty means the shipped brains; a `"module:Attribute"` path loads a plugin (`docs/EXTENDING.md`). |
+| `[strategy.cop]` | `barrier_threshold` 0.40, `lookahead` 2, `claim_threshold` 0.12 | The dials the sweep varies. `barrier_threshold` decides matches: 0.05 captured 4 % of games, 0.40 captured 100 %. |
+| `[strategy.thief]` | `horizon` 3, `stall_trigger` 3 | `stall_trigger` is how close to the survival horizon the thief stops taking chances. |
+
+> **Scalars before sub-tables.** TOML assigns a bare key to the most recent
+> table header, so writing `cop_class` *after* `[strategy.thief]` silently makes
+> it a thief tunable — which handed `ThiefBrain` a `cop_class` argument and
+> killed a live match at the first mini-game. The wiring now validates every
+> dial against the brain's fields and fails at startup.
 
 ## 4. Rate limits — `config/rate_limits.json`
 
@@ -119,12 +132,31 @@ tracked — red-teamed in `tests/unit/test_scripts/test_gates_bite.py`, which
 commits each forbidden file into a scratch tree and requires the gate to reject
 it.
 
-## 6. Changing a config version
+## 6. Changing a config version (T-0323)
 
-Every shipped config carries `version` / `_config_version`. Bumping one without
-adding it to `SUPPORTED_CONFIG_VERSIONS` makes the agent refuse to boot — which
-is the intended behaviour, and is tested. The procedure is: add the new version
-to the supported set **first**, ship the config second.
+Every shipped config carries `version` / `_config_version`, and
+`shared/version.py:SUPPORTED_CONFIG_VERSIONS` is the single place a new schema
+is admitted.
+
+**The order is the procedure:**
+
+1. Add the new version to `SUPPORTED_CONFIG_VERSIONS`. Commit.
+2. Bump the `version` field in the config files. Commit.
+3. `uv run python scripts/check_all.py` — the config tests boot on the shipped
+   files, so a mismatch fails here rather than at a match.
+
+Doing it the other way round means the agent **refuses to boot on its own
+configuration**. That refusal is correct and it is tested
+(`test_config_version_bump.py::test_widening_the_supported_set_is_what_admits_a_new_version`),
+so if you meet it, the fix is step 1 — not loosening the check.
+
+**Why the check is strict.** A config the code does not understand is one that
+will be *partly* understood, and partly-understood settings are how an agent
+plays a game under terms it never agreed to. An absent version is refused the
+same way as a wrong one: absent is not "probably current".
+
+The error names both the offending version and the accepted ones, because the
+person reading it is usually short of time.
 
 ## 7. Where a value should live
 

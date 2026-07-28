@@ -1,15 +1,15 @@
-{"event":"server.starting","url":"http://127.0.0.1:42785/mcp"}
-{"event":"server.started","url":"http://127.0.0.1:42785/mcp"}
+{"event":"server.starting","url":"http://127.0.0.1:42299/mcp"}
+{"event":"server.started","url":"http://127.0.0.1:42299/mcp"}
 {"event":"agent.online","url":"https://thief.4laboratory.com/mcp"}
-{"event":"opponent.waiting","host":"127.0.0.1","port":38437}
+{"event":"opponent.waiting","host":"127.0.0.1","port":41271}
 {"event":"inbox.accepted","kind":"negotiate"}
-{"event":"opponent.ready","waited":40.0}
+{"event":"opponent.ready","waited":18.0}
 {"event":"match.starting"}
 {"dropped":{},"event":"transport.reset"}
 {"event":"handshake.sending","sha256":"94321271ded17273544add6ad71a3b627f9ec8e59e9df45a28bae66bb568d2b5"}
 {"event":"client.sending","tool":"negotiate"}
-{"event":"client.loop_started","url":"http://127.0.0.1:38437/mcp"}
-{"event":"client.session_opened","url":"http://127.0.0.1:38437/mcp"}
+{"event":"client.loop_started","url":"http://127.0.0.1:41271/mcp"}
+{"event":"client.session_opened","url":"http://127.0.0.1:41271/mcp"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"negotiate"}
 {"event":"handshake.locked","peer_identity":{"group_id":"segal-police-team","group_name":"Segal-Police-Team","llm_model":"claude-opus-4-8[1m]","mcp_servers":{"cop":"http://127.0.0.1:8802/mcp","thief":"http://127.0.0.1:8802/mcp"},"members":["id-1001","id-1002","id-1003"],"repos":{"cop":"https://github.com/rmisegal/Game-P2P-Cop-Chase","thief":"https://github.com/rmisegal/Game-P2P-Cop-Chase"},"spec":{"cpu_cores":8,"cpu_freq_mhz":"unknown","cpu_type":"x86_64","gpu_cores_or_cuda":"unknown","gpu_type":"unknown","os":"Linux 6.6.87.2-microsoft-standard-WSL2 (#1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025)","ram_gb":"unknown","vram_gb":"unknown"}},"sha256":"94321271ded17273544add6ad71a3b627f9ec8e59e9df45a28bae66bb568d2b5"}
@@ -18,7 +18,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"fa5e7cf1835323f4","event":"turn.sent","step":1}
+{"commit":"94f518ab3bafb964","event":"turn.sent","step":1}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -27,7 +27,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"4beec9b0a1211dfd","event":"turn.sent","step":2}
+{"commit":"bbb7dad3edb83c6c","event":"turn.sent","step":2}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -36,7 +36,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"8b5b151737ad5037","event":"turn.sent","step":3}
+{"commit":"de0940c0b11cab6e","event":"turn.sent","step":3}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -45,7 +45,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"a5d90811cc8a6c1e","event":"turn.sent","step":4}
+{"commit":"6e821df60bd10815","event":"turn.sent","step":4}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -54,7 +54,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"2cd319bbd1f2350a","event":"turn.sent","step":5}
+{"commit":"baa4db7a24036b19","event":"turn.sent","step":5}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -63,7 +63,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"7fb5fd851219d49a","event":"turn.sent","step":6}
+{"commit":"c7753c37f1a54377","event":"turn.sent","step":6}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -72,7 +72,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"71bcdc5b06936012","event":"turn.sent","step":7}
+{"commit":"4faa05ae243ea9bd","event":"turn.sent","step":7}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -81,7 +81,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"9dcaecc3b62031c6","event":"turn.sent","step":8}
+{"commit":"786c2d5b714df560","event":"turn.sent","step":8}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -90,7 +90,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"7036037aca4aa129","event":"turn.sent","step":9}
+{"commit":"ae0ccbeb372c6f0c","event":"turn.sent","step":9}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -99,7 +99,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"5e2fa9771a6149e9","event":"turn.sent","step":10}
+{"commit":"15b7fd7375c2a600","event":"turn.sent","step":10}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -108,7 +108,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"d4014f9fcb85921d","event":"turn.sent","step":11}
+{"commit":"c8ea88b2f1d5cd14","event":"turn.sent","step":11}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -117,7 +117,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"c39fbb92f89f4a3d","event":"turn.sent","step":12}
+{"commit":"f651d5eccfedab62","event":"turn.sent","step":12}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -126,7 +126,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"c35b97621424701c","event":"turn.sent","step":13}
+{"commit":"8ff9c04597591810","event":"turn.sent","step":13}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -135,7 +135,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"a1f688e9ab370336","event":"turn.sent","step":14}
+{"commit":"b0c3544dca1c3e72","event":"turn.sent","step":14}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -144,7 +144,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"d8035db96fbb8685","event":"turn.sent","step":15}
+{"commit":"d9f911a846879a51","event":"turn.sent","step":15}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -153,7 +153,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"6b98a9dbc4771cf4","event":"turn.sent","step":16}
+{"commit":"98e713714e60f6cd","event":"turn.sent","step":16}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -162,7 +162,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"57d5f8f248579034","event":"turn.sent","step":17}
+{"commit":"a4ad7c6405c9d127","event":"turn.sent","step":17}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -171,7 +171,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"33b9e14af58095ca","event":"turn.sent","step":18}
+{"commit":"e656498a81936af4","event":"turn.sent","step":18}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -180,7 +180,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"f2ef44b445c25d1d","event":"turn.sent","step":19}
+{"commit":"f078192dc977f03a","event":"turn.sent","step":19}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -189,7 +189,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"5d206fcb8e6efe55","event":"turn.sent","step":20}
+{"commit":"e36d9c0124420d76","event":"turn.sent","step":20}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -198,7 +198,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"7f4fc782fd014292","event":"turn.sent","step":21}
+{"commit":"6fc1bd065183ef6d","event":"turn.sent","step":21}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -207,7 +207,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"c2dfb66ada82b557","event":"turn.sent","step":22}
+{"commit":"a3d7c39096c50a7c","event":"turn.sent","step":22}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -216,7 +216,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"f6c588afe24c8880","event":"turn.sent","step":23}
+{"commit":"67b5adf3d421d3e6","event":"turn.sent","step":23}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -225,7 +225,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"98909aa40d8b6f1f","event":"turn.sent","step":24}
+{"commit":"3c62cd879a7dec20","event":"turn.sent","step":24}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -234,7 +234,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"143d11c21bea8c95","event":"turn.sent","step":25}
+{"commit":"083aac41e4883d55","event":"turn.sent","step":25}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -243,7 +243,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"eaeb84dbf2ab1509","event":"turn.sent","step":26}
+{"commit":"d27bec3e900d6e7e","event":"turn.sent","step":26}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -252,7 +252,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"37d48b8c4fa161c5","event":"turn.sent","step":27}
+{"commit":"4ed07272482f3919","event":"turn.sent","step":27}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -261,7 +261,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"d0b8b2db98ae88f5","event":"turn.sent","step":28}
+{"commit":"9a807427b784ddf2","event":"turn.sent","step":28}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -270,7 +270,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"05b0120984e4bc72","event":"turn.sent","step":29}
+{"commit":"f66a635d15693ecd","event":"turn.sent","step":29}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -279,7 +279,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"26f7d67e2aa02009","event":"turn.sent","step":30}
+{"commit":"828afb2b3007b715","event":"turn.sent","step":30}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -288,7 +288,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"0aba947819533f00","event":"turn.sent","step":31}
+{"commit":"113ad534858d8a02","event":"turn.sent","step":31}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -297,7 +297,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"0ed84bf4a8322cf2","event":"turn.sent","step":32}
+{"commit":"9f7eb7fa3ded248c","event":"turn.sent","step":32}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -306,7 +306,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"e7fa30c886767f94","event":"turn.sent","step":33}
+{"commit":"117e353dd44a8fae","event":"turn.sent","step":33}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -315,7 +315,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"0cd45ea9547a988f","event":"turn.sent","step":34}
+{"commit":"f2458e8fc191e0d2","event":"turn.sent","step":34}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -324,7 +324,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"219c0824a973420a","event":"turn.sent","step":35}
+{"commit":"8e7f265d7acdd084","event":"turn.sent","step":35}
 {"event":"game.declared","reason":"survival","step":35}
 {"event":"game.end","reason":"survival","step":35}
 {"event":"client.sending","tool":"submit_audit"}
@@ -349,7 +349,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"7eeccf9a2e866d00","event":"turn.sent","step":1}
+{"commit":"e6927310d185b772","event":"turn.sent","step":1}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -357,7 +357,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"3a9fa96572f6eb98","event":"turn.sent","step":2}
+{"commit":"8b0a645b42ca3917","event":"turn.sent","step":2}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -365,7 +365,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"9fe38a92d5ccc7db","event":"turn.sent","step":3}
+{"commit":"dd1e922c61276db7","event":"turn.sent","step":3}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -373,7 +373,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"49af2683ad800f55","event":"turn.sent","step":4}
+{"commit":"7b2ca5cea70d604d","event":"turn.sent","step":4}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -381,7 +381,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"44d04958f87b4123","event":"turn.sent","step":5}
+{"commit":"5758bfd668e430dc","event":"turn.sent","step":5}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -389,7 +389,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"42fe32b8aba86a5b","event":"turn.sent","step":6}
+{"commit":"a579ee269b33fc40","event":"turn.sent","step":6}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -397,7 +397,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"ed0809ec469ccb4b","event":"turn.sent","step":7}
+{"commit":"c84e0ec2d883aa42","event":"turn.sent","step":7}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -405,7 +405,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"8b13ad454a36b683","event":"turn.sent","step":8}
+{"commit":"16c7cd9cb55f1cbd","event":"turn.sent","step":8}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -413,7 +413,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"25bd8dcc19d5c7ba","event":"turn.sent","step":9}
+{"commit":"e22179dd67f59972","event":"turn.sent","step":9}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -421,7 +421,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"bf30aadee930cdbe","event":"turn.sent","step":10}
+{"commit":"264fc903e5270661","event":"turn.sent","step":10}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
@@ -429,7 +429,7 @@
 {"event":"client.sending","tool":"receive_turn"}
 {"attempt":1,"event":"gatekeeper.call","service":"mcp_peer"}
 {"event":"client.sent","tool":"receive_turn"}
-{"commit":"69ca5db92ab8352a","event":"turn.sent","step":11}
+{"commit":"80cd300130b9219c","event":"turn.sent","step":11}
 {"budget":30.0,"event":"deadline.started","label":"opponent-turn#1"}
 {"event":"inbox.accepted","kind":"turn"}
 {"attempt":1,"event":"deadline.met","label":"opponent-turn"}
