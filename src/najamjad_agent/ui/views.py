@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 
+from ..sdk.match_history import match_history, standings
 from .frames import validate_frame
 
 STATIC = Path(__file__).parent / "static"
@@ -41,6 +42,29 @@ def register_routes(app: FastAPI, sdk: Any, hub: Any) -> None:
     async def events(limit: int = 100) -> dict[str, Any]:
         """Recent events, so a page that connects mid-match is not blank."""
         return {"events": sdk.recent_events(limit)}
+
+    @app.get("/api/matches")
+    async def matches() -> dict[str, Any]:
+        """Every match we have filed, plus our standing as the artifacts describe it.
+
+        Read back from the `result_*.json` files we emailed, so what an operator
+        sees here is what the lecturer received — not a second account that
+        could quietly disagree with it.
+        """
+        from ..sdk.app_paths import history_roots, our_group
+
+        history = match_history(*history_roots())
+        return {"matches": history, "standings": standings(history, our_group())}
+
+    @app.get("/api/cockpit")
+    async def cockpit() -> dict[str, Any]:
+        """Match-day readiness in one request (T-1819).
+
+        Deliberately read-only. Starting a match from a browser tab would put a
+        graded action one stray click away, and the runbook is the interface for
+        that.
+        """
+        return sdk.cockpit()
 
     @app.websocket("/ws")
     async def stream(socket: WebSocket) -> None:

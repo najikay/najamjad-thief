@@ -1,3 +1,10 @@
+import { refreshMatches } from "/static/matches.js";
+
+// The events that change what the match panels show.
+const MATCH_EVENTS = new Set([
+  'artifacts.written', 'artifacts.failed', 'report.sent', 'report.not_sent',
+  'subgame.finished', 'series.complete', 'match.finished', 'handshake.locked',
+]);
 // The client: one WebSocket, no polling.
 //
 // Assignment 6 polled REST endpoints on a timer and still missed updates. The
@@ -83,6 +90,10 @@ function handle(frame) {
   // Any state-changing event invalidates the panels, so pull one fresh
   // snapshot rather than reimplementing the domain's transitions in JS.
   resync();
+  // The filed-match panels change between games, never within a turn, so they
+  // refresh on the events that actually alter them. A timer would poll for a
+  // change that mostly has not happened, and the client never polls.
+  if (MATCH_EVENTS.has(frame.event)) refreshMatches();
 }
 
 function connect() {
@@ -112,3 +123,7 @@ async function boot() {
 }
 
 boot();
+
+// Filed matches and readiness change between games, not within a turn: once on
+// load, then only when an event says something was filed or a game ended.
+refreshMatches();

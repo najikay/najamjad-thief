@@ -138,6 +138,32 @@ class AgentSdk:
             "report": self.report(),
         }
 
+    def cockpit(self) -> dict[str, Any]:
+        """Match-day readiness in one payload (T-1819).
+
+        Answers the only question that matters five minutes before a match:
+        *can we play right now, and if not, what is red*. The preflight checks
+        are the same ones the CLI runs, so the cockpit cannot say ready while
+        `preflight` says otherwise.
+        """
+        report = None
+        try:
+            report = self.actions.preflight()
+        except Exception:  # noqa: BLE001 - an unconfigured agent is not an error here
+            report = None
+        return {
+            "ready": self.ready,
+            "public_url": getattr(self.actions, "public_url", ""),
+            "checks": [
+                {"name": check.name, "passed": check.passed, "detail": check.detail}
+                for check in (getattr(report, "checks", None) or [])
+            ],
+            "exit_code": getattr(report, "exit_code", None),
+            "provider": self.provider(),
+            "budget": self.budget(),
+            "artifacts": dict(getattr(self.actions, "last_artifacts", {}) or {}),
+        }
+
     def recent_events(self, limit: int = 100) -> list[dict[str, Any]]:
         """The tail of the event stream that feeds the incident feed."""
         if self._events is None:

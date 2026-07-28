@@ -576,8 +576,8 @@
 - [x] **T-1815** (P0) Build the token meter panel: per-game/series usage vs budget with 70% warning styling and hard-stop state — DoD: panel reflects meter events in a mocked game [FR-LLM-3]
 - [x] **T-1816** (P0) Build the email/report status panel: reconcile status, send confirmation message id, dead-letter visibility — DoD: a mocked send failure is visible without opening logs (kills A6 pain #1) [FR-REP-3]
 - [x] **T-1817** (P0) Build the incident feed panel: retries, timeouts, fallbacks, degradations as a scrolling feed — DoD: injected faults appear within 250 ms [FR-UI-5 / FR-OBS-2]
-- [ ] **T-1818** (P1) Build the tunnel-health indicator + active-provider badge components — DoD: badge flips on mocked provider switch; tunnel state follows T-1108 events [FR-LLM-2 / FR-NET-3]
-- [ ] **T-1819** (P1) Build the match-day cockpit strip: preflight results + opponent profile card — DoD: preflight checklist renders green/red from a mocked run [FR-UI-5 / FR-NET-8]
+- [x] **T-1818** (P1) Build the tunnel-health indicator + active-provider badge components — DoD: badge flips on mocked provider switch; tunnel state follows T-1108 events [FR-LLM-2 / FR-NET-3]
+- [x] **T-1819** (P1) Build the match-day cockpit strip: preflight results + opponent profile card — DoD: preflight checklist renders green/red from a mocked run [FR-UI-5 / FR-NET-8]
 - [ ] **T-1820** (P1) Build one-click start / pause-safe controls wired to SDK actions with SERVER-DRIVEN button state (no blind timeouts) — DoD: buttons reflect real FSM/permission state in tests [FR-UI-5; deps: T-0823]
 - [ ] **T-1821** (P1) Build the negotiation human-approval UI: view draft, edit, approve/send — DoD: approval flow test green end-to-end with mocked LLM [FR-NEG-4; deps: T-1229]
 - [x] **T-1822** (P0) Define pydantic view-models for all WS frame types; serialization tests — DoD: every panel's frame type validated; unknown frame rejected in tests [ADR-006]
@@ -710,7 +710,7 @@
 - [x] **T-2317** (P0) Run the post-match verification checklist after EVERY match: 4 artifacts valid, email message id confirmed, reconcile matched, replay Verified OK, config committed, github_commit recorded — DoD: checklist output archived per match [FR-REP-1..6]
 - [ ] **T-2318** (P0) Execute post-match archive + per-match config commit for every match — DoD: `matches/<opponent>/` complete and reconstructable per match; commits visible [Appendix F §2; deps: T-2013]
 - [ ] **T-2319** (P2) Review opponent-model persistence after each match: credibility/movement stats saved and sanity-checked — DoD: model files present per opponent [FR-STR-6]
-- [ ] **T-2320** (P1) Track league standing: our points, diversity rewards earned, opponents' declared counts — DoD: standings sheet current after every match
+- [x] **T-2320** (P1) Track league standing: our points, diversity rewards earned, opponents' declared counts — DoD: standings sheet current after every match
 - [x] **T-2321** (P1) Define the recruitment contingency: if < 4 opponents confirmed by Aug 6 → escalate (lecturer forum, flexible windows, play-anytime offer) — DoD: trigger + actions documented; executed if tripped
 - [ ] **T-2322** (P1) Prepare the second-machine backup host: thief (or cop) runs on the backup with its own tunnel; execute one failover drill — DoD: drill log shows a completed game from the backup host (risk R8)
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]

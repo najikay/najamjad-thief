@@ -127,3 +127,13 @@ main {
   background: rgba(226, 96, 77, .08);
 }
 .alert strong { color: var(--bad); }
+
+/* Match browser and cockpit. Same visual language as the live panels so the
+   page does not read as two applications stitched together. */
+.match { border-top: 1px solid var(--line, #2a2f3a); padding: .6rem 0; }
+.match:first-child { border-top: none; }
+.row { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin-bottom: .25rem; }
+.hint { color: var(--muted, #8b93a7); font-weight: 400; font-size: .85em; }
+.tag.ok { background: #14532d; color: #bbf7d0; }
+.tag.bad { background: #7f1d1d; color: #fecaca; }
+.tag.warn { background: #78350f; color: #fde68a; }
