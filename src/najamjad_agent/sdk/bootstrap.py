@@ -21,6 +21,7 @@ from ..net.inbox import Inboxes
 from ..net.mcp_server import PeerServer
 from ..net.preflight_checks import standard_checks
 from ..net.tunnel import Tunnel
+from ..shared.app_config import load_setup, setting
 from ..shared.config import ConfigManager
 from ..shared.events import EventBus
 from ..shared.logging_setup import setup_logging
@@ -80,10 +81,15 @@ def build_sdk(
     role_dir = config or default_config_path()
     # Diagnostics first: everything after this point is entitled to a logger,
     # and a failure here is reported rather than raised (guidelines §7.2).
-    setup_logging(workspace=workspace or Path("workspace"))
+    setup = load_setup()
+    setup_logging(
+        path=setting(setup, "paths.logging", "config/logging_config.json"),
+        workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
+    )
     manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
     chosen = resolve_role(role_dir, role)
-    bus = EventBus(path=(workspace or Path("workspace")) / "events.jsonl")
+    bus = EventBus(path=(workspace or Path(setting(setup, "paths.workspace", "workspace")))
+                   / "events.jsonl")
     inboxes = Inboxes(emit=bus.publish, max_per_minute=_inbound_ceiling(manager))
     server = PeerServer(
         inboxes=inboxes,
@@ -95,7 +101,7 @@ def build_sdk(
         server=server,
         tunnel=tunnel,
         checks=standard_checks(manager, server, tunnel),
-        workspace=workspace or Path("workspace"),
+        workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
         emit=bus.publish,
         opponent_url=str(manager.get("network.opponent_url", "")),
     )
@@ -128,7 +134,7 @@ def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus
     ))
     from .match_filing import build_filer
 
-    actions.attach_filer(build_filer(manager, bus, session, actions))
+    actions.attach_filer(build_filer(manager, bus, session, actions, load_setup()))
 
 
 def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
@@ -167,7 +173,8 @@ def _inbound_ceiling(manager: ConfigManager) -> int:
     """
     from ..shared.rate_limits import for_service, load_rate_limits
 
-    limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
+    limits = load_rate_limits(Path(setting(load_setup(), "paths.rate_limits",
+                                              "config/rate_limits.json")))
     return int(for_service(limits, "inbound_peer").requests_per_minute)
 
 
@@ -216,7 +223,8 @@ def _attach_dashboard(
 
     hub = ConnectionHub()
     attach_bus(bus, hub)
-    actions.attach_dashboard(DashboardServer(sdk, hub, port=int(manager.get("ui.port", 8000))))
+    port = int(setting(load_setup(), "ui.port", 8000))
+    actions.attach_dashboard(DashboardServer(sdk, hub, port=port))
 
 
 def _build_tunnel(manager: ConfigManager, role: Role, bus: EventBus) -> Tunnel | None:

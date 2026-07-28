@@ -1,0 +1,23 @@
+{
+  "version": "1.00",
+  "_note": "App-level tunables (guidelines §7.2). Not game terms and not secrets: where files land, which ports the local UI uses, and which optional subsystems are on. Nothing here is negotiated with an opponent — the agreed terms live in game.json and the private per-peer settings in <role>/game.toml.",
+  "ui": {
+    "port": 8000,
+    "host": "127.0.0.1",
+    "_note": "Loopback by design. The dashboard shows OUR belief and our sealed state; exposing it would hand an opponent everything commit-reveal exists to hide (book rules 8-9)."
+  },
+  "paths": {
+    "workspace": "workspace",
+    "artifacts": "workspace/artifacts",
+    "matches": "matches",
+    "events": "workspace/events.jsonl",
+    "rate_limits": "config/rate_limits.json",
+    "logging": "config/logging_config.json",
+    "dead_letters": "workspace/dead_letters"
+  },
+  "features": {
+    "dashboard": true,
+    "tunnel": false,
+    "_note": "Both are off-by-default at the CLI (--tunnel/--dashboard); these are the values used when nothing is passed."
+  }
+}

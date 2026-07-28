@@ -76,7 +76,7 @@
 - [~] **T-0124** (P0) Verify walking skeleton: both repos pass `uv run pytest` and `uv run ruff check` locally from a clean clone — DoD: screenshot/log of both green runs attached to PR; M1 precondition met
 - [ ] **T-0125** (P1) Create annotated tag `v0.1-skeleton` on both repos — DoD: tag pushed; fresh clone at tag passes T-0124 checks
 - [x] **T-0126** (P0) Extract goldens: copy the 4 sample-run artifacts from `reference/Game-P2P-Cop-Chase/docs/sample-run/` into `tests/goldens/artifacts/` with a provenance README — DoD: files committed in both repos; provenance notes the source commit [ADR-012, PRD A1]
-- [ ] **T-0127** (P0) Extract wire goldens: representative negotiate/turn/audit/control payloads (from reference code + sample log) into `tests/goldens/wire/` — DoD: fixtures committed with field-source comments [ADR-012]
+- [x] **T-0127** (P0) Extract wire goldens: representative negotiate/turn/audit/control payloads (from reference code + sample log) into `tests/goldens/wire/` — DoD: fixtures committed with field-source comments [ADR-012]
 - [!] **T-0128** (P0) Procure the Anthropic API key by Jul 28: billing active, spend cap set, key in `.env` only (never committed), one live completion round-trip verified — DoD: live round-trip logged; re-verified through the gatekeeper by the preflight LLM check (T-1114) before M4 [PLAN R11]
 - [!] **T-0129** (P0) Procure the DeepSeek API key by Jul 28: billing active, spend cap set, key in `.env` only, one live completion round-trip verified — DoD: live round-trip logged; re-verified through the gatekeeper by the preflight LLM check (T-1114) before M4 [PLAN R11]
 
@@ -96,7 +96,7 @@
 - [x] **T-0212** (P0) Add no-silent-except gate: script flags `except ...: pass` / bare `except` without logging, supplementing ruff S110/S112 — DoD: planted silent except fails CI [FR-OBS-2 / ADR-008]
 - [x] **T-0213** (P1) Write unit test for the no-silent-except gate (fixture with logged handler passes, `pass` handler fails) — DoD: gate behavior locked by tests
 - [~] **T-0214** (P0) Add core-manifest cross-repo CI job: checkout sibling repo read-only, run `core_manifest.py verify` across both trees — DoD: byte-drift in one mirrored file fails CI in both repos [ADR-002; deps: T-0117]
-- [ ] **T-0215** (P0) Add golden-file check job: `uv run pytest -m goldens` validating the `tests/goldens/` fixtures (extracted in T-0126/T-0127) against our schemas — DoD: job wired in M1; fully green once the E09 schema tasks land; fails if a golden stops parsing [ADR-012]
+- [x] **T-0215** (P0) Add golden-file check job: `uv run pytest -m goldens` validating the `tests/goldens/` fixtures (extracted in T-0126/T-0127) against our schemas — DoD: job wired in M1; fully green once the E09 schema tasks land; fails if a golden stops parsing [ADR-012]
 - [~] **T-0216** (P0) Add structure-presence gate: CI asserts README.md, docs/PRD.md, docs/PLAN.md, docs/TODO.md, .env-example, uv.lock, LICENSE exist — DoD: deleting any of them on a test branch fails CI (E6 gate)
 - [~] **T-0217** (P1) Add the nightly self-play workflow scaffold (cron): invokes the seeded self-play harness when present, tolerates a missing harness (skips with a visible notice), publishes the win-rate summary artifact when available; does NOT block PRs — DoD: scheduled run visible; skip path exercised before the harness exists [FR-STR-7]
 - [ ] **T-0218** (P2) Add CI status badges to both READMEs — DoD: badges render and reflect live status
@@ -114,24 +114,24 @@
 - [x] **T-0304** (P0) Implement startup version validation in `shared/config.py` for game.toml, setup.json, rate_limits.json versions — DoD: T-0303 green; agent refuses to boot on version mismatch [FR-CFG-2]
 - [x] **T-0305** (P0) Write failing tests for referenced-resource existence checks: configured paths (prompt files, credentials, logging config) that do not exist fail at load, not at use — DoD: tests fail (RED) (A6 lesson 9)
 - [x] **T-0306** (P0) Implement resource-existence validation in the config loader — DoD: T-0305 green; every config key referencing a file is checked at startup
-- [ ] **T-0307** (P0) Write failing tests for `protocol/canonical.py`: identical bytes across key orderings, unicode preserved, fixed separators, stable float/int rendering — DoD: tests fail (RED) [FR-NEG-1 / FR-CRY-1]
-- [ ] **T-0308** (P0) Implement `protocol/canonical.py` canonical JSON serialization (sort_keys, ensure_ascii=False, separators `(",",":")`; ≤120 code lines, budget 60) — DoD: T-0307 green; identical output to reference simulator's canonical form on sample payloads
-- [ ] **T-0309** (P0) Author `config/setup.json` v1.00 (app-level tunables: ports, UI, paths, feature flags) for both repos — DoD: file parses; every value consumed via ConfigManager, none hardcoded
-- [ ] **T-0310** (P0) Author `config/rate_limits.json` v1.00 with services `mcp_peer`, `anthropic`, `deepseek`, `gmail` (gmail: 30 rpm, 2 concurrent, 5 s backoff, 3 retries, queue 100 — Appendix F minimums) + queue block — DoD: file parses; values match Appendix F Table 19 [ADR-009]
+- [x] **T-0307** (P0) Write failing tests for `protocol/canonical.py`: identical bytes across key orderings, unicode preserved, fixed separators, stable float/int rendering — DoD: tests fail (RED) [FR-NEG-1 / FR-CRY-1]
+- [x] **T-0308** (P0) Implement `protocol/canonical.py` canonical JSON serialization (sort_keys, ensure_ascii=False, separators `(",",":")`; ≤120 code lines, budget 60) — DoD: T-0307 green; identical output to reference simulator's canonical form on sample payloads
+- [x] **T-0309** (P0) Author `config/setup.json` v1.00 (app-level tunables: ports, UI, paths, feature flags) for both repos — DoD: file parses; every value consumed via ConfigManager, none hardcoded
+- [x] **T-0310** (P0) Author `config/rate_limits.json` v1.00 with services `mcp_peer`, `anthropic`, `deepseek`, `gmail` (gmail: 30 rpm, 2 concurrent, 5 s backoff, 3 retries, queue 100 — Appendix F minimums) + queue block — DoD: file parses; values match Appendix F Table 19 [ADR-009]
 - [x] **T-0311** (P0) Author `config/logging_config.json` dictConfig payload: JSONL handler, per-subsystem loggers, correlation-id support — DoD: payload loads via `logging.config.dictConfig` in a test [FR-OBS-1]
-- [ ] **T-0312** (P0) Add tests validating all shipped config files parse, carry `version: "1.00"`, and match their pydantic config models — DoD: tests green; malformed fixture rejected
-- [ ] **T-0313** (P0) Create `config/police/game.toml` in cop repo: identity ([game] group NajAmjad, members), [network] my_port 8802 + opponent_url, [llm], [email] recipient `rmisegal+uoh26finalgame@gmail.com` mode=draft — DoD: cop boots from it; no secrets inside [FR-NET-6]
-- [ ] **T-0314** (P0) Create `config/thief/game.toml` in thief repo (my_port 8801, same structure) — DoD: thief boots from it; separation from cop config total [FR-NET-6]
-- [ ] **T-0315** (P0) Create default shared `config/police/game.json` and `config/thief/game.json`, byte-identical, with all Appendix F defaults (grid 7, barriers 14, max_moves 35, survival 35, scoring 20/5/5/10/2/0, pheromones 0.9/0.10/5, hint 15 words) — DoD: SHA-256 of both files identical [FR-NEG-1]
-- [ ] **T-0316** (P0) Add test asserting shared defaults match Appendix F exactly and `num_games = 6` (book mandates 6; reference repo ships 1 — do not copy that) — DoD: test green; deviation from any fixed value fails
-- [ ] **T-0317** (P0) Add tests that the private TOML can never weaken a signed JSON condition (overlay direction: JSON wins on every shared key) — DoD: tests green with adversarial TOML fixture [FR-CFG-1]
-- [ ] **T-0318** (P0) Write failing tests for per-opponent match workspace helpers: `matches/<opponent>/` creation, path resolution for config/declaration/logs/results/profile — DoD: tests fail (RED) [FR-CFG-3]
-- [ ] **T-0319** (P0) Implement workspace helpers in `shared/config.py` (split to `shared/workspace.py` ≤120 code lines if budget exceeded; update PLAN §1.3 + manifest) — DoD: T-0318 green; two opponents' workspaces fully isolated [FR-CFG-3]
-- [ ] **T-0320** (P0) Implement `.env` secret loading (os.environ only, autoload at startup) with test that no secret value is ever read from a tracked config file — DoD: test green; grep confirms `os.environ.get` is the only secret path (E5 gate)
+- [x] **T-0312** (P0) Add tests validating all shipped config files parse, carry `version: "1.00"`, and match their pydantic config models — DoD: tests green; malformed fixture rejected
+- [x] **T-0313** (P0) Create `config/police/game.toml` in cop repo: identity ([game] group NajAmjad, members), [network] my_port 8802 + opponent_url, [llm], [email] recipient `rmisegal+uoh26finalgame@gmail.com` mode=draft — DoD: cop boots from it; no secrets inside [FR-NET-6]
+- [x] **T-0314** (P0) Create `config/thief/game.toml` in thief repo (my_port 8801, same structure) — DoD: thief boots from it; separation from cop config total [FR-NET-6]
+- [x] **T-0315** (P0) Create default shared `config/police/game.json` and `config/thief/game.json`, byte-identical, with all Appendix F defaults (grid 7, barriers 14, max_moves 35, survival 35, scoring 20/5/5/10/2/0, pheromones 0.9/0.10/5, hint 15 words) — DoD: SHA-256 of both files identical [FR-NEG-1]
+- [x] **T-0316** (P0) Add test asserting shared defaults match Appendix F exactly and `num_games = 6` (book mandates 6; reference repo ships 1 — do not copy that) — DoD: test green; deviation from any fixed value fails
+- [x] **T-0317** (P0) Add tests that the private TOML can never weaken a signed JSON condition (overlay direction: JSON wins on every shared key) — DoD: tests green with adversarial TOML fixture [FR-CFG-1]
+- [x] **T-0318** (P0) Write failing tests for per-opponent match workspace helpers: `matches/<opponent>/` creation, path resolution for config/declaration/logs/results/profile — DoD: tests fail (RED) [FR-CFG-3]
+- [x] **T-0319** (P0) Implement workspace helpers in `shared/config.py` (split to `shared/workspace.py` ≤120 code lines if budget exceeded; update PLAN §1.3 + manifest) — DoD: T-0318 green; two opponents' workspaces fully isolated [FR-CFG-3]
+- [x] **T-0320** (P0) Implement `.env` secret loading (os.environ only, autoload at startup) with test that no secret value is ever read from a tracked config file — DoD: test green; grep confirms `os.environ.get` is the only secret path (E5 gate)
 - [ ] **T-0321** (P1) Add hardcoded-value meta-test: grep `src/` for tunable literals (URLs, timeouts, limits, emails) outside constants.py/config — DoD: meta-test green; each allowed constant justified by comment [guidelines §7.2]
 - [x] **T-0322** (P1) Write `docs/CONFIG.md`: every config key, default, source file, and Appendix F negotiability status (fixed/minimum/negotiable) — DoD: doc complete for all keys in all shipped config files
 - [ ] **T-0323** (P1) Document + test the config version-bump procedure: bumping a config version without updating `SUPPORTED_CONFIG_VERSIONS` is rejected at startup — DoD: test green; procedure in docs/CONFIG.md
-- [ ] **T-0324** (P0) Add config module + canonical.py + shipped configs (shared parts) to the core manifest; verify byte-identical across repos — DoD: cross-repo CI job green [ADR-002; deps: T-0214]
+- [x] **T-0324** (P0) Add config module + canonical.py + shipped configs (shared parts) to the core manifest; verify byte-identical across repos — DoD: cross-repo CI job green [ADR-002; deps: T-0214]
 
 ## E04 — Shared infrastructure (28 tasks)
 
@@ -155,13 +155,13 @@
 - [x] **T-0418** (P0) Write failing tests for `shared/events.py`: publish/subscribe, JSONL append-only sink, correlation ids (`game_uid`, `step`) on every event — DoD: tests fail (RED) [ADR-008]
 - [x] **T-0419** (P0) Implement `shared/events.py` event bus + JSONL sink (≤120 code lines) — DoD: T-0418 green; one JSONL stream per match [FR-OBS-1]
 - [x] **T-0420** (P0) Write failing tests for WS fanout: multiple subscribers each receive every event; a slow/stalled subscriber never blocks the bus or other subscribers — DoD: tests fail (RED) (A6 UI lesson: multi-subscriber, no frame theft)
-- [ ] **T-0421** (P0) Implement WS fanout adapter (per-subscriber async queue with bounded backlog + drop-with-event policy) — DoD: T-0420 green [ADR-005]
-- [ ] **T-0422** (P0) Write failing test for `shared/logging_setup.py`: after init, `logging.config.dictConfig` has actually been applied (root/subsystem loggers have the configured handlers) — DoD: test fails (RED) (A6 pain: config existed, never wired)
+- [x] **T-0421** (P0) Implement WS fanout adapter (per-subscriber async queue with bounded backlog + drop-with-event policy) — DoD: T-0420 green [ADR-005]
+- [x] **T-0422** (P0) Write failing test for `shared/logging_setup.py`: after init, `logging.config.dictConfig` has actually been applied (root/subsystem loggers have the configured handlers) — DoD: test fails (RED) (A6 pain: config existed, never wired)
 - [x] **T-0423** (P0) Implement `shared/logging_setup.py` (≤120 code lines) called at every entrypoint startup — DoD: T-0422 green; a log line from any subsystem lands in the JSONL file [FR-OBS-1]
-- [ ] **T-0424** (P0) Add degradation-event tests across shared/: every retry, fallback, timeout, and backpressure path emits an event (no silent handling) — DoD: tests enumerate and cover each degradation branch [FR-OBS-2]
-- [ ] **T-0425** (P0) Write failing tests for `shared/sysinfo.py`: returns the 6-field spec (os, cpu_type, cpu_cores, cpu_freq, ram_gb, gpu/vram), cached, subprocess via arg-list only (no shell=True) — DoD: tests fail (RED) [FR-CRY-4]
-- [ ] **T-0426** (P0) Implement `shared/sysinfo.py` (≤120 code lines) — DoD: T-0425 green; works on WSL2; meta-test greps repo for `shell=True` and finds zero
-- [ ] **T-0427** (P0) Add integration test: a gatekeeper-gated fake call produces queue + call events consumed by a WS fake subscriber end-to-end — DoD: test green; proves gatekeeper→events→WS chain
+- [x] **T-0424** (P0) Add degradation-event tests across shared/: every retry, fallback, timeout, and backpressure path emits an event (no silent handling) — DoD: tests enumerate and cover each degradation branch [FR-OBS-2]
+- [x] **T-0425** (P0) Write failing tests for `shared/sysinfo.py`: returns the 6-field spec (os, cpu_type, cpu_cores, cpu_freq, ram_gb, gpu/vram), cached, subprocess via arg-list only (no shell=True) — DoD: tests fail (RED) [FR-CRY-4]
+- [x] **T-0426** (P0) Implement `shared/sysinfo.py` (≤120 code lines) — DoD: T-0425 green; works on WSL2; meta-test greps repo for `shell=True` and finds zero
+- [x] **T-0427** (P0) Add integration test: a gatekeeper-gated fake call produces queue + call events consumed by a WS fake subscriber end-to-end — DoD: test green; proves gatekeeper→events→WS chain
 - [ ] **T-0428** (P1) Complete building-block docstrings (Input/Output/Setup data per guidelines §16) on all shared/ modules — DoD: every public class documents input validation, output format, setup params
 
 ## E05 — Domain: board, movement, barriers, capture, scoring (35 tasks)
@@ -198,7 +198,7 @@
 - [x] **T-0530** (P0) Implement series aggregation in scoring.py — DoD: T-0529 green
 - [x] **T-0531** (P0) Add tie-rule tests: equal cumulative series score → each team +2, `winner_group: null` — DoD: tests green [FR-ENG-6]
 - [x] **T-0532** (P0) Implement the tie rule — DoD: T-0531 green
-- [ ] **T-0533** (P0) Add golden test: our aggregate output shape matches the reference simulator's `result_*.json` aggregate block — DoD: golden comparison green [ADR-012; deps: T-0126]
+- [x] **T-0533** (P0) Add golden test: our aggregate output shape matches the reference simulator's `result_*.json` aggregate block — DoD: golden comparison green [ADR-012; deps: T-0126]
 - [ ] **T-0534** (P1) Write `docs/edge-cases-domain.md`: boundary conditions (corner starts, 1-move traps, quota edge, threshold-1 step) with expected input/response per guidelines §6.3 — DoD: every listed edge case has a test id next to it
 - [x] **T-0535** (P0) Add cop capture-claim honesty tests: our `capture_claim` is always derived from the cop's true own position; no code path can claim a foreign cell — DoD: tests green; meta-test confirms a single claim-source function [FR-ENG-4, book rule 22]
 
@@ -467,13 +467,13 @@
 - [x] **T-1416** (P0) Implement barrier-capture / immobilization logic — DoD: T-1415 green
 - [ ] **T-1417** (P1) Add barrier-economics tests: quota (14) spending policy — expected-value threshold per placement, reserve kept for endgame — DoD: tests green; thresholds in config
 - [ ] **T-1418** (P1) Add barrier-as-information tests: predicted forced detours sharpen belief (integration with barrier-aware diffusion) — DoD: tests green [deps: T-0614]
-- [ ] **T-1419** (P0) Build the cop tactical regression suite: ≥ 10 fixed positions with asserted best-move class ("must cut corridor", "must claim capture now", "must not waste barrier") — DoD: suite green and PR-blocking in CI
-- [ ] **T-1420** (P0) Add move-vs-barrier arbitration tests: `_decide_move` chooses between stepping and placing by expected value, never by fixed probability (replace reference's 0.15 coin-flip) — DoD: tests green
+- [x] **T-1419** (P0) Build the cop tactical regression suite: ≥ 10 fixed positions with asserted best-move class ("must cut corridor", "must claim capture now", "must not waste barrier") — DoD: suite green and PR-blocking in CI
+- [x] **T-1420** (P0) Add move-vs-barrier arbitration tests: `_decide_move` chooses between stepping and placing by expected value, never by fixed probability (replace reference's 0.15 coin-flip) — DoD: tests green
 - [ ] **T-1421** (P1) Run seeded dev smoke: cop_brain vs reference-style thief ≥ 70% capture over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
 - [ ] **T-1422** (P1) Expose cop tunables (depth, barrier threshold, belief weights) in config for the strategy lab — DoD: sweep harness can vary each without code change [FR-STR-7]
 - [x] **T-1423** (P1) Run the cop parameter sweep (grid over key params via the E21 sweep runner) and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
 - [ ] **T-1424** (P0) Gate wiring: tactical suite PR-blocking; win-rate statistical gate nightly-only — DoD: CI config reflects the split [deps: T-0217]
-- [ ] **T-1425** (P0) Author `docs/PRD_strategy_cop.md`: expectimax + barrier-planning theory, I/O, metrics, alternatives (incl. why no RL — ADR-007), test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-1425** (P0) Author `docs/PRD_strategy_cop.md`: expectimax + barrier-planning theory, I/O, metrics, alternatives (incl. why no RL — ADR-007), test scenarios — DoD: doc complete [PLAN §11]
 - [ ] **T-1426** (P1) Document + test cop edge cases: empty legal set, quota exhausted, uniform belief, opponent-at-adjacent-cell — DoD: each edge case has a test id in docs/edge-cases-domain.md
 
 ## E15 — Thief strategy (26 tasks)
@@ -493,16 +493,16 @@
 - [x] **T-1513** (P0) Implement barrier reaction — DoD: T-1512 green
 - [ ] **T-1514** (P1) Add endgame-stalling tests: near the survival threshold, policy switches to max-safety stalling (STAY/oscillation when provably safe) — DoD: tests fail (RED) [FR-STR-4]
 - [ ] **T-1515** (P1) Implement the endgame stalling mode — DoD: T-1514 green
-- [ ] **T-1516** (P0) Add threshold-awareness tests: policy tracks remaining steps to survival; risk tolerance decreases as the threshold nears — DoD: tests green
-- [ ] **T-1517** (P0) Add truth-duty separation tests: the brain has NO influence on `claim_response` — honest capture answers are computed entirely in domain/capture.py — DoD: import/meta test green [FR-ENG-4; deps: T-0524]
-- [ ] **T-1518** (P0) Build the thief tactical regression suite: ≥ 10 fixed positions ("must not enter corridor", "break toward open quadrant", "stall here", "sacrifice distance for routes") — DoD: suite green and PR-blocking in CI
+- [x] **T-1516** (P0) Add threshold-awareness tests: policy tracks remaining steps to survival; risk tolerance decreases as the threshold nears — DoD: tests green
+- [x] **T-1517** (P0) Add truth-duty separation tests: the brain has NO influence on `claim_response` — honest capture answers are computed entirely in domain/capture.py — DoD: import/meta test green [FR-ENG-4; deps: T-0524]
+- [x] **T-1518** (P0) Build the thief tactical regression suite: ≥ 10 fixed positions ("must not enter corridor", "break toward open quadrant", "stall here", "sacrifice distance for routes") — DoD: suite green and PR-blocking in CI
 - [ ] **T-1519** (P1) Add immobilization-avoidance tests: against a quota-heavy cop, thief maintains ≥ 2 escape routes whenever possible — DoD: scenario tests green
 - [ ] **T-1520** (P1) Run seeded dev smoke: thief_brain vs reference-style cop ≥ 70% survival over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
 - [ ] **T-1521** (P1) Expose thief tunables (horizon, route weight, scent weight, stall trigger) in config — DoD: sweep harness can vary each without code change [FR-STR-7]
 - [x] **T-1522** (P1) Run the thief parameter sweep and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
 - [ ] **T-1523** (P1) Run the cross-play matrix: our thief vs our cop across seeds; balance metrics recorded for the notebook — DoD: matrix results in results/
 - [ ] **T-1524** (P0) Gate wiring: thief tactical suite PR-blocking in CI — DoD: CI config updated [deps: T-1424]
-- [ ] **T-1525** (P0) Author `docs/PRD_strategy_thief.md`: survival-horizon theory, escape-route math, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-1525** (P0) Author `docs/PRD_strategy_thief.md`: survival-horizon theory, escape-route math, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 - [ ] **T-1526** (P1) Document + test thief edge cases: zero legal moves, threshold-1 step, all-fresh scent field, cop adjacent — DoD: each edge case has a test id in docs/edge-cases-domain.md
 
 ## E16 — Hint policy & opponent modeling (18 tasks)
@@ -629,7 +629,7 @@
 - [x] **T-2101** (P0) Build the two-process harness: script launches the cop-repo and thief-repo binaries on localhost ports with test configs and collects exit status + artifacts — DoD: harness runs a full series locally [FR-NET-6]
 - [x] **T-2102** (P0) Add the CI integration test: full 6 mini-game series over localhost between the two repos' processes — DoD: series completes in CI (marked slow); M3 exit criterion
 - [x] **T-2103** (P0) Assert audit Verified OK for EVERY mini-game in the CI series — DoD: assertion green (goal G4) [FR-CRY-3]
-- [ ] **T-2104** (P0) Assert all 4 lifecycle artifacts per match, shared game_uid, schema-valid, correct filenames in the CI series — DoD: assertion green [FR-REP-1]
+- [x] **T-2104** (P0) Assert all 4 lifecycle artifacts per match, shared game_uid, schema-valid, correct filenames in the CI series — DoD: assertion green [FR-REP-1]
 - [x] **T-2105** (P0) Assert both peers' result `mutual_agreement` hashes are identical in the CI series — DoD: assertion green [FR-REP-6]
 - [x] **T-2106** (P1) Build the self-play harness: seeded headless N-game runner with pluggable brains, JSONL results output — DoD: 100-game run completes with reproducible seed [FR-STR-7]
 - [x] **T-2107** (P1) Port the reference greedy brains as baseline opponents inside the harness — DoD: baseline-vs-baseline games run deterministically under seed [ADR-012]
