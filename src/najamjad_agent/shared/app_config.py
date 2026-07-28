@@ -50,3 +50,17 @@ def setting(setup: dict[str, Any], dotted: str, default: Any) -> Any:
             return default
         node = node[part]
     return node
+
+
+def save_setup(setup: dict[str, Any], path: Path | str = DEFAULT_PATH) -> None:
+    """Write the app settings back, preserving everything not being changed.
+
+    Writing lives here rather than in the modules that toggle a flag, so
+    `setup.json` has exactly one reader and one writer. Indented and
+    `ensure_ascii=False` because a person edits this file by hand — deliberately
+    *not* the canonical wire encoding, which is compact and sorted for audit
+    stability and would make the config unreadable.
+    """
+    Path(path).write_text(
+        json.dumps(setup, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )

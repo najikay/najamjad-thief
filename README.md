@@ -158,6 +158,7 @@ so exposing it would hand an opponent everything commit-reveal exists to hide
 | Negotiation | Propose → counter → lock, and terms awaiting a human |
 | Budget | Tokens against the agreed 200k cap |
 | Match day | Readiness — the same checks `preflight` runs |
+| Testing | Practice mode, and whether each endpoint is answering |
 | Matches | Every match we have filed: score, per-game audit verdicts, artifacts |
 | Events | The raw event stream |
 
@@ -165,9 +166,40 @@ Updates arrive over a WebSocket; the client never polls. A dashboard failure
 cannot affect a game — it is a subscriber and nothing more (ADR-005).
 
 **Optional controls.** Set `features.controls` to `true` in `config/setup.json`
-to enable start/stop and negotiation approval from the page. Off by default, and
-there is deliberately **no button that plays a counted match** — that is graded
-and irreversible, and `docs/RUNBOOK.md` is the interface for it.
+to enable start/stop, negotiation approval, and the practice-mode toggle from
+the page. Off by default, and there is deliberately **no button that plays a
+counted match** — that is graded and irreversible, and `docs/RUNBOOK.md` is the
+interface for it.
+
+### 2b. Testing without touching the lecturer
+
+The **Testing** panel answers the two questions that otherwise mean digging
+through logs.
+
+*Which mode am I in?* Practice mode redirects every report to your own inbox
+instead of the lecturer's, and prefixes the subject `[PRACTICE]`. It does not
+skip the send — sending is the step that lost matches in assignment 6, so a
+practice run exercises it for real and you read the actual email. The redirect
+is enforced twice: the address is rewritten, and then checked at the point of no
+return, so a rewrite that silently failed raises instead of delivering. See
+[docs/CONFIG.md](docs/CONFIG.md) §3b.
+
+Toggle it from the panel (with `features.controls` on), or set
+`practice.enabled` in `config/setup.json`. It is read fresh each time a report
+is built, so the switch takes effect without a restart.
+
+*Is anyone actually reachable?* **Probe endpoints** dials our MCP URL and the
+opponent's and reports three states, not two:
+
+| State | Meaning |
+|---|---|
+| green | something accepted a TCP connection there |
+| red | configured, but nothing is listening — **this blocks a match** |
+| grey | not configured yet — a match not scheduled, not a fault |
+
+A green light means the port answered. It does **not** mean the protocol works
+or that they will agree to our terms — that is what the handshake is for, and
+the panel deliberately claims no more than it can check.
 
 ### 3. Check you are ready to play
 

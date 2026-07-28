@@ -137,3 +137,19 @@ main {
 .tag.ok { background: #14532d; color: #bbf7d0; }
 .tag.bad { background: #7f1d1d; color: #fecaca; }
 .tag.warn { background: #78350f; color: #fde68a; }
+
+
+/* Practice mode. Loud on purpose: mistaking a counted match for a rehearsal
+   sends the graded report to the wrong inbox. */
+.practice { border-left: 4px solid transparent; padding-left: .6rem; }
+.practice.on { border-left-color: #d98b00; background: rgba(217, 139, 0, .08); }
+.practice button { margin-top: .5rem; }
+.probe-head { display: flex; gap: .75rem; align-items: center; margin: .5rem 0; }
+
+/* Tri-state, never colour alone: the detail text carries the same meaning for
+   anyone who cannot distinguish the swatches. */
+.row.probe { display: grid; grid-template-columns: 8rem 1fr auto; gap: .5rem; }
+.row.probe code { opacity: .75; overflow-wrap: anywhere; }
+.row.probe.ok strong { color: #2e7d32; }
+.row.probe.bad strong { color: #c62828; }
+.row.probe.idle strong { color: #757575; font-style: italic; }

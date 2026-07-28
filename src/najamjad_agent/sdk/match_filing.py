@@ -70,10 +70,16 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
     so the absence is reported as an event and the series still closes cleanly.
 
     `email.mode` stays `draft` until a counted match: a draft is recoverable, a
-    wrongly-addressed send is not.
+    wrongly-addressed send is not. Practice mode is passed down rather than
+    applied here, so the redirect and its guard live at the point of no return
+    instead of at one of the several places a sender can be constructed. It is
+    read fresh (`current()`) rather than from the captured `setup`: the switch
+    must reflect the operator's most recent decision, not the value that
+    happened to be on disk when the process booted.
     """
     from ..reporting.gmail_sender import GmailSender
     from ..shared.gatekeeper import ApiGatekeeper
+    from ..shared.practice import current
     from ..shared.rate_limits import for_service, load_rate_limits
 
     try:
@@ -87,6 +93,7 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
             mode=str(manager.get("email.mode", "draft")),
             emit=bus.publish,
             dead_letter_dir=Path(setting(setup, "paths.dead_letters", "workspace/dead_letters")),
+            practice=current(),
         )
     except Exception as error:  # noqa: BLE001 - reported, never fatal to a match
         bus.publish({"event": "mail.unavailable", "reason": f"{type(error).__name__}: {error}"})

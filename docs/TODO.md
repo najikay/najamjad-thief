@@ -74,7 +74,7 @@
 - [x] **T-0122** (P0) Copy `docs/PRD.md`, `docs/PLAN.md`, `docs/TODO.md` into both repos' `docs/` and add them to the sync procedure — DoD: guideline-mandated docs present in both repos (E6 gate) [deps: T-0118]
 - [x] **T-0123** (P0) Document canonical dev commands (uv sync / uv run pytest / uv run ruff check / uv run <cli>) in README dev section — DoD: zero `pip`/`python -m` strings anywhere in repos including docs (E4 gate)
 - [~] **T-0124** (P0) Verify walking skeleton: both repos pass `uv run pytest` and `uv run ruff check` locally from a clean clone — DoD: screenshot/log of both green runs attached to PR; M1 precondition met
-- [ ] **T-0125** (P1) Create annotated tag `v0.1-skeleton` on both repos — DoD: tag pushed; fresh clone at tag passes T-0124 checks
+- [~] **T-0125** (P1) *Deferred — superseded by `v1.0-submission`; a skeleton tag cut now would point at finished code and misrepresent the history.* Create annotated tag `v0.1-skeleton` on both repos — DoD: tag pushed; fresh clone at tag passes T-0124 checks
 - [x] **T-0126** (P0) Extract goldens: copy the 4 sample-run artifacts from `reference/Game-P2P-Cop-Chase/docs/sample-run/` into `tests/goldens/artifacts/` with a provenance README — DoD: files committed in both repos; provenance notes the source commit [ADR-012, PRD A1]
 - [x] **T-0127** (P0) Extract wire goldens: representative negotiate/turn/audit/control payloads (from reference code + sample log) into `tests/goldens/wire/` — DoD: fixtures committed with field-source comments [ADR-012]
 - [!] **T-0128** (P0) Procure the Anthropic API key by Jul 28: billing active, spend cap set, key in `.env` only (never committed), one live completion round-trip verified — DoD: live round-trip logged; re-verified through the gatekeeper by the preflight LLM check (T-1114) before M4 [PLAN R11]
@@ -718,7 +718,7 @@
 
 ## E24 — Submission & freeze (18 tasks)
 
-- [ ] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
+- [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
 - [ ] **T-2402** (P0) Run the review-checked audit: SDK single entry, gatekeeper on ALL external calls, DRY (2+ copies extracted), docstrings everywhere, relative imports, package checklist (`__init__`/`__all__`/`__version__`) — DoD: two-person review sign-off recorded
 - [ ] **T-2403** (P0) Run the content-deliverables audit: prompt book, notebook, diagrams, token table, screenshots, extension docs, ISO mapping, ADRs — all present in both repos — DoD: checklist green [deps: T-2232]
 - [ ] **T-2404** (P0) Final CI verification: E1–E7 gates green on both repos' `main` at the freeze commit — DoD: green pipeline links recorded for both repos
@@ -727,7 +727,10 @@
 - [ ] **T-2407** (P0) Final TODO.md status sweep: every task marked accurately; unfinished P2 items explicitly marked deferred/out-of-scope with a one-line reason — DoD: zero stale `[~]` states [guidelines §2.5]
 - [ ] **T-2408** (P0) Git-history hygiene pass: meaningful messages, feature branches/PRs evidenced, full-history secret scan (not just HEAD) — DoD: history scan clean on both repos [guidelines §8.2]
 - [ ] **T-2409** (P0) Final version consistency: version.py, all config `version` fields, README version references consistent; changelog entry for the submission — DoD: consistency test green
-- [ ] **T-2410** (P0) Create and push the annotated tag `v1.0-submission` on BOTH repos — DoD: `git tag -v`-able annotated tag visible on GitHub in both repos [book rule 41]
+- [x] **T-2420** (P1) Add practice mode: reports redirected to the operator, guarded so the redirect cannot fail open; one switch, persisted in `setup.json` — DoD: guard test proves a missed rewrite raises rather than sends
+- [x] **T-2421** (P1) Add the endpoint liveness panel: our agent and the opponent probed on demand, tri-state (reachable / silent / unconfigured) — DoD: unconfigured never reads as failure
+- [x] **T-2422** (P1) Fix the dashboard reporting `sdk.ready` as `serving`, which showed a live agent as down — DoD: regression test separates "server up" from "game attached"
+- [~] **T-2410** (P0) Create and push the annotated tag `v1.0-submission` on BOTH repos — *tag created on both repos 2026-07-28; `git push --tags` owed* — DoD: `git tag -v`-able annotated tag visible on GitHub in both repos [book rule 41]
 - [ ] **T-2411** (P0) Post-tag verification: FRESH clone of each repo at the tag → `uv sync` → `uv run pytest` green → offline preflight checks pass — DoD: both clean-clone runs logged [deps: T-2410]
 - [ ] **T-2412** (P0) Download the Moodle Word template; fill one per member; NO field changes or moves — DoD: filled templates for both members [book rule 43]
 - [ ] **T-2413** (P0) Write the self-grade rationale: code quality only, NEVER league results — evidence-based (gates, coverage, architecture) — DoD: rationale sections complete in both members' forms [book rule 55]

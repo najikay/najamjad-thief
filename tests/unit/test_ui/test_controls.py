@@ -21,6 +21,8 @@ from najamjad_agent.ui.controls import (
     approve_terms,
     controls_enabled,
     negotiation_state,
+    peer_state,
+    set_practice,
     start_peer,
     stop_peer,
 )
@@ -35,6 +37,16 @@ class Actions:
     def __init__(self) -> None:
         self.started = self.stopped = 0
         self.approved: list[dict] = []
+
+    @property
+    def serving(self) -> bool:
+        """Tracks starts and stops, like the real one.
+
+        The previous fake had no `serving` at all, so `peer_state` fell back to
+        `sdk.ready` and this suite stayed green while the dashboard reported a
+        live agent as down.
+        """
+        return self.started > self.stopped
 
     def start_peer(self, with_tunnel=False, with_dashboard=False):
         self.started += 1
@@ -56,6 +68,7 @@ class Sdk:
         self.ready = True
         self.controls_enabled = False
         self.actions = Actions()
+        self.practice_calls: list[bool] = []
         self._timeline = timeline or []
 
     def negotiation_timeline(self):
@@ -70,6 +83,16 @@ class Sdk:
 
     def budget(self):
         return {}
+
+    def practice(self):
+        return {"enabled": False, "redirect_to": "", "banner": ""}
+
+    def set_practice(self, enabled):
+        self.practice_calls.append(enabled)
+        return {"enabled": bool(enabled), "redirect_to": "me@example.com", "banner": "b"}
+
+    def liveness(self, timeout: float = 1.0):
+        return {"probes": [], "blocking": []}
 
     def cockpit(self):
         from najamjad_agent.sdk.sdk import AgentSdk
@@ -143,7 +166,7 @@ def test_reading_the_control_state_needs_no_permission():
     client = TestClient(create_app(Sdk(), ConnectionHub()))
     body = client.get("/api/control").json()
 
-    assert set(body) == {"peer", "negotiation"}
+    assert set(body) == {"peer", "negotiation", "practice"}
     assert body["peer"]["controls_enabled"] is False
 
 
@@ -155,6 +178,23 @@ def test_starting_returns_the_state_the_server_now_holds(enabled):
 
     assert sdk.actions.started == 1
     assert state["serving"] is True and state["public_url"]
+
+
+def test_serving_means_the_server_is_up_not_that_a_game_is_attached():
+    """These are different questions and the panel used to conflate them.
+
+    An agent that is online but between matches has `ready` false and `serving`
+    true. Reporting `ready` as `serving` told an operator their live agent was
+    down — found by the liveness probe disagreeing with this panel.
+    """
+    sdk = Sdk()
+    sdk.ready = False
+    sdk.actions.started = 1
+
+    state = peer_state(sdk)
+
+    assert state["serving"] is True, "the MCP server is up"
+    assert state["ready"] is False, "and no game is attached — both are true"
 
 
 def test_stopping_is_offered_because_it_is_reversible(enabled):
@@ -204,3 +244,53 @@ def test_approving_nothing_is_refused(enabled):
     """An empty draft means the page had nothing to show a human."""
     with pytest.raises(ControlDeniedError, match="empty"):
         approve_terms(Sdk(), {})
+
+
+# ------------------------------------------------------- practice + liveness
+
+
+def test_practice_state_is_readable_without_permission():
+    """An operator must be able to see which mode they are in, always."""
+    client = TestClient(create_app(Sdk(), ConnectionHub()))
+
+    assert client.get("/api/control").json()["practice"]["enabled"] is False
+
+
+def test_toggling_practice_is_gated_like_any_other_write():
+    client = TestClient(create_app(Sdk(), ConnectionHub()))
+
+    response = client.post("/api/control/practice", json={"enabled": True})
+
+    assert response.status_code == 403
+
+
+def test_turning_practice_off_is_gated_too(enabled):
+    """The direction that re-arms the lecturer's address is the graver one, so
+    it must not be the ungated convenience path."""
+    sdk = Sdk()
+
+    set_practice(sdk, False)
+
+    assert sdk.practice_calls == [False]
+
+
+def test_the_toggle_reports_what_is_in_force_not_what_was_asked(enabled):
+    """A toggle that echoed its input would keep saying "on" after a failed
+    write — the one lie this switch must not tell."""
+    sdk = Sdk()
+
+    assert set_practice(sdk, True)["enabled"] is True
+    assert sdk.practice_calls == [True]
+
+
+def test_a_practice_request_without_a_value_is_refused(enabled):
+    client = TestClient(create_app(Sdk(), ConnectionHub()))
+
+    assert client.post("/api/control/practice", json={}).status_code == 400
+
+
+def test_liveness_needs_no_permission_because_it_only_reads():
+    client = TestClient(create_app(Sdk(), ConnectionHub()))
+    body = client.get("/api/liveness").json()
+
+    assert set(body) == {"probes", "blocking"}

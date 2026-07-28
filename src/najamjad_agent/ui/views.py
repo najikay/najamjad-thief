@@ -16,8 +16,11 @@ from ..sdk.match_history import match_history, standings
 from .controls import (
     ControlDeniedError,
     approve_terms,
+    liveness_state,
     negotiation_state,
     peer_state,
+    practice_state,
+    set_practice,
     start_peer,
     stop_peer,
 )
@@ -77,7 +80,33 @@ def register_routes(app: FastAPI, sdk: Any, hub: Any) -> None:
     @app.get("/api/control")
     async def control_state() -> dict[str, Any]:
         """What the server believes, so the page never paints its own guess."""
-        return {"peer": peer_state(sdk), "negotiation": negotiation_state(sdk)}
+        return {"peer": peer_state(sdk), "negotiation": negotiation_state(sdk),
+                "practice": practice_state(sdk)}
+
+    @app.get("/api/liveness")
+    async def liveness() -> dict[str, Any]:
+        """Are our endpoints answering? (T-2421)
+
+        On demand rather than on a timer: probing opens real sockets, and a
+        panel that did it every few seconds would be a background process
+        nobody asked for, dialling the opponent all afternoon.
+        """
+        return liveness_state(sdk)
+
+    @app.post("/api/control/practice")
+    async def control_practice(body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Turn practice mode on or off (T-2420).
+
+        Behind the controls gate in both directions — turning it *off* re-arms
+        the lecturer's address, which is the graver of the two.
+        """
+        payload = body or {}
+        if "enabled" not in payload:
+            raise HTTPException(status_code=400, detail="body must carry 'enabled'")
+        try:
+            return set_practice(sdk, bool(payload["enabled"]))
+        except ControlDeniedError as denied:
+            raise HTTPException(status_code=403, detail=str(denied)) from denied
 
     @app.post("/api/control/peer")
     async def control_peer(body: dict[str, Any] | None = None) -> dict[str, Any]:

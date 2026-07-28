@@ -12,6 +12,7 @@ const MATCH_EVENTS = new Set([
 // screen instead of silently showing stale numbers (T-1824).
 
 import { renderBoard } from './board.js';
+import { wireTesting } from './testing.js';
 import {
   appendEvent, renderBudget, renderGatekeepers, renderNegotiation,
   renderProvider, renderReport, renderTranscript, renderTurn,
@@ -94,6 +95,10 @@ function handle(frame) {
   // refresh on the events that actually alter them. A timer would poll for a
   // change that mostly has not happened, and the client never polls.
   if (MATCH_EVENTS.has(frame.event)) refreshMatches();
+
+// Practice mode and liveness: painted once on load, then only when the
+// operator asks. Neither changes on its own, so neither belongs on a timer.
+wireTesting();
 }
 
 function connect() {

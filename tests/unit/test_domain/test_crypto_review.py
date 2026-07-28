@@ -98,11 +98,18 @@ def test_nonce_entropy_is_sixteen_bytes() -> None:
 
 
 def test_canonicalisation_is_pinned_in_one_module() -> None:
-    """A second json.dumps with different flags would silently break audits."""
+    """A second json.dumps with different flags would silently break audits.
+
+    The rule is about anything a peer hashes, replays, or grades. `app_config`
+    is the deliberate counter-example: it writes the operator's own
+    `config/setup.json` indented and human-readable, which is the *opposite* of
+    the canonical encoding and must stay that way — a config file compacted to
+    audit separators would be unreadable to the person who edits it. It never
+    touches a payload anyone verifies.
+    """
+    allowed = {"canonical.py", "nonce_vault.py", "app_config.py"}
     offenders = [
-        path.name
-        for path in SOURCES
-        if "json.dumps" in _read(path) and path.name not in {"canonical.py", "nonce_vault.py"}
+        path.name for path in SOURCES if "json.dumps" in _read(path) and path.name not in allowed
     ]
     assert offenders == []
 

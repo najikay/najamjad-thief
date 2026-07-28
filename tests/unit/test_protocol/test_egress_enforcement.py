@@ -19,7 +19,10 @@ SEND_MODULES = {"egress.py", "artifacts.py", "gmail_sender.py"}
 # Internal state that never leaves this machine. The gate exists to stop an
 # unvalidated *artifact* reaching the lecturer; a local bookkeeping file is a
 # different thing and validating it against a wire schema would be theatre.
-LOCAL_STATE_MODULES = {"counted_games.py", "events.py"}
+# `app_config.py` writes `config/setup.json`, which is the operator's own
+# settings file — it is never sent, never audited, and validating it against a
+# wire schema would be theatre for the same reason the two above are exempt.
+LOCAL_STATE_MODULES = {"counted_games.py", "events.py", "app_config.py"}
 
 
 def _sources() -> list[Path]:

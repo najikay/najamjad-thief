@@ -55,6 +55,7 @@ class AgentSdk:
         events: Any = None,
         actions: AgentActions | None = None,
         controls_enabled: bool = False,
+        practice: Any = None,
     ) -> None:
         """Hold the subsystems; every one of them is optional before a match."""
         self.actions = actions or AgentActions(negotiation=negotiation, emit=_emitter(events))
@@ -66,6 +67,7 @@ class AgentSdk:
         self._gatekeepers = gatekeepers or {}
         self._events = events
         self._controls_enabled = controls_enabled
+        self._practice = practice
         self._transcript: list[dict[str, Any]] = []
         self._report: tuple[Any, Any, str] = (None, None, "")
 
@@ -149,6 +151,47 @@ class AgentSdk:
         """
         return bool(self._controls_enabled)
 
+    def practice(self) -> dict[str, Any]:
+        """Whether this run can reach the lecturer, and where its mail goes.
+
+        Surfaced beside the readiness checks rather than buried in settings: the
+        cost of a wrong answer is asymmetric. Believing a counted match is
+        practice sends the graded report to the wrong inbox; believing practice
+        is counted is merely an unnecessary flinch.
+        """
+        from ..shared.practice import current
+
+        mode = self._practice if self._practice is not None else current()
+        return dict(mode.state())
+
+    def set_practice(self, enabled: bool) -> dict[str, Any]:
+        """Turn practice mode on or off, and report what is now in force.
+
+        Returns the mode read back after writing rather than the value asked
+        for: a toggle that echoed its input would keep saying "on" even if the
+        write failed, which is the one lie this switch must not tell.
+        """
+        from ..shared.practice import save_practice
+
+        return dict(save_practice(bool(enabled)).state())
+
+    def liveness(self, timeout: float = 1.0) -> dict[str, Any]:
+        """Which of our three endpoints are answering right now.
+
+        A green light means something accepted a TCP connection — not that the
+        protocol works. `net/liveness.py` says why it claims no more than that.
+        """
+        from ..net.liveness import blocking_issues, survey
+
+        probes = survey(
+            {
+                "our agent": getattr(self.actions, "public_url", ""),
+                "opponent": getattr(self.actions, "opponent_url", ""),
+            },
+            timeout=timeout,
+        )
+        return {"probes": probes, "blocking": blocking_issues(probes)}
+
     def cockpit(self) -> dict[str, Any]:
         """Match-day readiness in one payload (T-1819).
 
@@ -173,6 +216,7 @@ class AgentSdk:
             "provider": self.provider(),
             "budget": self.budget(),
             "artifacts": dict(getattr(self.actions, "last_artifacts", {}) or {}),
+            "practice": self.practice(),
         }
 
     def recent_events(self, limit: int = 100) -> list[dict[str, Any]]:

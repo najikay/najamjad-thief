@@ -1,6 +1,6 @@
 {
   "version": "1.00",
-  "_note": "App-level tunables (guidelines \u00a77.2). Not game terms and not secrets: where files land, which ports the local UI uses, and which optional subsystems are on. Nothing here is negotiated with an opponent \u2014 the agreed terms live in game.json and the private per-peer settings in <role>/game.toml.",
+  "_note": "App-level tunables (guidelines §7.2). Not game terms and not secrets: where files land, which ports the local UI uses, and which optional subsystems are on. Nothing here is negotiated with an opponent — the agreed terms live in game.json and the private per-peer settings in <role>/game.toml.",
   "ui": {
     "port": 8000,
     "host": "127.0.0.1",
@@ -20,10 +20,15 @@
     "tunnel": false,
     "_note": "Both are off-by-default at the CLI (--tunnel/--dashboard); these are the values used when nothing is passed.",
     "controls": false,
-    "_controls_note": "Dashboard write actions (start/stop serving, approve terms). Off by default: a disabled write path is one fewer thing to reason about on match day. Playing a counted match is never a button \u2014 see src/najamjad_agent/ui/controls.py."
+    "_controls_note": "Dashboard write actions (start/stop serving, approve terms). Off by default: a disabled write path is one fewer thing to reason about on match day. Playing a counted match is never a button — see src/najamjad_agent/ui/controls.py."
   },
   "llm": {
     "deepseek_base_url": "https://api.deepseek.com",
     "_note": "Vendor endpoint. A provider moving its API is a config change, not a code change."
+  },
+  "practice": {
+    "enabled": false,
+    "redirect_to": "najikayal4@gmail.com",
+    "_note": "Practice mode: the full pipeline runs and the report is really sent, but to redirect_to instead of the lecturer. The sender refuses to deliver anywhere else while this is on, so a broken redirect fails loudly rather than mailing a rehearsal to the grader. Off is the default and the only safe one."
   }
 }

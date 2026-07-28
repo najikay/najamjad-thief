@@ -35,6 +35,11 @@ class Sdk:
     def budget(self) -> dict[str, Any]:
         return {"used": 0}
 
+    def practice(self):
+        """Mirrors the facade: a double missing a method the real SDK has
+        would let a route ship broken."""
+        return {"enabled": False, "redirect_to": "", "banner": ""}
+
     def cockpit(self) -> dict[str, Any]:
         from najamjad_agent.sdk.sdk import AgentSdk
 

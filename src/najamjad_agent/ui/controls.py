@@ -45,10 +45,19 @@ def peer_state(sdk: Any) -> dict[str, Any]:
 
     Read from the SDK rather than remembered here, so the panel cannot drift
     from the process it is describing.
+
+    `serving` comes from the actions, not from `sdk.ready`. They answer
+    different questions — `ready` means *a game is attached*, `serving` means
+    *the MCP server is up* — and conflating them made the dashboard report "not
+    serving" for an agent that was online and accepting connections. An
+    operator checking before a match would have restarted a working agent, or
+    told an opponent they were not up. The liveness probe is what caught it, by
+    finding the port answering while this said we were down.
     """
     actions = sdk.actions
     return {
-        "serving": bool(getattr(sdk, "ready", False)),
+        "serving": bool(getattr(actions, "serving", False)),
+        "ready": bool(getattr(sdk, "ready", False)),
         "public_url": str(getattr(actions, "public_url", "") or ""),
         "controls_enabled": controls_enabled(sdk),
     }
@@ -112,3 +121,33 @@ def _require_enabled(sdk: Any) -> None:
         raise ControlDeniedError(
             "controls are disabled; set features.controls in config/setup.json to enable them"
         )
+
+
+def practice_state(sdk: Any) -> dict[str, Any]:
+    """Whether this run can reach the lecturer. Readable without permission."""
+    reader = getattr(sdk, "practice", None)
+    if not callable(reader):
+        return {"enabled": False}
+    state: Any = reader()
+    return dict(state)
+
+
+def set_practice(sdk: Any, enabled: bool) -> dict[str, Any]:
+    """Flip practice mode, behind the same gate as every other write.
+
+    Gated even though it is the *safe* direction of travel, because it is not
+    only that direction: this same call turns practice **off**, which re-arms
+    the lecturer's address. A control that can re-arm a live send is a write.
+    """
+    if not controls_enabled(sdk):
+        raise ControlDeniedError("controls are disabled; set features.controls to enable them")
+    return dict(sdk.set_practice(bool(enabled)))
+
+
+def liveness_state(sdk: Any, timeout: float = 1.0) -> dict[str, Any]:
+    """Which endpoints answer right now. Read-only, so no permission needed."""
+    probe = getattr(sdk, "liveness", None)
+    if not callable(probe):
+        return {"probes": [], "blocking": []}
+    state: Any = probe(timeout=timeout)
+    return dict(state)

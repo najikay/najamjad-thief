@@ -65,6 +65,16 @@ class AgentActions:
         return self._server.url if self._server is not None else ""
 
     @property
+    def opponent_url(self) -> str:
+        """Where we would dial for the next match, empty until one is scheduled.
+
+        Read-only and public so the liveness panel can probe it without the UI
+        reaching past the facade (ADR-005). Empty is a scheduling state, not a
+        fault — see `net/liveness.py`.
+        """
+        return self._opponent_url
+
+    @property
     def serving(self) -> bool:
         """Whether the MCP server is accepting calls."""
         return bool(self._server is not None and self._server.running)

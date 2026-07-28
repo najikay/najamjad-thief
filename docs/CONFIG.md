@@ -110,6 +110,35 @@ to play. See that module before editing anything here.
 > killed a live match at the first mini-game. The wiring now validates every
 > dial against the brain's fields and fails at startup.
 
+## 3b. Practice mode — `config/setup.json` → `practice`
+
+| Key | Default | Effect |
+|---|---|---|
+| `practice.enabled` | `false` | When true, every report is **redirected** to `redirect_to` and its subject prefixed `[PRACTICE]`. |
+| `practice.redirect_to` | the operator's address | Where practice reports actually go. |
+
+Practice mode does **not** disable sending. The send is the step assignment 6
+lost matches to, so a testing mode that skipped it would leave the riskiest path
+untested; instead the mail is delivered for real, to us.
+
+That puts the whole safety story on one string rewrite, which is why
+`shared/practice.py` also enforces a second, independent invariant at the point
+of no return:
+
+> While practice mode is on, the outgoing recipient must **equal** the redirect
+> address — anything else raises instead of sending.
+
+So a rewrite that silently does not happen is a loud failure rather than mail to
+the lecturer. A half-configured practice mode (enabled, no `redirect_to`)
+refuses to send at all rather than falling through to the configured recipient.
+
+The flag is read **fresh from disk** every time a sender is built, not cached at
+boot. That is what lets the dashboard toggle take effect without a restart, and
+it means the panel and the send path cannot disagree about which mode we are in.
+
+Toggling it off through the UI is gated exactly like toggling it on: turning
+practice *off* re-arms the lecturer's address, which is the graver direction.
+
 ## 4. Rate limits — `config/rate_limits.json`
 
 Validated against the Appendix F ceilings at load; a config above them refuses
