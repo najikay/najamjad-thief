@@ -48,8 +48,19 @@ class AgentActions:
 
     @property
     def public_url(self) -> str:
-        """The address peers should call, tunnel included when there is one."""
-        if self._tunnel is not None:
+        """The address peers should call — only if it actually answers.
+
+        `alive()`, not "a tunnel is configured". The tunnel object is built from
+        config whether or not it was started, so `--no-tunnel` used to print the
+        permanent hostname anyway: a URL nothing was listening on, ready to be
+        pasted to an opponent who would find us unreachable and reasonably
+        conclude we had not turned up.
+
+        The local URL is the honest answer when the tunnel is down. It is
+        useless to a remote opponent, which is the point — it says *we are not
+        publicly reachable* instead of claiming we are.
+        """
+        if self._tunnel is not None and self._tunnel.alive():
             return self._tunnel.public_url
         return self._server.url if self._server is not None else ""
 

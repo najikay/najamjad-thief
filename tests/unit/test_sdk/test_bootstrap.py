@@ -43,10 +43,16 @@ def test_this_repo_ships_exactly_one_role_config():
 
 
 def test_building_from_the_real_config_produces_a_wired_sdk(workspace):
+    """Before serving, the advertised URL is local — not the tunnel hostname.
+
+    This used to assert `https://`, which encoded a defect: a configured tunnel
+    is not a running one, and printing the permanent hostname while nothing
+    listens on it hands an opponent a URL that makes us look absent.
+    """
     sdk = build_sdk(workspace=workspace, dashboard=False)
 
-    assert sdk.actions.public_url.startswith("https://")
     assert sdk.actions.serving is False
+    assert not sdk.actions.public_url.startswith("https://"), "nothing is listening yet"
 
 
 def test_the_preflight_reads_the_real_configuration(workspace):

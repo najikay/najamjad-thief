@@ -99,3 +99,32 @@ class _Facts:
         self.own_position = state.own_position
         self.legal = legal_moves(state.board, state.own_position)
         self.belief = {}
+
+
+def test_the_public_url_is_local_when_the_tunnel_is_not_running():
+    """A configured tunnel is not a running one.
+
+    `--no-tunnel` used to print the permanent hostname regardless, which is a
+    URL nothing answers on — ready to be handed to an opponent who would find us
+    unreachable and reasonably conclude we had not turned up.
+    """
+    from najamjad_agent.sdk.actions import AgentActions
+
+    class Tunnel:
+        public_url = "https://cop.4laboratory.com/mcp"
+
+        def __init__(self, running: bool) -> None:
+            self._running = running
+
+        def alive(self) -> bool:
+            return self._running
+
+    class Server:
+        url = "http://127.0.0.1:8802/mcp"
+        running = True
+
+    down = AgentActions(server=Server(), tunnel=Tunnel(False))
+    up = AgentActions(server=Server(), tunnel=Tunnel(True))
+
+    assert down.public_url == "http://127.0.0.1:8802/mcp"
+    assert up.public_url == "https://cop.4laboratory.com/mcp"

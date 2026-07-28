@@ -18,7 +18,7 @@ simulator, dashboard and replay viewer live. Remaining work is tracked in `docs/
 
 ## Contents
 
-- [Installation](#installation) · [Command line](#command-line) · [Match-day workflow](#match-day-workflow)
+- [Installation](#installation) · [Command line](#command-line) · [Running it](#running-it) · [Match-day workflow](#match-day-workflow)
 - [Configuration](#configuration) · [The dashboard](#the-dashboard) · [Replay viewer](#replay-viewer)
 - [Academic report](#academic-report): [the model](#the-model-a-dec-pomdp-neither-side-can-see) ·
   [orchestration dilemmas](#orchestration-dilemmas) · [strategies](#strategies-and-why-not-rl) ·
@@ -113,6 +113,123 @@ uv run python scripts/sync_core.py ../najamjad-thief   # verify the mirrored cor
 ```
 
 ---
+
+## Running it
+
+Everything below works from a fresh clone with no opponent and no API keys. The
+agent plays a full audited series on templates alone (book PAGE 67) — the LLM is
+an enhancement, not a dependency.
+
+### 1. Install and prove the install
+
+```bash
+git clone https://github.com/najikay/najamjad-thief.git
+cd najamjad-thief
+uv sync                                     # locked dependency set
+uv run python scripts/check_all.py          # every CI gate, one verdict
+```
+
+`ALL GATES PASSED` means lint, file sizes, repo rules, types, the strategy
+suite and 1,900+ tests are green.
+
+### 2. Serve as a peer, with the dashboard
+
+```bash
+uv run najamjad-thief peer --dashboard --no-tunnel
+```
+
+Wait for `Uvicorn running` — that, not the first log line, is readiness. Cold
+start is ~15 s (importing the MCP stack), so start early on match day.
+
+Then open **http://127.0.0.1:8000/**.
+
+The port and host come from `config/setup.json` (`ui.port`, `ui.host`). It binds
+to loopback by design: the dashboard shows *our* belief and *our* sealed state,
+so exposing it would hand an opponent everything commit-reveal exists to hide
+(rules 8-9).
+
+**What you get:**
+
+| Panel | Shows |
+|---|---|
+| Board | Belief heatmap on a log scale — linear collapsed 47 of 48 cells into one band |
+| Turn banner | Whose move, which step, which phase |
+| Dialogue | Every hint in and out, with the model that wrote it |
+| Negotiation | Propose → counter → lock, and terms awaiting a human |
+| Budget | Tokens against the agreed 200k cap |
+| Match day | Readiness — the same checks `preflight` runs |
+| Matches | Every match we have filed: score, per-game audit verdicts, artifacts |
+| Events | The raw event stream |
+
+Updates arrive over a WebSocket; the client never polls. A dashboard failure
+cannot affect a game — it is a subscriber and nothing more (ADR-005).
+
+**Optional controls.** Set `features.controls` to `true` in `config/setup.json`
+to enable start/stop and negotiation approval from the page. Off by default, and
+there is deliberately **no button that plays a counted match** — that is graded
+and irreversible, and `docs/RUNBOOK.md` is the interface for it.
+
+### 3. Check you are ready to play
+
+```bash
+uv run najamjad-thief preflight        # exit 0 or do not play
+uv run python scripts/pre_match_smoke.py     # MATCH READY in ~50 s
+```
+
+### 4. Play
+
+Put the opponent's URL in `network.opponent_url` (`config/thief/game.toml`),
+then:
+
+```bash
+uv run najamjad-thief match --dashboard --no-tunnel
+```
+
+A finished match writes four artifacts per Appendix F into
+`workspace/artifacts/` — declaration, config, log and result — and emails the
+result. Check them with:
+
+```bash
+uv run python scripts/post_match.py --opponent <name>
+```
+
+### 5. Try it without an opponent
+
+Two ways, both real:
+
+```bash
+# our cop against our thief, two OS processes over real MCP/HTTP
+uv run python scripts/two_process_match.py
+
+# against the course reference simulator (expects ../reference-sim)
+uv run python scripts/rehearsal.py --games 6
+```
+
+The second is the one that matters — it is the only setup that has ever caught
+our interop defects, because it is the only opponent we did not write.
+
+### 6. Verify a log
+
+```bash
+uv run najamjad-thief replay workspace/artifacts/log_<game_id>_g01.json
+```
+
+Exit `0` is `Verified OK`; exit `1` is `TAMPERED` and names the failing step;
+exit `2` means the file could not be read. A tampered log and a typo are
+deliberately different codes — an audit verdict must never be mistaken for a
+mistyped path.
+
+Add `--serve` to open the viewer instead of printing a verdict.
+
+### 7. Measure
+
+```bash
+uv run python scripts/strategy_smoke.py --games 50   # win rates with intervals
+uv run python scripts/sweep.py --games 24            # parameter sensitivity
+uv run python scripts/measure_tokens.py              # token census
+```
+
+Results land in `results/` and are what `notebooks/analysis.ipynb` plots.
 
 ## Match-day workflow
 

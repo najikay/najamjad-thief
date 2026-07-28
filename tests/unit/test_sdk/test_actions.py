@@ -37,6 +37,11 @@ class FakeTunnel:
         self.started = 0
         self.stopped = 0
 
+    def alive(self) -> bool:
+        """Running only after `start()` — the real one distinguishes these, and
+        a fake that did not let `--no-tunnel` advertise a dead hostname."""
+        return self.started > self.stopped
+
     def start(self) -> None:
         self.started += 1
 
