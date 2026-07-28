@@ -69,6 +69,29 @@ recipient = "rmisegal+uoh26finalgame@gmail.com"
 mode = "draft"
 
 [strategy]
-# Empty means the shipped brains. Point these at a subclass to experiment.
+# Scalars first: a bare key belongs to the most recent table header, so putting
+# these after the sub-tables below silently made them members of [strategy.thief]
+# and the thief was handed `cop_class` as a tunable.
+#
+# Empty means the shipped brains; a "module:Attribute" path loads a plugin
+# (docs/EXTENDING.md §1).
 cop_class = ""
 thief_class = ""
+
+# The dials the sweep varies and the notebook measures. Shipped values are the
+# measured optimum — see notebooks/analysis.ipynb §2.
+#
+# barrier_threshold is the one that decides matches: 0.05 captured 4% of games,
+# 0.40 captured 100%. A barrier is impassable for BOTH sides, so walling on weak
+# evidence fences us away from the thief we are chasing.
+[strategy.cop]
+barrier_threshold = 0.40
+lookahead = 2
+claim_threshold = 0.12
+
+# stall_trigger: how close to the survival horizon the thief stops taking
+# chances. Surviving to 35 and to 100 score the same, so the last turns are a
+# different game.
+[strategy.thief]
+horizon = 3
+stall_trigger = 3

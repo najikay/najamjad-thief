@@ -99,12 +99,12 @@
 - [x] **T-0215** (P0) Add golden-file check job: `uv run pytest -m goldens` validating the `tests/goldens/` fixtures (extracted in T-0126/T-0127) against our schemas — DoD: job wired in M1; fully green once the E09 schema tasks land; fails if a golden stops parsing [ADR-012]
 - [~] **T-0216** (P0) Add structure-presence gate: CI asserts README.md, docs/PRD.md, docs/PLAN.md, docs/TODO.md, .env-example, uv.lock, LICENSE exist — DoD: deleting any of them on a test branch fails CI (E6 gate)
 - [~] **T-0217** (P1) Add the nightly self-play workflow scaffold (cron): invokes the seeded self-play harness when present, tolerates a missing harness (skips with a visible notice), publishes the win-rate summary artifact when available; does NOT block PRs — DoD: scheduled run visible; skip path exercised before the harness exists [FR-STR-7]
-- [ ] **T-0218** (P2) Add CI status badges to both READMEs — DoD: badges render and reflect live status
-- [ ] **T-0219** (P1) Configure CI caching (uv cache) and job concurrency — DoD: typical PR pipeline completes in < 5 minutes
-- [ ] **T-0220** (P1) Ensure CI failures are loudly visible: GitHub notifications on for both members; failure-triage step in runbook — DoD: documented; test failure produced a notification to both members
+- [x] **T-0218** (P2) Add CI status badges to both READMEs — DoD: badges render and reflect live status
+- [x] **T-0219** (P1) Configure CI caching (uv cache) and job concurrency — DoD: typical PR pipeline completes in < 5 minutes
+- [x] **T-0220** (P1) Ensure CI failures are loudly visible: GitHub notifications on for both members; failure-triage step in runbook — DoD: documented; test failure produced a notification to both members
 - [x] **T-0221** (P0) Red-team every gate once: one test branch per gate (oversize file, secret, pip string, silent except, coverage drop, manifest drift) — DoD: each branch fails on exactly its intended gate; evidence linked in PR
 - [x] **T-0222** (P1) Write `docs/CI.md`: what each job checks, thresholds, and the exact `uv run` command to reproduce each gate locally — DoD: doc exists in both repos and matches the workflow files
-- [ ] **T-0223** (P1) Add a pyright (basic mode) CI job on both repos: `uv add --dev pyright`, `uv run pyright` over `src/` — DoD: job green; a planted type error on a test branch fails it [ADR-014]
+- [x] **T-0223** (P1) Add a pyright (basic mode) CI job on both repos: `uv add --dev pyright`, `uv run pyright` over `src/` — DoD: job green; a planted type error on a test branch fails it [ADR-014]
 
 ## E03 — Config system (24 tasks)
 
@@ -128,7 +128,7 @@
 - [x] **T-0318** (P0) Write failing tests for per-opponent match workspace helpers: `matches/<opponent>/` creation, path resolution for config/declaration/logs/results/profile — DoD: tests fail (RED) [FR-CFG-3]
 - [x] **T-0319** (P0) Implement workspace helpers in `shared/config.py` (split to `shared/workspace.py` ≤120 code lines if budget exceeded; update PLAN §1.3 + manifest) — DoD: T-0318 green; two opponents' workspaces fully isolated [FR-CFG-3]
 - [x] **T-0320** (P0) Implement `.env` secret loading (os.environ only, autoload at startup) with test that no secret value is ever read from a tracked config file — DoD: test green; grep confirms `os.environ.get` is the only secret path (E5 gate)
-- [ ] **T-0321** (P1) Add hardcoded-value meta-test: grep `src/` for tunable literals (URLs, timeouts, limits, emails) outside constants.py/config — DoD: meta-test green; each allowed constant justified by comment [guidelines §7.2]
+- [x] **T-0321** (P1) Add hardcoded-value meta-test: grep `src/` for tunable literals (URLs, timeouts, limits, emails) outside constants.py/config — DoD: meta-test green; each allowed constant justified by comment [guidelines §7.2]
 - [x] **T-0322** (P1) Write `docs/CONFIG.md`: every config key, default, source file, and Appendix F negotiability status (fixed/minimum/negotiable) — DoD: doc complete for all keys in all shipped config files
 - [ ] **T-0323** (P1) Document + test the config version-bump procedure: bumping a config version without updating `SUPPORTED_CONFIG_VERSIONS` is rejected at startup — DoD: test green; procedure in docs/CONFIG.md
 - [x] **T-0324** (P0) Add config module + canonical.py + shipped configs (shared parts) to the core manifest; verify byte-identical across repos — DoD: cross-repo CI job green [ADR-002; deps: T-0214]
@@ -465,16 +465,16 @@
 - [x] **T-1414** (P1) Implement the corner-herding planner — DoD: T-1413 green
 - [x] **T-1415** (P0) Add barrier-capture planning tests: with belief peak adjacent and confidence above threshold, plan barrier-on-thief-cell capture; detect immobilization setups — DoD: tests fail (RED) [FR-ENG-4]
 - [x] **T-1416** (P0) Implement barrier-capture / immobilization logic — DoD: T-1415 green
-- [ ] **T-1417** (P1) Add barrier-economics tests: quota (14) spending policy — expected-value threshold per placement, reserve kept for endgame — DoD: tests green; thresholds in config
-- [ ] **T-1418** (P1) Add barrier-as-information tests: predicted forced detours sharpen belief (integration with barrier-aware diffusion) — DoD: tests green [deps: T-0614]
+- [x] **T-1417** (P1) Add barrier-economics tests: quota (14) spending policy — expected-value threshold per placement, reserve kept for endgame — DoD: tests green; thresholds in config
+- [x] **T-1418** (P1) Add barrier-as-information tests: predicted forced detours sharpen belief (integration with barrier-aware diffusion) — DoD: tests green [deps: T-0614]
 - [x] **T-1419** (P0) Build the cop tactical regression suite: ≥ 10 fixed positions with asserted best-move class ("must cut corridor", "must claim capture now", "must not waste barrier") — DoD: suite green and PR-blocking in CI
 - [x] **T-1420** (P0) Add move-vs-barrier arbitration tests: `_decide_move` chooses between stepping and placing by expected value, never by fixed probability (replace reference's 0.15 coin-flip) — DoD: tests green
-- [ ] **T-1421** (P1) Run seeded dev smoke: cop_brain vs reference-style thief ≥ 70% capture over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
-- [ ] **T-1422** (P1) Expose cop tunables (depth, barrier threshold, belief weights) in config for the strategy lab — DoD: sweep harness can vary each without code change [FR-STR-7]
+- [x] **T-1421** (P1) Run seeded dev smoke: cop_brain vs reference-style thief ≥ 70% capture over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
+- [x] **T-1422** (P1) Expose cop tunables (depth, barrier threshold, belief weights) in config for the strategy lab — DoD: sweep harness can vary each without code change [FR-STR-7]
 - [x] **T-1423** (P1) Run the cop parameter sweep (grid over key params via the E21 sweep runner) and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
-- [ ] **T-1424** (P0) Gate wiring: tactical suite PR-blocking; win-rate statistical gate nightly-only — DoD: CI config reflects the split [deps: T-0217]
+- [x] **T-1424** (P0) Gate wiring: tactical suite PR-blocking; win-rate statistical gate nightly-only — DoD: CI config reflects the split [deps: T-0217]
 - [x] **T-1425** (P0) Author `docs/PRD_strategy_cop.md`: expectimax + barrier-planning theory, I/O, metrics, alternatives (incl. why no RL — ADR-007), test scenarios — DoD: doc complete [PLAN §11]
-- [ ] **T-1426** (P1) Document + test cop edge cases: empty legal set, quota exhausted, uniform belief, opponent-at-adjacent-cell — DoD: each edge case has a test id in docs/edge-cases-domain.md
+- [x] **T-1426** (P1) Document + test cop edge cases: empty legal set, quota exhausted, uniform belief, opponent-at-adjacent-cell — DoD: each edge case has a test id in docs/edge-cases-domain.md
 
 ## E15 — Thief strategy (26 tasks)
 
@@ -491,19 +491,19 @@
 - [x] **T-1511** (P1) Implement scent-aware path scoring — DoD: T-1510 green
 - [x] **T-1512** (P0) Add barrier-replanning tests: a newly declared cop barrier immediately updates route counts and the current plan — DoD: tests fail (RED)
 - [x] **T-1513** (P0) Implement barrier reaction — DoD: T-1512 green
-- [ ] **T-1514** (P1) Add endgame-stalling tests: near the survival threshold, policy switches to max-safety stalling (STAY/oscillation when provably safe) — DoD: tests fail (RED) [FR-STR-4]
-- [ ] **T-1515** (P1) Implement the endgame stalling mode — DoD: T-1514 green
+- [x] **T-1514** (P1) Add endgame-stalling tests: near the survival threshold, policy switches to max-safety stalling (STAY/oscillation when provably safe) — DoD: tests fail (RED) [FR-STR-4]
+- [x] **T-1515** (P1) Implement the endgame stalling mode — DoD: T-1514 green
 - [x] **T-1516** (P0) Add threshold-awareness tests: policy tracks remaining steps to survival; risk tolerance decreases as the threshold nears — DoD: tests green
 - [x] **T-1517** (P0) Add truth-duty separation tests: the brain has NO influence on `claim_response` — honest capture answers are computed entirely in domain/capture.py — DoD: import/meta test green [FR-ENG-4; deps: T-0524]
 - [x] **T-1518** (P0) Build the thief tactical regression suite: ≥ 10 fixed positions ("must not enter corridor", "break toward open quadrant", "stall here", "sacrifice distance for routes") — DoD: suite green and PR-blocking in CI
-- [ ] **T-1519** (P1) Add immobilization-avoidance tests: against a quota-heavy cop, thief maintains ≥ 2 escape routes whenever possible — DoD: scenario tests green
-- [ ] **T-1520** (P1) Run seeded dev smoke: thief_brain vs reference-style cop ≥ 70% survival over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
-- [ ] **T-1521** (P1) Expose thief tunables (horizon, route weight, scent weight, stall trigger) in config — DoD: sweep harness can vary each without code change [FR-STR-7]
+- [x] **T-1519** (P1) Add immobilization-avoidance tests: against a quota-heavy cop, thief maintains ≥ 2 escape routes whenever possible — DoD: scenario tests green
+- [x] **T-1520** (P1) Run seeded dev smoke: thief_brain vs reference-style cop ≥ 70% survival over 50 seeded games — DoD: result logged in results/; threshold met or gap ticketed [PRD §7 M4]
+- [x] **T-1521** (P1) Expose thief tunables (horizon, route weight, scent weight, stall trigger) in config — DoD: sweep harness can vary each without code change [FR-STR-7]
 - [x] **T-1522** (P1) Run the thief parameter sweep and store results in `results/` — DoD: sweep artifacts present, consumed by the notebook [deps: T-2110]
-- [ ] **T-1523** (P1) Run the cross-play matrix: our thief vs our cop across seeds; balance metrics recorded for the notebook — DoD: matrix results in results/
-- [ ] **T-1524** (P0) Gate wiring: thief tactical suite PR-blocking in CI — DoD: CI config updated [deps: T-1424]
+- [x] **T-1523** (P1) Run the cross-play matrix: our thief vs our cop across seeds; balance metrics recorded for the notebook — DoD: matrix results in results/
+- [x] **T-1524** (P0) Gate wiring: thief tactical suite PR-blocking in CI — DoD: CI config updated [deps: T-1424]
 - [x] **T-1525** (P0) Author `docs/PRD_strategy_thief.md`: survival-horizon theory, escape-route math, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
-- [ ] **T-1526** (P1) Document + test thief edge cases: zero legal moves, threshold-1 step, all-fresh scent field, cop adjacent — DoD: each edge case has a test id in docs/edge-cases-domain.md
+- [x] **T-1526** (P1) Document + test thief edge cases: zero legal moves, threshold-1 step, all-fresh scent field, cop adjacent — DoD: each edge case has a test id in docs/edge-cases-domain.md
 
 ## E16 — Hint policy & opponent modeling (18 tasks)
 

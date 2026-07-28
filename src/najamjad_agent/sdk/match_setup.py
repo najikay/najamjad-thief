@@ -8,6 +8,7 @@ them at the production edge.
 """
 
 import time
+from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -62,13 +63,48 @@ def brain_factory(manager: Any = None) -> Any:
     """
     cop = resolve(manager.get("strategy.cop_class") if manager else None, CopBrain)
     thief = resolve(manager.get("strategy.thief_class") if manager else None, ThiefBrain)
+    tuning = {
+        Role.COP: _tuning(manager, "cop", cop),
+        Role.THIEF: _tuning(manager, "thief", thief),
+    }
 
     def build(role: Role, state: GameState) -> Any:
         """Instantiate the brain for one mini-game."""
         supplier = lambda: state.board  # noqa: E731 - a one-line accessor is clearer inline
-        return (cop if role is Role.COP else thief)(board_supplier=supplier)
+        return (cop if role is Role.COP else thief)(board_supplier=supplier, **tuning[role])
 
     return build
+
+
+def _tuning(manager: Any, side: str, brain: Any) -> dict[str, Any]:
+    """The configured dials for one brain, checked against what it accepts.
+
+    Only declared keys are passed, so an unset dial keeps the brain's own
+    default rather than being overwritten with `None`. A key the brain does not
+    have raises **here, while wiring**, naming both the key and the dials that
+    do exist.
+
+    That last part is not defensiveness for its own sake. TOML assigns a bare
+    key to the most recent table header, so writing `cop_class` after
+    `[strategy.thief]` quietly makes it a *thief* tunable — which handed
+    `ThiefBrain` a `cop_class` argument and killed a live match at the first
+    mini-game. A config mistake should stop the agent at startup, not mid-game.
+    """
+    if manager is None:
+        return {}
+    section = {
+        key: value
+        for key, value in dict(manager.get(f"strategy.{side}", {}) or {}).items()
+        if not key.startswith("_")
+    }
+    accepted = {field.name for field in fields(brain)} if is_dataclass(brain) else set()
+    unknown = sorted(set(section) - accepted) if accepted else []
+    if unknown:
+        raise ValueError(
+            f"config [strategy.{side}] names {unknown}, which {brain.__name__} does not accept; "
+            f"its tunables are {sorted(accepted - {'board_supplier'})}"
+        )
+    return section
 
 
 #: The default factory, for callers with no configuration to consult.

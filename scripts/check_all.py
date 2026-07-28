@@ -41,6 +41,13 @@ GATES: list[Gate] = [
     ("file sizes", ["uv", "run", "python", "scripts/check_file_sizes.py"], False),
     ("repo rules", ["uv", "run", "python", "scripts/check_repo_rules.py"], False),
     ("pyright", ["uv", "run", "pyright"], False),
+    # PR-blocking in CI, so it runs here too — the meta-test that keeps this
+    # list and `ci.yml` in step is the only reason we noticed they had drifted.
+    # `--no-cov`: a subset run measures coverage over the whole package and
+    # would fail the floor for the wrong reason. Coverage is the full suite's
+    # job; this gate is about the tactical assertions.
+    ("strategy tactics",
+     ["uv", "run", "pytest", "tests/unit/test_strategy", "-q", "--no-cov"], False),
     ("tests", ["uv", "run", "pytest", "tests/", "-q"], True),
 ]
 

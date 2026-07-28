@@ -1,29 +1,37 @@
-# Nightly self-play statistics (T-0217, FR-STR-7): never blocks PRs; skips
-# loudly until the E21 harness lands, then publishes win-rate artifacts that
-# feed the analysis notebook's sensitivity study.
-name: nightly-selfplay
+# Nightly strategy measurement (T-1424, T-1524).
+#
+# Separate from `ci` on purpose: a win rate is a *sample*, and gating a merge on
+# one teaches people to ignore red builds. The tactical assertions — "do not
+# wall on a guess", "never trade room away at the horizon" — are correctness and
+# block a merge in `ci`; these numbers are a signal to read.
+#
+# This file previously invoked `scripts/selfplay_harness.py`, which never
+# existed, so it silently reported "skipping by design" on every run and
+# measured nothing for weeks. A scheduled job that cannot fail is not a check.
+name: nightly-strategy
 on:
   schedule:
-    - cron: "30 1 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 jobs:
-  selfplay:
+  measure:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Run seeded self-play harness when present
-        run: |
-          if [ -f scripts/selfplay_harness.py ]; then
-            uv sync --frozen
-            uv run python scripts/selfplay_harness.py --nightly --seed-count 100
-          else
-            echo "::notice::self-play harness not built yet (E21) — skipping by design"
-          fi
-      - name: Publish win-rate summary
-        if: hashFiles('results/selfplay/summary.json') != ''
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies (locked)
+        run: uv sync --frozen
+      - name: Seeded strategy smoke — floors are alarms, not targets
+        run: uv run python scripts/strategy_smoke.py --games 50 --seed 11
+      - name: Publish the measured rates
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: selfplay-summary
-          path: results/selfplay/summary.json
+          name: strategy-smoke
+          path: results/strategy_smoke.json
+          if-no-files-found: warn

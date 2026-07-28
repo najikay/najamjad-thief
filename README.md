@@ -8,6 +8,8 @@ teams' agents, with SHA-256 commit-reveal integrity and Gmail-API result reporti
 > The shared core package is byte-identical across both repos, enforced by
 > `scripts/sync_core.py` in CI (see `docs/PLAN.md`, ADR-002).
 
+[![ci](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml/badge.svg)](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml)
+
 **Team:** Naji Kayal · Amjad Abed — group `najamjad`
 **Status:** M5 — plays a full audited series, interoperates with the course reference
 simulator, dashboard and replay viewer live. Remaining work is tracked in `docs/TODO.md`.

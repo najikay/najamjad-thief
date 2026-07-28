@@ -33,7 +33,11 @@ def test_every_ci_command_is_covered_by_the_local_runner(load_script):
     for command in ci_run_commands():
         if command.startswith("for f in"):
             continue  # the structure step, covered by its own test below
-        normalised = command.replace("uv run pytest tests/", "uv run pytest tests/ -q")
+        # Exact match, not a substring rewrite. The old normalisation turned
+        # *any* other pytest invocation into `tests/ -qunit/test_strategy`,
+        # which then failed to match anything — so adding a second pytest gate
+        # looked like a missing gate.
+        normalised = "uv run pytest tests/ -q" if command == "uv run pytest tests/" else command
         if normalised not in local:
             uncovered.append(command)
 

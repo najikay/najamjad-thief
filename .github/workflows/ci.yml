@@ -3,9 +3,17 @@
 name: ci
 on: [push, pull_request]
 
+# A superseded run proves nothing and costs a runner. Cancel the in-flight run
+# for a branch when a newer commit lands — except on `main`, where every commit
+# is a submission candidate and its result is the record.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       # Both target the node24 runtime. The previous pins (checkout@v4,
       # setup-uv@v5) ran on node20, which GitHub deprecated in Sept 2025 and
@@ -18,6 +26,13 @@ jobs:
       # checkout still publishes moving majors, so `@v7` picks up its patches.
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          # Cache the resolved wheels against the lockfile. The dependency set
+          # is large (FastMCP, the vendor SDKs, matplotlib) and unchanged
+          # between most pushes, so this is the difference between a pipeline
+          # people wait for and one they ignore.
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
       - name: Install dependencies (locked)
         run: uv sync --frozen
       - name: Ruff — zero violations (guidelines §7.1)
@@ -32,6 +47,13 @@ jobs:
                    .env-example uv.lock LICENSE config/rate_limits.json; do
             test -f "$f" || { echo "missing mandated file: $f"; exit 1; }
           done
+      - name: Strategy tactical suites — PR-blocking (T-1424, T-1524)
+        # Deterministic assertions about single positions: "do not wall on a
+        # guess", "step onto an adjacent thief", "never trade room away at the
+        # horizon". These are correctness, so they block a merge. The *win
+        # rates* are measured nightly instead — a statistical gate teaches
+        # people to ignore red builds (docs/CI.md).
+        run: uv run pytest tests/unit/test_strategy -q --no-cov
       - name: Tests + coverage >= 85 enforced (guidelines §6.2)
         run: uv run pytest tests/
       - name: Pyright basic (ADR-014, stricter-than-guidelines)

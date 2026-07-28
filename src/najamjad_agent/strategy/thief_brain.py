@@ -42,6 +42,29 @@ class ThiefBrain:
 
     board_supplier: Any = None
     horizon: int = 3
+    #: How many steps from the survival horizon the policy switches to stalling.
+    #: Surviving to step 35 and surviving to step 100 score the same, so the last
+    #: turns are a different game: a move that is safe *now* beats one that is
+    #: better positioned for a future that will not arrive. Three, because a
+    #: corridor takes two moves to escape and one to enter.
+    stall_trigger: int = 3
+    #: How much the endgame weights room over distance. High enough to dominate
+    #: position, not so high that the thief walks toward the cop to find space.
+    stall_room_weight: float = 4.0
+
+    def steps_remaining(self, facts: Any) -> int:
+        """Turns left before survival, or a large number when nobody says.
+
+        Most callers do not supply a countdown, and a thief that assumed the
+        endgame by default would spend thirty steps hugging open ground instead
+        of getting away.
+        """
+        left = getattr(facts, "steps_remaining", None)
+        return int(left) if isinstance(left, int) else self.stall_trigger + 1
+
+    def is_endgame(self, facts: Any) -> bool:
+        """Whether the horizon is close enough to stop taking chances."""
+        return self.steps_remaining(facts) <= self.stall_trigger
 
     def pick_move(self, facts: Any) -> Move:
         """Choose the move that best preserves survival, not just distance."""
@@ -52,9 +75,13 @@ class ThiefBrain:
         belief = dict(getattr(facts, "belief", {}) or {})
         scent = dict(getattr(facts, "scent", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
+        endgame = self.is_endgame(facts)
         return max(
             legal,
-            key=lambda move: (self._value(board, origin, move, belief, scent), move.value),
+            key=lambda move: (
+                self._value(board, origin, move, belief, scent, endgame),
+                move.value,
+            ),
         )
 
     def pick_barrier(self, facts: Any) -> Position | None:
@@ -68,8 +95,15 @@ class ThiefBrain:
         move: Move,
         belief: dict[Position, float],
         scent: dict[Position, float],
+        endgame: bool = False,
     ) -> float:
-        """Higher is better: distance and room, minus risk and self-betrayal."""
+        """Higher is better: distance and room, minus risk and self-betrayal.
+
+        In the endgame the weights change rather than the shape: room is worth
+        several times more and raw distance almost nothing, because a cell we
+        cannot be trapped in for two turns wins a game that a cell three steps
+        further away does not.
+        """
         landing = apply(board, origin, move)
         if not board.is_open(landing):
             return float("-inf")
@@ -78,6 +112,17 @@ class ThiefBrain:
         risk = corridor_risk(board, landing, self.horizon) + trap_penalty(board, landing)
         leak = scent.get(landing, 0.0)
         worst_next = self._worst_case(board, landing, belief)
+        if endgame:
+            # Room dominates and distance nearly vanishes: with a step or two
+            # left, a cell we cannot be trapped in wins the game that a cell
+            # three squares further away does not. Risk keeps its full weight —
+            # the point is to stop gambling, not to stop looking.
+            return (
+                self.stall_room_weight * room
+                - RISK_WEIGHT * risk
+                - SCENT_WEIGHT * leak
+                + DISTANCE_WEIGHT * worst_next
+            )
         return (
             DISTANCE_WEIGHT * distance
             + ROOM_WEIGHT * room

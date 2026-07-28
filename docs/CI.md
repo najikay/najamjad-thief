@@ -54,6 +54,43 @@ A gate that has only ever seen clean code is an assumption, not a control.
 | Cross-repo drift test fails | The sibling repo is out of sync: `uv run python scripts/sync_core.py ../najamjad-thief --push`. It **skips** in CI, where no sibling is checked out. |
 | Green locally, red in CI | The sibling repo and `results/` exist locally. Reproduce CI honestly with a clean export: `git archive HEAD \| tar -x -C "$(mktemp -d)"`, then run the gates there. |
 
+## When the build goes red (T-0220)
+
+A red `main` is the only thing being worked on. The triage is deliberately
+short, because the failure mode we have actually hit is not misdiagnosis — it is
+nobody noticing.
+
+**Make sure you will notice.** Both members should have GitHub notifications on
+for these repositories (*Watch → All Activity*, or at least *Actions* failures).
+The README badge shows the state of `main` at a glance, so a red badge on the
+front page is the second line of defence.
+
+**Then, in order:**
+
+1. **Read the failing step's name.** The job stops at the first failure, so the
+   step name is the diagnosis: `Repo rules` is not `Tests`.
+2. **Reproduce it locally with the one command** in that step's row above. If it
+   reproduces, fix it and push.
+3. **If it does not reproduce, reproduce CI honestly** — a clean export, with no
+   sibling repo and no local `results/`:
+
+   ```bash
+   git archive HEAD | tar -x -C "$(mktemp -d)"    # then run the gates there
+   ```
+
+   This is not paranoia. A test file full of deliberately forbidden patterns
+   passed locally and failed in CI because the repo-rules gate only scanned
+   *tracked* files, and the file was not committed yet. Green locally and red in
+   CI almost always means the gate is seeing something your working copy hides —
+   or hiding something your working copy shows.
+4. **If the job fails in seconds, before any gate ran**, it is the environment,
+   not the code: an action tag that does not resolve, or a lockfile out of step
+   with `pyproject.toml`. Check both before reading a single test.
+
+**Never** disable a gate to go green. If a gate is wrong, change the gate
+deliberately and say why in the commit — `tests/unit/test_scripts/test_gates_bite.py`
+exists so that a weakened gate fails visibly rather than quietly.
+
 ## Why `pyright` when the guidelines do not ask for it
 
 ADR-014. Basic mode costs ~20 s and catches the class of defect that survives
