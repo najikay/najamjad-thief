@@ -1,0 +1,14 @@
+{
+  "version": "1.00",
+  "_note": "Landmark vocabulary for free-language hints, keyed by the agreed world.map_area (book rules 26-27). Data rather than code: adding a city is a content change and should not require touching the provider. The empty key is the generic fallback for an unnamed arena.",
+  "areas": {
+    "New York": ["Times Square", "the Brooklyn Bridge", "Central Park", "the waterfront",
+                 "the East Village", "Harlem", "Wall Street"],
+    "London": ["the Thames", "Camden Market", "the Underground", "Hyde Park",
+               "the South Bank", "Shoreditch"],
+    "Paris": ["the Seine", "Montmartre", "the old arcades", "the Latin Quarter",
+              "the left bank"],
+    "Tel Aviv": ["the promenade", "Rothschild Boulevard", "the old port", "Florentin"],
+    "": ["the market", "the old bridge", "the north quarter", "the riverside"]
+  }
+}

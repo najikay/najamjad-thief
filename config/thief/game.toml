@@ -14,6 +14,13 @@ group_name = "NajAmjad"
 group_id = "najamjad"
 members = ["Naji Kayal", "Amjad Abed"]
 
+# The public endpoints we publish. Sent in the handshake and copied into the
+# opponent's declaration, so they must be the URLs an opponent can actually
+# reach — not the local ports.
+[game.mcp_servers]
+cop = "https://cop.4laboratory.com/mcp"
+thief = "https://thief.4laboratory.com/mcp"
+
 [game.repos]
 cop = "https://github.com/najikay/najamjad-cop"
 thief = "https://github.com/najikay/najamjad-thief"
@@ -23,6 +30,11 @@ thief = "https://github.com/najikay/najamjad-thief"
 my_port = 8801
 # Set per match from the opponent's public URL, exchanged during negotiation.
 opponent_url = ""
+# Their group id, set per match once negotiation reveals it. Until then the
+# tracker scores against this placeholder and the filer relabels the result.
+opponent_group_id = "them"
+# How long to wait for their signed terms before giving up on the handshake.
+handshake_timeout_seconds = 60
 # Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
 response_timeout_seconds = 30
 watchdog_threshold_seconds = 60

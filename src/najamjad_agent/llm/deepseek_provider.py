@@ -12,12 +12,21 @@ the router cannot tell them apart except by name.
 import os
 from typing import Any
 
+from ..shared.app_config import load_setup, setting
 from ..shared.gatekeeper import ApiGatekeeper
 from .base import Completion, ProviderUnavailableError, classify_error
 from .token_meter import Usage
 
 DEFAULT_MODEL = "deepseek-chat"
-DEFAULT_BASE_URL = "https://api.deepseek.com"
+#: The endpoint lives in `config/setup.json` (`llm.deepseek_base_url`) and
+#: nowhere else — a vendor moving its API is a config change, and a URL written
+#: into a module is one that cannot be changed without a release.
+#:
+#: The default is empty rather than a guess. An unconfigured endpoint makes this
+#: provider *unavailable*, which the router already handles by falling through
+#: to the next one; inventing a plausible URL would instead produce a confusing
+#: connection error at the worst moment.
+DEFAULT_BASE_URL = setting(load_setup(), "llm.deepseek_base_url", "")
 
 
 class DeepSeekProvider:
@@ -53,6 +62,10 @@ class DeepSeekProvider:
                 raise ProviderUnavailableError("DEEPSEEK_API_KEY is not set")
             from openai import OpenAI  # imported lazily: optional at runtime
 
+            if not self._base_url:
+                raise ProviderUnavailableError(
+                    "llm.deepseek_base_url is not set in config/setup.json"
+                )
             self._client = OpenAI(api_key=self._api_key, base_url=self._base_url)
         return self._client
 
