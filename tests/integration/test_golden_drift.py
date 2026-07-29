@@ -133,3 +133,46 @@ def test_the_versions_we_declare_match_the_samples(produced):
 
     assert produced["result"]["schema_version"] == sample["schema_version"]
     assert produced["result"]["report_type"] == sample["report_type"]
+
+
+def test_the_series_token_totals_are_present_for_every_group(produced):
+    """A key that exists and is empty is not the same as zero.
+
+    `final_result_block` has always taken a `tokens` argument and nothing ever
+    passed one, so `tokens_total_series` shipped as `{}` while the lecturer's
+    sample carries an entry per group. The top-level drift test passed
+    throughout, because the *key* was there — which is exactly the blind spot
+    of comparing key sets and not descending into them.
+    """
+    totals = produced["result"]["final_result"]["tokens_total_series"]
+
+    assert set(totals) == set(GROUPS), f"expected a total per group, got {totals}"
+
+
+def test_the_nested_shape_matches_the_sample_not_just_the_top_level(produced):
+    """Descends into the document, because the drift that shipped was nested.
+
+    Group ids differ between our file and the sample by construction, so the
+    comparison is over key *paths with the group segment removed* — that keeps
+    it sensitive to a missing field without failing on our own name.
+    """
+    sample = json.loads(RESULT_GOLDEN.read_text(encoding="utf-8"))
+    sample_groups = set(sample["final_result"]["total_score"])
+
+    def paths(node, groups, prefix=""):
+        found = set()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key.startswith("_"):
+                    continue
+                name = "<group>" if key in groups else key
+                path = f"{prefix}.{name}" if prefix else name
+                found.add(path)
+                found |= paths(value, groups, path)
+        elif isinstance(node, list) and node:
+            found |= paths(node[0], groups, f"{prefix}[]")
+        return found
+
+    missing = paths(sample, sample_groups) - paths(produced["result"], set(GROUPS))
+
+    assert not missing, f"our result is missing nested fields: {sorted(missing)}"

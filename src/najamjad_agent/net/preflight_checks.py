@@ -71,7 +71,7 @@ def tunnel_check(tunnel: Any) -> Callable[[], Any]:
     return probe
 
 
-def gmail_check() -> Callable[[], str]:
+def gmail_check(load: Callable[[], Any] | None = None) -> Callable[[], str]:
     """Confirm the report can actually be sent, before the match rather than after.
 
     The gap this closes: `email.recipient` being set proves only that we know
@@ -82,19 +82,32 @@ def gmail_check() -> Callable[[], str]:
     Loading the credentials is the whole check. It is offline, it refreshes
     silently, and it cannot prompt; if it raises, the fix is a one-line script
     run and there is still time to run it.
+
+    `load` is injectable because the credentials are *ambient machine state*.
+    With the real loader wired in, this suite passed on a laptop that happened
+    to hold a token and failed in CI, which never holds one — and a test whose
+    verdict depends on what is lying around the filesystem proves nothing about
+    the code either way.
     """
 
     def probe() -> str:
         """Confirm stored credentials load, refresh, and grant send-only scope."""
-        from ..reporting.gmail_auth import load_credentials
+        loader = load
+        if loader is None:
+            from ..reporting.gmail_auth import load_credentials as loader  # noqa: N813
 
-        credentials = load_credentials()
-        return f"send-only token valid={credentials.valid}"
+        credentials = loader()
+        return f"send-only token valid={getattr(credentials, 'valid', True)}"
 
     return probe
 
 
-def standard_checks(manager: ConfigManager, server: Any, tunnel: Any = None) -> dict[str, Any]:
+def standard_checks(
+    manager: ConfigManager,
+    server: Any,
+    tunnel: Any = None,
+    credentials: Callable[[], Any] | None = None,
+) -> dict[str, Any]:
     """Everything that must hold before the agent claims to be match-ready."""
     return {
         "config": config_check(manager),
@@ -102,6 +115,6 @@ def standard_checks(manager: ConfigManager, server: Any, tunnel: Any = None) -> 
         "tunnel": tunnel_check(tunnel),
         "opponent_url": required_setting(manager, "network.opponent_url"),
         "email_recipient": required_setting(manager, "email.recipient"),
-        "gmail_credentials": gmail_check(),
+        "gmail_credentials": gmail_check(credentials),
         "group_id": required_setting(manager, "game.group_id"),
     }

@@ -85,8 +85,26 @@ def test_no_tunnel_is_not_applicable_rather_than_a_failure():
     assert tunnel_check(None)() is None
 
 
+class StubCredentials:
+    """Stands in for a loaded Gmail token.
+
+    Injected rather than read from disk: the real loader looks at `secrets/`,
+    which exists on a developer laptop and never in CI. A checklist test whose
+    verdict depends on what happens to be lying around the filesystem proves
+    nothing about the checklist.
+    """
+
+    valid = True
+
+
+def stub_credentials() -> StubCredentials:
+    return StubCredentials()
+
+
 def test_a_fully_configured_agent_is_ready():
-    report = run_preflight(standard_checks(manager(), FakeServer(), tunnel=None))
+    report = run_preflight(
+        standard_checks(manager(), FakeServer(), tunnel=None, credentials=stub_credentials)
+    )
 
     assert report.ready is True
     assert report.exit_code == 0
@@ -95,7 +113,7 @@ def test_a_fully_configured_agent_is_ready():
 def test_a_missing_opponent_url_blocks_readiness():
     config = manager(network={"opponent_url": "", "my_port": 8802})
 
-    report = run_preflight(standard_checks(config, FakeServer()))
+    report = run_preflight(standard_checks(config, FakeServer(), credentials=stub_credentials))
 
     assert report.ready is False
     assert [failure.name for failure in report.failures] == ["opponent_url"]
@@ -104,7 +122,9 @@ def test_a_missing_opponent_url_blocks_readiness():
 def test_every_check_actually_proves_something():
     """A probe returning None is recorded as "not applicable" — only the
     tunnel check may legitimately do that, and only when there is no tunnel."""
-    checks = standard_checks(manager(), FakeServer(), tunnel=None)
+    checks = standard_checks(
+        manager(), FakeServer(), tunnel=None, credentials=stub_credentials
+    )
     results = {name: probe() for name, probe in checks.items()}
 
     always_proving = {name: value for name, value in results.items() if name != "tunnel"}
@@ -115,3 +135,23 @@ def test_the_checklist_covers_the_settings_a_match_cannot_start_without():
     names = set(standard_checks(manager(), FakeServer()))
 
     assert {"opponent_url", "email_recipient", "group_id", "port", "config"} <= names
+
+
+def test_unusable_gmail_credentials_block_the_match():
+    """The check has to bite, or it is decoration.
+
+    An unsent report scores like not having played (book rules 33-35), and for
+    the life of this project nothing verified the mailbox was reachable — every
+    match filed its artifacts and failed to send. This is the check that would
+    have caught it, so it must fail rather than warn.
+    """
+
+    def unusable():
+        raise RuntimeError("no Gmail token")
+
+    report = run_preflight(
+        standard_checks(manager(), FakeServer(), tunnel=None, credentials=unusable)
+    )
+
+    assert report.ready is False
+    assert "gmail_credentials" in [failure.name for failure in report.failures]
