@@ -50,6 +50,7 @@ class MatchRunner:
         response_timeout: float = 30.0,
         max_retries: int = 3,
         handshake: Callable[[], Any] | None = None,
+        meter: Any = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -70,6 +71,7 @@ class MatchRunner:
         self._emit = emit or (lambda _event: None)
         self._audit_timeout = audit_timeout
         self._handshake = handshake
+        self._meter = meter
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
@@ -124,10 +126,27 @@ class MatchRunner:
             # over (rule 18) — a game that ended in a timeout has nothing to
             # reveal, and asking anyway raised into the match loop.
             "records": [] if report.skipped else state.ledger.audit_payload(),
+            # What this mini-game actually cost. The field has always been read
+            # by the report builder and never written here, so every token
+            # figure we have ever emailed was 0 — true only while play was
+            # template-only, and silently false the moment a vendor is wired.
+            "tokens": self._tokens_for(sub_game),
         }
         self.games.append(record)
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
+
+    def _tokens_for(self, sub_game: int) -> int:
+        """Tokens spent on this mini-game, or 0 when nothing is metering.
+
+        Read off the meter rather than counted here: the meter is what the
+        router already writes to and what the budget panel reads, so the report
+        cannot disagree with the dashboard about how close to the cap we are.
+        """
+        meter = self._meter
+        if meter is None:
+            return 0
+        return int(getattr(meter, "per_sub_game", {}).get(sub_game, 0))
 
     def _audit(self, state: GameState, reason: EndReason) -> AuditReport:
         """Exchange reveals — unless the protocol never reached a clean close.

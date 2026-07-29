@@ -733,6 +733,8 @@
 - [x] **T-2424** (P0) Fix `filing.send` emitting a `SendResult` into a JSON event, which recorded a *successful* send as a filing failure — DoD: regression test asserts the event serialises
 - [x] **T-2425** (P1) Make practice mode force `email.mode=send` so a practice run is one switch, not a toggle plus a hand-edit — DoD: test proves a configured draft is overridden only while practice is on
 - [x] **T-2404** (P0) Final CI verification: E1-E7 gates green on both repos' `main` at the freeze commit — DoD: green pipeline links recorded for both repos
+- [x] **T-2426** (P0) Wire the configured LLM providers and the TokenMeter: `_speaker` built templates only while claiming "real providers when configured", so `llm.primary`/`fallback`/`model` were inert and every reported token figure was 0 — DoD: chain built from config, meter shared by dashboard and report
+- [x] **T-2427** (P0) Stop retrying an absent API key: an uncredentialed vendor cost 20 s on the first hint (3 retries x 5 s x 2 vendors) against a 30 s turn deadline — DoD: keyless vendors skipped with an event; `max_retries` 1 for vendor services
 - [~] **T-2410** (P0) Create and push the annotated tag `v1.0-submission` on BOTH repos — *tag created on both repos 2026-07-28; `git push --tags` owed* — DoD: `git tag -v`-able annotated tag visible on GitHub in both repos [book rule 41]
 - [ ] **T-2411** (P0) Post-tag verification: FRESH clone of each repo at the tag → `uv sync` → `uv run pytest` green → offline preflight checks pass — DoD: both clean-clone runs logged [deps: T-2410]
 - [ ] **T-2412** (P0) Download the Moodle Word template; fill one per member; NO field changes or moves — DoD: filled templates for both members [book rule 43]

@@ -92,9 +92,10 @@ to play. See that module before editing anything here.
 | `network.watchdog_threshold_seconds` | 60 | Series-level stall detection. |
 | `network.max_retries` | 3 | Retries before we call a turn timed out. |
 | `tunnel.provider` / `hostname` / `name` | cloudflare / `cop.4laboratory.com` | A **named** tunnel: the hostname survives restarts, so the opponent's saved URL keeps working (ADR-004). |
-| `llm.primary` / `fallback` | anthropic / deepseek | Provider chain; templates are the floor beneath both. |
+| `llm.primary` / `fallback` | anthropic / deepseek | Provider chain; templates are the floor beneath both. **A vendor whose API key is absent is skipped entirely**, not merely tried and failed — see §4. |
 | `llm.model` | `claude-haiku-4-5-20251001` | Hint model. |
 | `llm.negotiation_model` | `claude-sonnet-5` | **Inert.** `PRD_negotiation.md` rejected LLM negotiation; see `docs/OPEN_ITEMS.md`. |
+| `llm.series_token_budget` | 200000 | The agreed cap, enforced by a live `TokenMeter`. Until 2026-07-29 nothing built one, so every token figure in every report was `0` regardless of spend. |
 | `llm.every_n_steps` | 2 | Hint cadence. A **quality** dial, not a savings dial — measured at 46 % fewer tokens, but the budget has room either way. |
 | `llm.series_token_budget` | 200000 | The agreed term. Exceeding it is a breach, not an expense. |
 | `llm.project_token_budget` | 5000000 | Runaway-loop backstop, ~20× the projection. |
@@ -156,6 +157,7 @@ to boot rather than quietly breaking a rule.
 | `default` | 30 | Conservative for anything unnamed. |
 | `gmail` | 30 | Protects the account (rule 30). |
 | `mcp_peer` | 600 | **Outbound to the opponent.** They are our protocol partner, not a metered API; throttling here only risks missing their 30 s deadline. |
+| `anthropic` / `deepseek` | 30 | **`max_retries` is 1, unlike everything else.** A hint is optional and has a zero-token template floor beneath it; the 30 s turn deadline is not optional. At the shared default of 3 retries 5 s apart, two unreachable vendors cost 20 s on the first hint of a match — measured — which is most of the deadline and enough to lose a game to our own retry policy. |
 | `inbound_peer` | 3000 | **Inbound from the opponent.** A flood backstop, not a throttle — the bounded inbox queue is the real protection. At 120 we rejected a legitimate turn mid-series and lost the game to our own guard. |
 
 ## 5. Secrets

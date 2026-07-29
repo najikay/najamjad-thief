@@ -26,6 +26,9 @@ from ..shared.config import ConfigManager
 from ..shared.events import EventBus
 from ..shared.logging_setup import setup_logging
 from .actions import AgentActions
+
+# Cheap at import time: every vendor import inside it is deferred.
+from .llm_setup import build_speaker, token_meter
 from .sdk import AgentSdk
 
 CONFIG_ROOT = Path("config")
@@ -105,15 +108,21 @@ def build_sdk(
         emit=bus.publish,
         opponent_url=str(manager.get("network.opponent_url", "")),
     )
-    sdk = AgentSdk(events=bus, actions=actions,
+    # One meter for the whole process: the dashboard's budget panel and the
+    # token figures in the emailed report must be the same numbers, not two
+    # counts that can disagree about whether we are near the agreed cap.
+    meter = token_meter(manager, bus)
+    sdk = AgentSdk(events=bus, actions=actions, meter=meter,
                    controls_enabled=bool(setting(setup, "features.controls", False)))
     if dashboard:
         _attach_dashboard(sdk, actions, manager, bus)
-    _attach_match(actions, manager, chosen, bus, inboxes)
+    _attach_match(actions, manager, chosen, bus, inboxes, meter)
     return sdk
 
 
-def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus, inboxes) -> None:
+def _attach_match(
+    actions: AgentActions, manager: ConfigManager, role: Role, bus, inboxes, meter: Any = None
+) -> None:
     """Give the agent the ability to actually play, when it knows an opponent.
 
     Without an opponent URL there is nothing to play against, and that is a
@@ -130,8 +139,9 @@ def _attach_match(actions: AgentActions, manager: ConfigManager, role: Role, bus
     # be written without both.
     session: dict[str, Any] = {}
     actions.attach_match(build_match(
-        manager, role, transport, _speaker(manager, bus), bus,
+        manager, role, transport, build_speaker(manager, bus, meter), bus,
         handshake=_handshake(manager, bus, inboxes, transport, session),
+        meter=meter,
     ))
     from .match_filing import build_filer
 
@@ -194,21 +204,6 @@ def _as_dict(message: Any) -> dict[str, Any] | None:
     return None
 
 
-def _speaker(manager: ConfigManager, bus) -> Any:
-    """The hint writer: real providers when configured, templates otherwise."""
-    from ..llm.router import LLMRouter
-    from ..llm.speaker import Speaker
-    from ..llm.template_provider import TemplateProvider
-
-    template = TemplateProvider(map_area=str(manager.get("world.map_area", "")))
-    return Speaker(
-        router=LLMRouter(providers=[template], emit=bus.publish),
-        template=template,
-        arena=str(manager.get("world.map_area", "")),
-        hint_max_words=int(manager.get("world.hint_max_words", 15)),
-        every_n_steps=int(manager.get("llm.every_n_steps", 1)),
-        emit=bus.publish,
-    )
 
 
 def _attach_dashboard(
