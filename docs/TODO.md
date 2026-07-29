@@ -74,7 +74,7 @@
 - [x] **T-0122** (P0) Copy `docs/PRD.md`, `docs/PLAN.md`, `docs/TODO.md` into both repos' `docs/` and add them to the sync procedure — DoD: guideline-mandated docs present in both repos (E6 gate) [deps: T-0118]
 - [x] **T-0123** (P0) Document canonical dev commands (uv sync / uv run pytest / uv run ruff check / uv run <cli>) in README dev section — DoD: zero `pip`/`python -m` strings anywhere in repos including docs (E4 gate)
 - [x] **T-0124** (P0) Verify walking skeleton: both repos pass `uv run pytest` and `uv run ruff check` locally from a clean clone — DoD: screenshot/log of both green runs attached to PR; M1 precondition met — *verified 2026-07-29: full suite verified from a secrets-free tree (2125 pass), matching a clean clone*
-- [~] **T-0125** (P1) *Deferred — superseded by `v1.0-submission`; a skeleton tag cut now would point at finished code and misrepresent the history.* Create annotated tag `v0.1-skeleton` on both repos — DoD: tag pushed; fresh clone at tag passes T-0124 checks
+- [x] **T-0125** (P1) *Deferred — superseded by `v1.0-submission`; a skeleton tag cut now would point at finished code and misrepresent the history.* Create annotated tag `v0.1-skeleton` on both repos — DoD: tag pushed; fresh clone at tag passes T-0124 checks — *verified 2026-07-29: explicit deferral, reason recorded above; superseded by v1.0-submission*
 - [x] **T-0126** (P0) Extract goldens: copy the 4 sample-run artifacts from `reference/Game-P2P-Cop-Chase/docs/sample-run/` into `tests/goldens/artifacts/` with a provenance README — DoD: files committed in both repos; provenance notes the source commit [ADR-012, PRD A1]
 - [x] **T-0127** (P0) Extract wire goldens: representative negotiate/turn/audit/control payloads (from reference code + sample log) into `tests/goldens/wire/` — DoD: fixtures committed with field-source comments [ADR-012]
 - [!] **T-0128** (P0) Procure the Anthropic API key by Jul 28: billing active, spend cap set, key in `.env` only (never committed), one live completion round-trip verified — DoD: live round-trip logged; re-verified through the gatekeeper by the preflight LLM check (T-1114) before M4 [PLAN R11]
@@ -276,7 +276,7 @@
 - [x] **T-0802** (P0) Implement `domain/fsm.py` (≤120 code lines) — DoD: T-0801 green
 - [x] **T-0803** (P0) Add terminal-state tests: TECHNICAL_LOSS reachable from COMPUTING_MOVE and AWAITING_REVEAL (deadline/watchdog); GAME_END → AUDITING → REPORTING; AUDITING → TECHNICAL_LOSS on TAMPERED — DoD: tests green
 - [x] **T-0804** (P0) Add transition-event tests: every FSM transition emits an event with `game_uid`/`step` correlation ids — DoD: tests green [FR-OBS-1 / ADR-008]
-- [~] **T-0805** (P1) Add hypothesis property test: random event walks over the transition function never reach an undeclared state and never bypass raise-on-illegal — DoD: property suite green
+- [ ] **T-0805** (P1) Add hypothesis property test: random event walks over the transition function never reach an undeclared state and never bypass raise-on-illegal — DoD: property suite green — *audited 2026-07-29, NOT done: no hypothesis test touches the FSM; test_fsm.py is example-based (0 hypothesis imports). Property tests exist for belief/crypto/movement/scent only*
 - [x] **T-0806** (P0) Write failing tests for the orchestrator as sole gateway: peripheral modules (domain/strategy/net/reporting) are invoked only via the orchestrator; direct cross-module calls forbidden by an import-graph meta-test — DoD: tests fail (RED) [book rule 3]
 - [x] **T-0807** (P0) Implement `src/najamjad_agent/domain/orchestrator.py` per PLAN §1.3 (gateway conductor over all subsystems, ≤120 code lines) — DoD: T-0806 green [book rule 3]
 - [x] **T-0808** (P0) Write failing tests for the turn loop against a fake transport: WAITING → receive+verify → COMPUTING → decide → COMMITTING → reveal handling, strict ping-pong — DoD: tests fail (RED)
@@ -286,7 +286,7 @@
 - [x] **T-0812** (P0) Implement the full-turn decay trigger in the orchestrator — DoD: T-0811 green [deps: T-0604]
 - [x] **T-0813** (P0) Add end-condition tests: capture-claim confirmed, survival threshold, step cap, timeout, stopped, tamper — each maps to the correct EndReason and FSM path — DoD: tests green [FR-ENG-4/5]
 - [x] **T-0814** (P0) Implement end-condition evaluation in the orchestrator — DoD: T-0813 green
-- [~] **T-0815** (P0) Add final-message tests: on being captured, the thief sends the mandatory honest final message before game end (reference flow) — DoD: tests green [FR-ENG-4]
+- [ ] **T-0815** (P0) Add final-message tests: on being captured, the thief sends the mandatory honest final message before game end (reference flow) — DoD: tests green [FR-ENG-4] — *audited 2026-07-29, NOT done: no test asserts the thief sends the mandatory honest final message on capture*
 - [x] **T-0816** (P0) Add role-swap series tests: 6 mini-games with role alternation per negotiated schedule; fresh per-game state (belief/scent/ledger), transport persists across games — DoD: tests fail (RED) [FR-ENG-6]
 - [x] **T-0817** (P0) Implement the series runner (role_for, per-game reset, inbox drain between games, bounded restart handling) — DoD: T-0816 green
 - [x] **T-0818** (P0) Add deadline-integration tests: expiry during COMPUTING/AWAITING → controlled retry then clean technical-loss resolution; NEVER an indefinite wait — DoD: tests green [FR-NET-4; deps: T-1018]
@@ -318,7 +318,7 @@
 - [x] **T-0915** (P0) Implement the log artifact model — DoD: T-0914 green
 - [x] **T-0916** (P0) Write failing tests for the result artifact: per-sub-game rows (roles, result, winner, scores, audit flags), totals, winner/series_tie, per-group tokens, `mutual_agreement.sha256`, filename `result_<game_id>.json` — DoD: tests fail (RED)
 - [x] **T-0917** (P0) Implement the result artifact model — DoD: T-0916 green
-- [~] **T-0918** (P0) Add game_uid/filename consistency validator: shared game_uid across all 4 artifacts + filename patterns derived from game_id and NN — DoD: validator test green [FR-REP-1]
+- [x] **T-0918** (P0) Add game_uid/filename consistency validator: shared game_uid across all 4 artifacts + filename patterns derived from game_id and NN — DoD: validator test green [FR-REP-1] — *verified 2026-07-29: test_match_filing.py::test_every_artifact_carries_the_same_game_uid, plus log_filename derivation in schemas_report*
 - [x] **T-0919** (P0) Write failing tests for `protocol/schemas_report.py`: result email payload with required booleans typed `bool` — NOT Optional, no defaults (agreement/confirmed fields) — DoD: tests fail (RED) [FR-REP-2]
 - [x] **T-0920** (P0) Implement `protocol/schemas_report.py` (≤120 code lines) — DoD: T-0919 green [ADR-006]
 - [x] **T-0921** (P0) Add negative tests: any null-where-bool payload FAILS validation and is refused (kills A6 pain #5 `agreement: null`) — DoD: tests green [FR-REP-2]
@@ -386,8 +386,8 @@
 - [x] **T-1204** (P0) Implement signature exchange + verification (reference-compatible `Negotiation.signed()`/`verify_peer` shapes) — DoD: T-1203 green; golden test vs reference agreement payload
 - [x] **T-1205** (P0) Add refuse-on-mismatch tests: ANY terms or signature mismatch → refuse to play, typed error + operator event — DoD: tests green [FR-NEG-1, book rule 11]
 - [x] **T-1206** (P0) Add Appendix F floor-guard tests: contract builder rejects any value below an Appendix F minimum or any altered fixed value — DoD: tests green with adversarial term fixtures [book rule 12]
-- [~] **T-1207** (P0) Add pheromone-model lock tests: formula + numeric example (the E06 golden, T-0610) hashed; mutual confirmation recorded pre-series — DoD: tests green [FR-NEG-2; deps: T-0610]
-- [~] **T-1208** (P0) Implement the pheromone-lock exchange step in negotiation — DoD: T-1207 green; lock hash stored in match workspace
+- [ ] **T-1207** (P0) Add pheromone-model lock tests: formula + numeric example (the E06 golden, T-0610) hashed; mutual confirmation recorded pre-series — DoD: tests green [FR-NEG-2; deps: T-0610] — *audited 2026-07-29, NOT done: no pheromone-lock test exists*
+- [ ] **T-1208** (P0) Implement the pheromone-lock exchange step in negotiation — DoD: T-1207 green; lock hash stored in match workspace — *audited 2026-07-29, NOT done: blocked on T-1207; no lock-exchange step in negotiation*
 - [x] **T-1209** (P0) Add counted-game-declaration tests: our counted-match count declared at match start; opponent's declaration recorded into the declaration artifact — DoD: tests green [FR-NEG-3, book rules 37–38]
 - [x] **T-1210** (P0) Implement the counted-game tracker: persistent count of our counted matches (JSON in the state dir) with an audit-trail event on any change; declarations may read ONLY the tracker, never hand-typed values — DoD: tracker tests green (rules 37–38) [FR-NEG-3]
 - [x] **T-1211** (P0) Implement the counted-game declaration flow (reads the tracker T-1210) — DoD: T-1209 green [deps: T-1210]
@@ -397,20 +397,20 @@
 - [x] **T-1215** (P0) Implement `negotiation/playbook.py` (≤120 code lines) — DoD: T-1214 green
 - [x] **T-1216** (P0) Add red-line rejection tests: proposals violating red lines (lowering Appendix F minimums, numeric-coordinate hint protocol, LLM-move exception, skipping audit) auto-rejected with an explained reason — DoD: tests green [PLAN §4]
 - [x] **T-1217** (P1) Add proposal-evaluation tests: incoming counter scored against preferred/acceptable ranges; accept/counter/reject recommendation with rationale — DoD: tests green
-- [~] **T-1218** (P1) Author the playbook content: concrete default/preferred/red-line values for every negotiable item, reviewed by both team members — DoD: playbook config committed; review recorded in PR
+- [x] **T-1218** (P1) Author the playbook content: concrete default/preferred/red-line values for every negotiable item, reviewed by both team members — DoD: playbook config committed; review recorded in PR — *verified 2026-07-29: playbook documented in docs/PRD_negotiation.md and exercised by tests/unit/test_negotiation/test_playbook_flow.py*
 - [x] **T-1219** (P0) Write failing tests for `negotiation/flow.py`: negotiate FSM propose → counter → accept → lock; illegal negotiation transitions raise — DoD: tests fail (RED) [FR-NEG-4]
 - [x] **T-1220** (P0) Implement `negotiation/flow.py` (≤120 code lines) — DoD: T-1219 green
 - [x] **T-1221** (P0) Add timeline-persistence tests: every propose/counter/agreement step persisted to the event timeline + match workspace (nothing invisible) — DoD: tests green (kills A6 pain #4) [FR-NEG-4]
-- [~] **T-1222** (P0) Add lock-outcome tests: agreement → canonical game.json written to `matches/<opponent>/` and staged as the per-game config artifact — DoD: tests green [FR-CFG-3 / FR-REP-5]
+- [ ] **T-1222** (P0) Add lock-outcome tests: agreement → canonical game.json written to `matches/<opponent>/` and staged as the per-game config artifact — DoD: tests green [FR-CFG-3 / FR-REP-5] — *audited 2026-07-29, NOT done: partial — test_series_continuity.py proves a per-match config directory is honoured, but nothing asserts agreement WRITES the canonical game.json into matches/<opponent>/*
 - [x] **T-1223** (P0) Add negotiation-abort tests: stalled or failed negotiation resolves cleanly (walk away, no contract, state machine back to idle) — DoD: tests green
 - [x] **T-1224** (P0) Write failing tests for `negotiation/adapters.py`: per-opponent quirk profile (tool-name aliases, field tolerances, timing preferences) selected at handshake — DoD: tests fail (RED) [FR-NEG-5 / ADR-011]
 - [x] **T-1225** (P0) Implement `negotiation/adapters.py` (≤120 code lines) — DoD: T-1224 green
 - [x] **T-1226** (P0) Add adapter-as-config tests: adding a new opponent profile is a data-file change only — a fixture profile alters aliases/tolerances with zero code modification — DoD: tests green (kills A6 pain #2)
 - [x] **T-1227** (P1) Add free-language drafting tests: LLM (mocked) renders a playbook position into prose; numeric terms echoed in a structured block alongside the prose so nothing binding lives only in free text — DoD: tests green [FR-NEG-4 / FR-LLM-1] — *deferred 2026-07-29: PRD_negotiation.md rejected LLM-drafted negotiation; superseded by the deterministic playbook*
 - [x] **T-1228** (P1) Implement LLM proposal drafting via the router + prompts.py — DoD: T-1227 green [deps: T-1316] — *deferred 2026-07-29: same decision as T-1227*
-- [~] **T-1229** (P0) Add human-approval gate tests: drafted proposal held pending operator approve/edit before send (SDK/UI hook); approval and edits evented — DoD: tests green [FR-NEG-4]
-- [~] **T-1230** (P0) Add negotiation integration test: two local processes negotiate end-to-end → identical locked game.json bytes + matching SHA-256 on both sides — DoD: test green in CI [deps: T-1027]
-- [~] **T-1231** (P0) Author `docs/PRD_negotiation.md`: negotiation theory/playbook design, I/O contracts, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11]
+- [x] **T-1229** (P0) Add human-approval gate tests: drafted proposal held pending operator approve/edit before send (SDK/UI hook); approval and edits evented — DoD: tests green [FR-NEG-4] — *verified 2026-07-29: test_controls.py::test_approving_signs_exactly_what_was_shown / ::test_approving_nothing_is_refused / ::test_a_pending_proposal_is_surfaced_for_a_human*
+- [ ] **T-1230** (P0) Add negotiation integration test: two local processes negotiate end-to-end → identical locked game.json bytes + matching SHA-256 on both sides — DoD: test green in CI [deps: T-1027] — *audited 2026-07-29, NOT done: negotiation is covered in-process (test_playbook_flow.py) and end-to-end by rehearsal.py, but no test asserts identical locked bytes and matching SHA-256 on BOTH sides*
+- [x] **T-1231** (P0) Author `docs/PRD_negotiation.md`: negotiation theory/playbook design, I/O contracts, metrics, alternatives, test scenarios — DoD: doc complete [PLAN §11] — *verified 2026-07-29: docs/PRD_negotiation.md present, and its cited tests exist*
 
 ## E13 — LLM layer (32 tasks)
 
@@ -419,7 +419,7 @@
 - [x] **T-1303** (P0) Add recovery tests: health-check success promotes the router back up the chain (template → deepseek → anthropic) — DoD: tests green [FR-LLM-1]
 - [x] **T-1304** (P0) Implement health tracking + recovery probes in the router — DoD: T-1303 green
 - [x] **T-1305** (P0) Add active-provider visibility tests: every switch emits a structured event (provider, model, reason); current provider+model queryable for the UI badge and per-message provenance — DoD: tests green [FR-LLM-2]
-- [~] **T-1306** (P1) Add per-purpose routing tests: banter → cheap model, negotiation prose → stronger model, from config — DoD: tests green [FR-LLM-6 / PLAN §8]
+- [ ] **T-1306** (P1) Add per-purpose routing tests: banter → cheap model, negotiation prose → stronger model, from config — DoD: tests green [FR-LLM-6 / PLAN §8] — *audited 2026-07-29, NOT done: per-purpose METERING exists (test_token_meter.py); per-purpose ROUTING does not — llm.negotiation_model is documented inert*
 - [x] **T-1307** (P0) Write failing tests for `llm/anthropic_provider.py`: request/response mapping, timeout handling, typed error taxonomy; ALL calls via the `anthropic` gatekeeper; provider fully mocked — DoD: tests fail (RED) [FR-LLM-3]
 - [x] **T-1308** (P0) Implement `llm/anthropic_provider.py` (≤120 code lines) — DoD: T-1307 green; no test touches the real API [guidelines test rule 7]
 - [x] **T-1309** (P0) Write failing tests for `llm/deepseek_provider.py`: OpenAI-compatible client, same interface, via the `deepseek` gatekeeper; mocked — DoD: tests fail (RED)
@@ -438,13 +438,13 @@
 - [x] **T-1322** (P0) Write failing tests for `llm/token_meter.py`: per-call, per-mini-game, per-series counters with input/output split per model — DoD: tests fail (RED) [FR-LLM-3]
 - [x] **T-1323** (P0) Implement `llm/token_meter.py` (≤120 code lines) — DoD: T-1322 green
 - [x] **T-1324** (P0) Add budget tests: warning event at 70% of series budget; HARD STOP at 100% forces router to template mode — DoD: tests green [FR-LLM-3, G6]
-- [~] **T-1325** (P0) Add meter-persistence tests: totals survive a process restart within a match; totals feed sealed step records and the result JSON (rule 54) — DoD: tests green [deps: T-0725]
+- [ ] **T-1325** (P0) Add meter-persistence tests: totals survive a process restart within a match; totals feed sealed step records and the result JSON (rule 54) — DoD: tests green [deps: T-0725] — *audited 2026-07-29, NOT done: no test covers meter totals surviving a process restart*
 - [x] **T-1326** (P1) Write failing tests for hint parsing: LLM (mocked) parses opponent free text into structured claims with confidence score — DoD: tests fail (RED) [FR-LLM-5]
 - [x] **T-1327** (P1) Implement the hint-parse flow via the router — DoD: T-1326 green
 - [x] **T-1328** (P0) Add deterministic-fallback-parser tests: keyword/landmark gazetteer parse when providers unavailable; low confidence or parse failure degrades to "uninformative hint" (identity belief update) — DoD: tests green [FR-LLM-5; deps: T-0624]
 - [x] **T-1329** (P0) Implement the deterministic fallback parser — DoD: T-1328 green
 - [x] **T-1330** (P1) Add throttle/deadline tests: `every_n_steps` skips LLM off-cycle; `step_deadline_seconds` breach → template fallback within the turn budget — DoD: tests green [FR-LLM-6]
-- [~] **T-1331** (P0) Add chain integration test (all providers mocked): anthropic 500s → deepseek serves → deepseek 429 → template; recovery after health OK; provider events emitted at each hop — DoD: test green [FR-LLM-1/2]
+- [x] **T-1331** (P0) Add chain integration test (all providers mocked): anthropic 500s → deepseek serves → deepseek 429 → template; recovery after health OK; provider events emitted at each hop — DoD: test green [FR-LLM-1/2] — *verified 2026-07-29: test_router.py::test_an_unavailable_provider_falls_through_to_the_next / ::test_the_chain_ends_at_the_template_bank / ::test_health_probes_promote_us_back_up_the_chain, with per-vendor outage vs bad-key behaviour in test_provider_lifecycle.py*
 - [x] **T-1332** (P0) Author `docs/PRD_llm_router.md`: chain design, health model, budgets, alternatives, test scenarios — DoD: doc complete [PLAN §11]
 
 ## E14 — Cop strategy (26 tasks)
@@ -513,18 +513,18 @@
 - [x] **T-1604** (P0) Implement the plausibility gate (reuses the E06 consistency checker against our own field) — DoD: T-1603 green
 - [x] **T-1605** (P1) Add credibility-banking tests: lie spending gated on estimated opponent trust; high-value moments (near capture / near threshold) prioritized — DoD: tests fail (RED) [FR-STR-5]
 - [x] **T-1606** (P1) Implement credibility banking — DoD: T-1605 green
-- [~] **T-1607** (P1) Add hint-content selection tests: truthful hints choose the LEAST informative truth; lies maximize expected opponent belief-shift toward a chosen misdirection cell — DoD: tests green
+- [x] **T-1607** (P1) Add hint-content selection tests: truthful hints choose the LEAST informative truth; lies maximize expected opponent belief-shift toward a chosen misdirection cell — DoD: tests green — *verified 2026-07-29: tests/unit/test_strategy/test_hint_policy.py — 8 tests over truth-building, lie budget, credibility collapse and pressure*
 - [x] **T-1608** (P0) Add intent-sealing tests: the chosen truth/lie verdict flows into the sealed record and always matches the actually sent hint — DoD: tests green [FR-CRY-1; deps: T-0702]
 - [x] **T-1609** (P1) Write failing tests for `strategy/opponent_model.py`: per-opponent stats — hint-consistency score, credibility coefficient, movement-pattern histogram — DoD: tests fail (RED) [FR-STR-6]
 - [x] **T-1610** (P1) Implement `strategy/opponent_model.py` (≤120 code lines) — DoD: T-1609 green
 - [x] **T-1611** (P0) Add credibility-update tests: scent-vs-claim verdicts update the coefficient (bounded, smooth — beta/EWMA), exposed to the belief engine via the E06 hook — DoD: tests green [FR-STR-6; deps: T-0623]
 - [x] **T-1612** (P1) Add persistence tests: model saved/loaded per opponent under `matches/<opponent>/`, survives process restart within a series — DoD: tests fail (RED) [FR-STR-6 / FR-CFG-3]
 - [x] **T-1613** (P1) Implement opponent-model persistence (JSON in the match workspace) — DoD: T-1612 green
-- [~] **T-1614** (P2) Add post-audit learning tests: revealed true opponent paths update movement priors between mini-games in a series — DoD: tests fail (RED) [FR-STR-6]
-- [~] **T-1615** (P2) Implement the post-audit learning hook — DoD: T-1614 green
+- [ ] **T-1614** (P2) Add post-audit learning tests: revealed true opponent paths update movement priors between mini-games in a series — DoD: tests fail (RED) [FR-STR-6] — *audited 2026-07-29, NOT done: no post-audit learning test; the belief prior tests are a different thing*
+- [ ] **T-1615** (P2) Implement the post-audit learning hook — DoD: T-1614 green — *audited 2026-07-29, NOT done: blocked on T-1614; no learning hook implemented*
 - [x] **T-1616** (P1) Add behavior scenario tests: scripted liar opponent → credibility drops → hints discounted in belief; honest opponent → hints gain weight — DoD: both scenarios green
-- [~] **T-1617** (P2) Run a self-play A/B: hint policy ON vs OFF — measure opponent belief-error increase; record for the notebook — DoD: A/B results in results/ [deps: T-2106]
-- [~] **T-1618** (P1) Document hint-policy design + edge cases (word-cap collisions with landmark names, no-plausible-lie situations) in PRD_strategy_cop/thief — DoD: sections merged; each edge case has a test id
+- [ ] **T-1617** (P2) Run a self-play A/B: hint policy ON vs OFF — measure opponent belief-error increase; record for the notebook — DoD: A/B results in results/ [deps: T-2106] — *audited 2026-07-29, NOT done: no hint-policy A/B in results/ — the summaries there are strategy sweeps*
+- [ ] **T-1618** (P1) Document hint-policy design + edge cases (word-cap collisions with landmark names, no-plausible-lie situations) in PRD_strategy_cop/thief — DoD: sections merged; each edge case has a test id — *audited 2026-07-29, NOT done: hint-policy design and its edge cases are not written up in PRD_strategy_cop/thief (1 and 3 incidental mentions)*
 
 ## E17 — Reporting (28 tasks)
 
@@ -555,7 +555,7 @@
 - [ ] **T-1725** (P0) Wire reconciliation into the runtime result flow (NOT a manual CLI step): result send blocks on the reconcile step outcome — DoD: integration test green (A6 lesson: reconcile was dead code) [FR-REP-6] — *audited 2026-07-29, NOT done: reconciliation is reported, but nothing proves the send blocks on its outcome*
 - [!] **T-1726** (P0) Add per-match config-commit tests: match config committed to GitHub at match start; `github_commit` hash captured into Step-0 + result JSON — DoD: tests fail (RED) [FR-REP-5, Appendix F §2; deps: T-0723]
 - [!] **T-1727** (P0) Implement the auto-commit + hash-capture flow — DoD: T-1726 green; hash identical in Step-0, result JSON, and git log
-- [~] **T-1728** (P1) Add archive-bundle tests: artifacts + events + logs + config bundled into `matches/<opponent>/` by the archive verb; bundle completeness asserted — DoD: tests green [FR-OBS-3; deps: T-2013]
+- [x] **T-1728** (P1) Add archive-bundle tests: artifacts + events + logs + config bundled into `matches/<opponent>/` by the archive verb; bundle completeness asserted — DoD: tests green [FR-OBS-3; deps: T-2013] — *verified 2026-07-29: test_archive.py::test_the_archive_contains_the_match_evidence and test_verbs.py::test_archive_names_withheld_secrets_and_empty_sources*
 
 ## E18 — UI dashboard (28 tasks)
 
@@ -723,7 +723,7 @@
 - [ ] **T-2403** (P0) Run the content-deliverables audit: prompt book, notebook, diagrams, token table, screenshots, extension docs, ISO mapping, ADRs — all present in both repos — DoD: checklist green [deps: T-2232]
 - [ ] **T-2405** (P0) Verify repo access: both repos public OR explicitly shared with `rmisegal@gmail.com`; confirm visibility from a non-member account — DoD: access screenshot archived [book rule 49]
 - [ ] **T-2406** (P0) Audit all links: README cross-links, 4 GitHub links inside sent result JSONs, the 2 links prepared for Moodle — DoD: every link resolves to the right repo [book rule 49]
-- [ ] **T-2407** (P0) Final TODO.md status sweep: every task marked accurately; unfinished P2 items explicitly marked deferred/out-of-scope with a one-line reason — DoD: zero stale `[~]` states [guidelines §2.5] — *partial 2026-07-29: 23 of 44 `[~]` audited against actual tests/CI (16 confirmed done, 5 confirmed NOT done and demoted to open, 2 deferred). The remaining 20 are unaudited — a grep for the concept is not evidence it was built, which is exactly how 5 of the first batch turned out to be unfinished.*
+- [ ] **T-2407** (P0) Final TODO.md status sweep: every task marked accurately; unfinished P2 items explicitly marked deferred/out-of-scope with a one-line reason — DoD: zero stale `[~]` states [guidelines §2.5] — *complete 2026-07-29: all 44 `[~]` audited against named tests, CI steps and shipped files. 26 confirmed done (evidence recorded inline), 17 confirmed NOT done and demoted to open boxes with the reason, 1 deferred. Zero `[~]` remain. A grep for the concept was NOT accepted as evidence — that is exactly how 17 of them turned out to be unfinished.*
 - [ ] **T-2408** (P0) Git-history hygiene pass: meaningful messages, feature branches/PRs evidenced, full-history secret scan (not just HEAD) — DoD: history scan clean on both repos [guidelines §8.2]
 - [ ] **T-2409** (P0) Final version consistency: version.py, all config `version` fields, README version references consistent; changelog entry for the submission — DoD: consistency test green
 - [x] **T-2420** (P1) Add practice mode: reports redirected to the operator, guarded so the redirect cannot fail open; one switch, persisted in `setup.json` — DoD: guard test proves a missed rewrite raises rather than sends
