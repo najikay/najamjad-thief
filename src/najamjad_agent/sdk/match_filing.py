@@ -89,6 +89,17 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
     from ..shared.rate_limits import for_service, load_rate_limits
 
     practice = current()
+    service = service_or_none()
+    if service is None:
+        # No usable credentials. Build no sender at all, so the filer reports
+        # `report.not_sent` with a reason rather than raising at send time and
+        # having the WHOLE filing step recorded as failed. A peer without a
+        # Gmail token saw `artifacts.failed` immediately after
+        # `artifacts.written` and reasonably concluded the artifacts were
+        # broken; all fourteen had been written correctly.
+        bus.publish({"event": "mail.unavailable",
+                     "reason": "no Gmail credentials — run scripts/authorise_gmail.py"})
+        return None
     try:
         limits = load_rate_limits(
             Path(setting(setup, "paths.rate_limits", "config/rate_limits.json"))
@@ -96,7 +107,7 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
         return GmailSender(
             gatekeeper=ApiGatekeeper(service="gmail", config=for_service(limits, "gmail"),
                                      emit=bus.publish),
-            service=service_or_none(),
+            service=service,
             recipient=str(manager.require("email.recipient")),
             mode=practice.mode_for(str(manager.get("email.mode", "draft"))),
             emit=bus.publish,

@@ -29,7 +29,7 @@ thief = "https://github.com/najikay/najamjad-thief"
 # Our own MCP server port. The thief agent uses 8801 so both can run locally.
 my_port = 8801
 # Set per match from the opponent's public URL, exchanged during negotiation.
-opponent_url = ""
+opponent_url = "https://mask-matching-stevens-omissions.trycloudflare.com/mcp"
 # Their group id, set per match once negotiation reveals it. Until then the
 # tracker scores against this placeholder and the filer relabels the result.
 opponent_group_id = "them"

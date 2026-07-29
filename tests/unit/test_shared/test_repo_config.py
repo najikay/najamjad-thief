@@ -4,6 +4,7 @@ The unit tests elsewhere use synthetic configs. These load the real files, so a
 typo in the shipped `game.toml` fails in CI rather than on match day.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -79,5 +80,13 @@ def test_the_series_budget_matches_the_agreed_term(config: ConfigManager) -> Non
 def test_no_secret_is_stored_in_the_config(config: ConfigManager) -> None:
     """Keys belong in .env; a config file is committed and would leak them."""
     flat = str(config.as_dict()).lower()
-    for marker in ("sk-ant", "sk-", "api_key", "password", "authtoken"):
+    for marker in ("sk-ant", "api_key", "password", "authtoken"):
         assert marker not in flat, f"{marker!r} appears in a committed config file"
+    # A bare "sk-" matched mid-word and fired on an opponent URL — the tunnel
+    # hostname `mask-matching-stevens-omissions` contains it. Real vendor keys
+    # begin a value, so requiring no alphanumeric before the prefix keeps the
+    # check exact without weakening it: `sk-ant-...` and `sk-proj-...` still
+    # match, `ma|sk-|matching` no longer does.
+    assert not re.search(r"(?<![a-z0-9])sk-[a-z0-9_-]{12,}", flat), (
+        "a vendor API key appears in a committed config file"
+    )

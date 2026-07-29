@@ -11,11 +11,22 @@ A cold start is ~15 s (importing the MCP stack), so the window is wide enough to
 lose every match to it. Two teams agreeing "20:00" will not both be listening at
 20:00:00.
 
-The wait is deliberately a **plain TCP probe** rather than an MCP handshake: we
-are asking "is anything accepting connections", which is the only question that
-has to be answered before the protocol can start. Anything richer would need
-their server to be not merely up but agreeable, which is what the game itself is
-for.
+The wait was originally a **plain TCP probe**, on the reasoning that "is
+anything accepting connections" is the only question that must be answered
+before the protocol starts. That reasoning is wrong the moment the opponent is
+behind a tunnel, which is how every real match is played.
+
+A Cloudflare edge accepts TCP on :443 whether or not the agent behind it is
+running — a dead origin answers `502`, but only at the HTTP layer. So the probe
+returned True instantly against an opponent who was not there, the wait passed,
+and the very first handshake died with `502 Bad Gateway`. The one guard built
+for this race was inert precisely in the configuration it exists for.
+
+So an `http(s)` URL is probed with a real request, and anything below `500` is
+taken as ready: `400 Missing session ID` means their MCP server is up and
+talking, which is all we need to know. A `5xx` is the tunnel telling us the
+origin is down. Bare `host:port` targets keep the TCP probe, which is exact for
+them.
 """
 
 from __future__ import annotations
@@ -47,6 +58,20 @@ def is_listening(host: str, port: int, timeout: float = 1.0) -> bool:
         return False
 
 
+def answers_http(url: str, timeout: float = 5.0) -> bool:
+    """Delegate to the one egress module (ADR-009); see `endpoint_answers`."""
+    from .mcp_probe import endpoint_answers
+
+    return endpoint_answers(url, timeout=timeout)
+
+
+def is_ready(url: str, host: str, port: int, timeout: float = 5.0) -> bool:
+    """Ready by the strongest check the target supports."""
+    if url.startswith(("http://", "https://")):
+        return answers_http(url, timeout=timeout)
+    return is_listening(host, port)
+
+
 def wait_for_opponent(
     url: str,
     timeout: float = 120.0,
@@ -71,7 +96,7 @@ def wait_for_opponent(
     started = clock()  # type: ignore[operator]
     announced = False
     while clock() - started < timeout:  # type: ignore[operator]
-        if is_listening(host, port):
+        if is_ready(url, host, port):
             announce({"event": "opponent.ready", "waited": round(clock() - started, 1)})  # type: ignore[operator]
             return True
         if not announced:

@@ -180,3 +180,40 @@ def test_the_real_wiring_injects_a_service(monkeypatch):
 
     assert sender is not None, "a sender must be built"
     assert sender._service is sentinel, "the Gmail service must be injected"
+
+
+def test_no_credentials_builds_no_sender_rather_than_one_that_raises(monkeypatch):
+    """Reported by a peer running without a Gmail token (T-2431).
+
+    They saw `artifacts.failed` immediately after `artifacts.written` and
+    concluded the artifacts were broken — all fourteen had been written
+    correctly. The send raised at the point of use, `filing.send` did not catch
+    it, and `_file` recorded the WHOLE filing step as failed.
+
+    Artifacts on disk and a report we could not send are two different
+    outcomes, and only one of them needs a person.
+    """
+    from najamjad_agent.sdk import match_filing
+
+    monkeypatch.setattr("najamjad_agent.reporting.gmail_auth.service_or_none",
+                        lambda *_a, **_k: None)
+
+    class Manager:
+        def require(self, _key):
+            return "someone@example.invalid"
+
+        def get(self, _key, default=None):
+            return default
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def publish(self, event):
+            self.events.append(event)
+
+    bus = Bus()
+
+    assert match_filing._mail_sender(Manager(), bus, {}) is None
+    assert bus.events[-1]["event"] == "mail.unavailable"
+    assert "authorise_gmail" in bus.events[-1]["reason"], "the fix belongs in the message"

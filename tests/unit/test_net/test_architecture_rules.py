@@ -69,7 +69,10 @@ def test_only_the_client_talks_to_the_opponent() -> None:
     # `mcp_session` holds the socket the client sends over: it is part of the
     # one egress path, not a second one. The test below keeps it that way by
     # asserting nothing else reaches for it.
-    allowed = {"mcp_client.py", "mcp_server.py", "mcp_session.py"}
+    # `mcp_probe` is the readiness check split out of `mcp_client` when that
+    # module hit its line budget. It is the same egress path, not a second
+    # one: it speaks to the opponent and nothing else does.
+    allowed = {"mcp_client.py", "mcp_probe.py", "mcp_server.py", "mcp_session.py"}
     for path in SRC.rglob("*.py"):
         if path.name in allowed:
             continue
