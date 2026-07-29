@@ -25,6 +25,7 @@ from ..shared.events import Emit
 from .artifacts import ArtifactWriter
 from .result_blocks import (
     final_result_block,
+    repository_links,
     series_tokens,
     sub_game_rows,
     winning_role,
@@ -84,6 +85,7 @@ class MatchFiler:
             final_result_block(result, tokens=series_tokens(rows), rename=self.rename),
             theirs,
             confirmed,
+            repositories=repository_links(groups_block or {}),
         ))
         self._emit({"event": "artifacts.written", **{k: len(v) if isinstance(v, list) else 1
                                                      for k, v in written.items()}})

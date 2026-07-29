@@ -116,6 +116,45 @@ def final_result_block(
         "winner_group": result.winner_group,
         "series_tie": bool(result.series_tie),
         "tokens_total_series": dict(tokens or {}),
+        **({"tie_award": award} if result.series_tie and (award := getattr(
+            result, "tie_award", None)) is not None else {}),
     }
 
 
+
+
+def declaration_group(identity: dict[str, Any]) -> dict[str, Any]:
+    """One group's declaration block, translated from the wire identity.
+
+    The wire calls the hardware block `spec`, because that is what the
+    reference's declaration builder reads; our artifact schema calls it
+    `hardware_spec`. Nothing mapped between the two, so every declaration we
+    filed carried `hardware_spec: null` for both groups — the Step-0
+    computational-fairness declaration (rule 24) with the hardware missing,
+    while the identity beside it held the whole spec.
+
+    Both names are kept on the way out: the artifact needs `hardware_spec`,
+    and dropping `spec` would change what a reader of the raw identity sees.
+    """
+    block = dict(identity or {})
+    spec = block.get("hardware_spec") or block.get("spec")
+    if spec:
+        block["hardware_spec"] = spec
+    return block
+
+
+def repository_links(identities: dict[str, dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Both teams' repo links for the emailed result (rule 49, chapter 9.4).
+
+    Taken from the identities exchanged at the handshake, so the opponent's
+    links are the ones they declared rather than ones we guessed. A side that
+    declared none is omitted entirely instead of appearing with empty strings,
+    because an empty link reads as a broken repository rather than an absent
+    declaration.
+    """
+    links: dict[str, dict[str, str]] = {}
+    for group, identity in (identities or {}).items():
+        repos = {str(k): str(v) for k, v in dict((identity or {}).get("repos") or {}).items() if v}
+        if repos:
+            links[str(group)] = repos
+    return links

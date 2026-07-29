@@ -19,6 +19,7 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
     """Turn a finished series into its four artifacts, and send the result."""
     from ..negotiation.contract import contract_hash, derive_game_ids
     from ..reporting.filing import MatchFiler
+    from ..reporting.result_blocks import declaration_group
 
     def file_match(games, outcomes, result) -> None:
         """Called once, after the last mini-game."""
@@ -42,8 +43,8 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         # artifact schema and a human reader expect.
         written = filer.file_match(
             games, outcomes, result, _config_body(manager), contract_hash(terms),
-            groups_block={ours: session.get("identity") or {},
-                          theirs: peer.get("identity") or {}},
+            groups_block={ours: declaration_group(session.get("identity") or {}),
+                          theirs: declaration_group(peer.get("identity") or {})},
         )
         actions.last_artifacts = written
         # Filing and sending are separate steps on purpose: the artifacts are

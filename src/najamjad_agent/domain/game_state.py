@@ -29,6 +29,11 @@ class TurnFacts:
     scent: dict[Position, float]
     last_hint: str = ""
     barriers_left: int = 0
+    #: Which mini-game this decision belongs to. The speaker reads it to bill
+    #: the LLM call, and without it every token in a six-game series was
+    #: recorded against sub-game 0 — so the meter held ~7,300 tokens while the
+    #: emitted report said each game cost nothing and the series total was 0.
+    sub_game: int = 0
 
 
 @dataclass
@@ -66,6 +71,7 @@ class GameState:
     def facts(self, legal: tuple[Move, ...]) -> TurnFacts:
         """Snapshot the decision inputs for this turn."""
         return TurnFacts(
+            sub_game=self.sub_game,
             step=self.step,
             role=self.role.value,
             own_position=self.own_position,

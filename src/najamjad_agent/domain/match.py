@@ -11,6 +11,7 @@ all decided elsewhere and merely recorded here.
 """
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from ..constants import EndReason, Role
@@ -30,6 +31,15 @@ StateFactory = Callable[[GameParams, Role, int], GameState]
 # caller no way to wire that, and every real brain raised `AttributeError` the
 # first time it was asked to move.
 BrainFactory = Callable[[Role, GameState], Any]
+
+
+def _now_iso() -> str:
+    """An aware UTC timestamp for the artifacts.
+
+    Aware, not naive: a bare local time in a report read in another timezone
+    is a different moment, and the sample carries an offset.
+    """
+    return datetime.now(tz=UTC).isoformat()
 
 
 class MatchRunner:
@@ -92,6 +102,7 @@ class MatchRunner:
         next one unplayable.
         """
         self._transport.reset()
+        started_at = _now_iso()
         if self._handshake is not None:
             # Per mini-game, not per match: the opponent rebuilds its peer for
             # every sub-game and re-runs the agreement exchange, so a handshake
@@ -117,6 +128,10 @@ class MatchRunner:
         )
         record = {
             "sub_game": sub_game,
+            # Chapter 9 wants match timing, and the lecturer's own sample
+            # carries real ISO timestamps where ours shipped empty strings.
+            "started_at": started_at,
+            "ended_at": _now_iso(),
             "role": role.value,
             "end_reason": outcome.end_reason.value,
             "steps": state.step,
