@@ -25,6 +25,23 @@ import typer
 from .sdk.bootstrap import build_sdk
 from .shared.version import CODE_VERSION
 
+
+def _sdk(**kwargs):
+    """Build the SDK, turning a bad `--opponent` into a message not a traceback.
+
+    A mistyped card name is operator error minutes before a match. The
+    exception already names the available cards; a stack trace above it only
+    buries that.
+    """
+    from .shared.opponents import OpponentError
+
+    try:
+        return build_sdk(**kwargs)
+    except OpponentError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=UNUSABLE_INPUT) from error
+
+
 app = typer.Typer(add_completion=False, help="NajAmjad P2P cops-and-thieves agent.")
 
 UNUSABLE_INPUT = 2
@@ -32,6 +49,9 @@ SHUTDOWN_POLL_SECONDS = 0.5
 
 ConfigOption = Annotated[Path | None, typer.Option("--config", help="role config directory")]
 RoleOption = Annotated[str, typer.Option("--role", help="police or thief; default: this repo's")]
+#: Name of a card in `opponents/`. Carries their URL and group_id, so a match
+#: needs no hand-edit of the tracked config (see shared/opponents.py).
+OpponentOption = Annotated[str, typer.Option("--opponent", help="name of a card in opponents/")]
 
 
 @app.command()
@@ -40,9 +60,10 @@ def peer(
     role: str = "",
     tunnel: Annotated[bool, typer.Option("--tunnel/--no-tunnel")] = True,
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = True,
+    opponent: OpponentOption = "",
 ) -> None:
     """Bring the agent online and serve until interrupted."""
-    sdk = build_sdk(config=config, role=role, dashboard=dashboard)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None)
     url = sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)
     typer.echo(f"agent online at {url}")
     _serve_until_interrupted(sdk)
@@ -54,9 +75,10 @@ def match(
     role: RoleOption = "",
     tunnel: Annotated[bool, typer.Option("--tunnel/--no-tunnel")] = False,
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = False,
+    opponent: OpponentOption = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
-    sdk = build_sdk(config=config, role=role, dashboard=dashboard)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     result = sdk.actions.play_match()
     for game in sdk.actions.games:
@@ -65,9 +87,12 @@ def match(
 
 
 @app.command()
-def preflight(config: ConfigOption = None, role: RoleOption = "") -> None:
+def preflight(
+    config: ConfigOption = None, role: RoleOption = "", opponent: OpponentOption = ""
+) -> None:
     """Run the match-day checks and print the checklist."""
-    report = build_sdk(config=config, role=role, dashboard=False).actions.preflight()
+    report = _sdk(config=config, role=role, dashboard=False,
+                  opponent=opponent or None).actions.preflight()
     typer.echo(report.render())
     raise typer.Exit(code=report.exit_code)
 

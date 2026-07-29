@@ -1,0 +1,14 @@
+# Copy to `<their-name>.toml`. Two facts decide who we play, and both come
+# from THEM — ask for both before a match, not during one.
+#
+#   url       their MCP endpoint, exactly as they give it (including /mcp)
+#   group_id  the id their handshake declares. If this is wrong the filer's
+#             rename never fires and the emitted result is keyed by a
+#             placeholder instead of their name.
+#
+# Nothing here can change an agreed game term: those live in the signed
+# config/game.json. This file is only "who, and where".
+url      = ""
+group_id = ""
+name     = ""
+notes    = ""

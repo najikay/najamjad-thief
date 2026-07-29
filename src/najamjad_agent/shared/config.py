@@ -114,6 +114,15 @@ class ConfigManager:
         value = self.get(name, {})
         return dict(value) if isinstance(value, dict) else {}
 
+    def overlay(self, values: dict[str, Any]) -> None:
+        """Deep-merge late settings — an opponent card — over the loaded config.
+
+        Applied after `load` so the shipped file stays the default and the
+        per-match detail is a separate, reviewable artefact. Uses the same
+        merge as the file layering, so a nested key replaces only itself.
+        """
+        self._values = _deep_merge(self._values, values)
+
     def as_dict(self) -> dict[str, Any]:
         """A detached copy of the merged configuration (snapshots, UI)."""
         return copy.deepcopy(self._values)

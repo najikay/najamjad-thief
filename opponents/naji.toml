@@ -1,0 +1,5 @@
+# The cop side of the practice pair.
+url      = "https://mask-matching-stevens-omissions.trycloudflare.com/mcp"
+group_id = "najamjad"
+name     = "Naji (practice, cop)"
+notes    = "Quick tunnel: the URL changes whenever cloudflared restarts."

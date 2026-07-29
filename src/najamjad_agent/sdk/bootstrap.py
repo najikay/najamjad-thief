@@ -80,6 +80,7 @@ def build_sdk(
     role: str = "",
     dashboard: bool = True,
     workspace: Path | None = None,
+    opponent: str | None = None,
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -96,6 +97,13 @@ def build_sdk(
         workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
     )
     manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
+    if opponent:
+        # Late and narrow: only `network.opponent_*`, so a card can never
+        # reach a signed game term (see shared/opponents.py).
+        from ..shared.opponents import as_overlay, load_opponent
+
+        card = load_opponent(opponent)
+        manager.overlay(as_overlay(card))
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path(setting(setup, "paths.workspace", "workspace")))
                    / "events.jsonl")
