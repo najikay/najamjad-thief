@@ -192,13 +192,30 @@ class MatchFiler:
         }
 
     def send(self, result_path: str | Path) -> str | None:
-        """Email the result; returns the message id, or None when not wired."""
+        """Email the result; returns the message id, or None when not wired.
+
+        `send_report` returns a `SendResult`, not an id. This used to put the
+        dataclass itself into the event, which is not JSON-serialisable, so the
+        emit raised and the whole filing step was recorded as failed *after the
+        mail had already gone out* — the worst possible reading of the state.
+
+        It survived the life of the project because no Gmail service was ever
+        injected: every send raised one line earlier, and this line had never
+        run. A dead code path cannot be wrong, right up until it is reached.
+        """
         if self._sender is None:
             self._emit({"event": "report.not_sent", "reason": "no mail sender configured"})
             return None
-        message_id = self._sender.send_report(Path(result_path), subject=self._game_id)
-        self._emit({"event": "report.sent", "message_id": message_id})
-        return message_id
+        sent = self._sender.send_report(Path(result_path), subject=self._game_id)
+        self._emit(
+            {
+                "event": "report.sent",
+                "message_id": sent.message_id,
+                "recipient": sent.recipient,
+                "mode": sent.mode,
+            }
+        )
+        return sent.message_id
 
 
 

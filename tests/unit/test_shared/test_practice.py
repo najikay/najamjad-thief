@@ -106,3 +106,20 @@ def test_loading_reads_both_fields():
     mode = load_practice({"practice": {"enabled": True, "redirect_to": MINE}})
 
     assert mode.enabled is True and mode.redirect_to == MINE
+
+
+def test_practice_forces_a_real_send_even_when_the_config_says_draft():
+    """One switch, not two.
+
+    Practice mode exists to exercise delivery, so a draft would defeat it — and
+    a silent draft reads exactly like a successful send until you look in the
+    wrong folder. Before this, a practice run needed the toggle *and* a
+    hand-edit of `email.mode`.
+    """
+    assert ON.mode_for("draft") == "send"
+
+
+def test_a_counted_run_keeps_whatever_mode_was_configured():
+    """Off must change nothing — including not arming a send that was drafted."""
+    assert OFF.mode_for("draft") == "draft"
+    assert OFF.mode_for("send") == "send"

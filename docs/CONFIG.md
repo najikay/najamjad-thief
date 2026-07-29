@@ -99,7 +99,7 @@ to play. See that module before editing anything here.
 | `llm.series_token_budget` | 200000 | The agreed term. Exceeding it is a breach, not an expense. |
 | `llm.project_token_budget` | 5000000 | Runaway-loop backstop, ~20× the projection. |
 | `email.recipient` | Appendix F address | Rule 30 fixes the scope at `gmail.send`. |
-| `email.mode` | `draft` | **Change to `send` for a counted match.** `draft` is the safe default while testing. |
+| `email.mode` | `draft` | **Change to `send` for a counted match.** `draft` is the safe default while testing; practice mode overrides it to `send` (§3b). |
 | `strategy.cop_class` / `thief_class` | `""` | Empty means the shipped brains; a `"module:Attribute"` path loads a plugin (`docs/EXTENDING.md`). |
 | `[strategy.cop]` | `barrier_threshold` 0.40, `lookahead` 2, `claim_threshold` 0.12 | The dials the sweep varies. `barrier_threshold` decides matches: 0.05 captured 4 % of games, 0.40 captured 100 %. |
 | `[strategy.thief]` | `horizon` 3, `stall_trigger` 3 | `stall_trigger` is how close to the survival horizon the thief stops taking chances. |
@@ -131,6 +131,13 @@ of no return:
 So a rewrite that silently does not happen is a loud failure rather than mail to
 the lecturer. A half-configured practice mode (enabled, no `redirect_to`)
 refuses to send at all rather than falling through to the configured recipient.
+
+Practice mode also **forces `email.mode` to `send`**. That looks like the unsafe
+direction and is the opposite: the whole design is that a practice run exercises
+delivery for real, to us, because the send is the step assignment 6 lost matches
+to. Without this, "practice" was two switches — the toggle and a hand-edit — and
+getting the pair half-right produced a silent draft, which reads exactly like a
+successful send until you look in the wrong folder.
 
 The flag is read **fresh from disk** every time a sender is built, not cached at
 boot. That is what lets the dashboard toggle take effect without a restart, and

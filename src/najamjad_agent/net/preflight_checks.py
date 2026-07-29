@@ -71,6 +71,29 @@ def tunnel_check(tunnel: Any) -> Callable[[], Any]:
     return probe
 
 
+def gmail_check() -> Callable[[], str]:
+    """Confirm the report can actually be sent, before the match rather than after.
+
+    The gap this closes: `email.recipient` being set proves only that we know
+    *where* to send. Nothing checked that we *could*, and nothing injected a
+    Gmail service, so every match ended with the report undelivered — which
+    book rules 33-35 score like not playing at all.
+
+    Loading the credentials is the whole check. It is offline, it refreshes
+    silently, and it cannot prompt; if it raises, the fix is a one-line script
+    run and there is still time to run it.
+    """
+
+    def probe() -> str:
+        """Confirm stored credentials load, refresh, and grant send-only scope."""
+        from ..reporting.gmail_auth import load_credentials
+
+        credentials = load_credentials()
+        return f"send-only token valid={credentials.valid}"
+
+    return probe
+
+
 def standard_checks(manager: ConfigManager, server: Any, tunnel: Any = None) -> dict[str, Any]:
     """Everything that must hold before the agent claims to be match-ready."""
     return {
@@ -79,5 +102,6 @@ def standard_checks(manager: ConfigManager, server: Any, tunnel: Any = None) -> 
         "tunnel": tunnel_check(tunnel),
         "opponent_url": required_setting(manager, "network.opponent_url"),
         "email_recipient": required_setting(manager, "email.recipient"),
+        "gmail_credentials": gmail_check(),
         "group_id": required_setting(manager, "game.group_id"),
     }

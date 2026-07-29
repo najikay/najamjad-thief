@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from ..shared.gatekeeper import ApiGatekeeper
-from ..shared.practice import PracticeMode
+from ..shared.practice import PracticeError, PracticeMode
 from .mail_message import SendResult, build_message
 
 __all__ = ["DRAFT", "SEND", "GmailError", "GmailSender", "SendResult", "build_message"]
@@ -88,14 +88,23 @@ class GmailSender:
         """
         # Checked before the gatekeeper: a missing service is a configuration
         # error, and retrying it three times only buries the actionable message
-        # under a generic "failed after N attempts".
-        self._api()
+        # under a generic "failed after N attempts". It is parked on the way
+        # out, though — this branch used to raise past the dead-letter handler,
+        # so the one failure most likely to happen was the one that left no
+        # recoverable copy behind.
+        try:
+            self._api()
+        except GmailError as unusable:
+            self._park(attachment, str(unusable))
+            raise
         recipient = self._practice.route(self.recipient)
         self._practice.verify(recipient)
         subject = self._practice.subject(subject)
         raw = build_message(self.sender, recipient, subject, body or subject, attachment)
         try:
             response = self._gatekeeper.execute(self._dispatch, raw)
+        except PracticeError:
+            raise
         except Exception as error:  # noqa: BLE001 - re-raised after preserving the report
             self._park(attachment, str(error))
             raise GmailError(f"report not delivered: {error}") from error

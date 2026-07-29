@@ -186,7 +186,9 @@ return, so a rewrite that silently failed raises instead of delivering. See
 
 Toggle it from the panel (with `features.controls` on), or set
 `practice.enabled` in `config/setup.json`. It is read fresh each time a report
-is built, so the switch takes effect without a restart.
+is built, so the switch takes effect without a restart, and it overrides
+`email.mode` to `send` — a practice run that quietly produced a draft would
+look exactly like a successful send.
 
 *Is anyone actually reachable?* **Probe endpoints** dials our MCP URL and the
 opponent's and reports three states, not two:

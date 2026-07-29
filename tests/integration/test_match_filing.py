@@ -18,6 +18,7 @@ import pytest
 
 from najamjad_agent.domain.scoring import SeriesResult
 from najamjad_agent.reporting.filing import MatchFiler, final_result_block, sub_game_rows
+from najamjad_agent.reporting.mail_message import SendResult
 
 GOLDEN = Path("tests/goldens/artifacts/result_segal-police-team-vs-segal-thief-team.json")
 GROUPS = ("najamjad", "rival")
@@ -155,16 +156,23 @@ def test_nothing_is_sent_when_no_mail_sender_is_wired(tmp_path):
 
 
 def test_the_result_is_sent_through_the_configured_sender(tmp_path):
+    """The fake returns a `SendResult`, because the real sender does.
+
+    This fake used to return a bare string, which is why the defect it should
+    have caught shipped: `filing.send` treated the return as a message id and
+    put the whole object into a JSON event. The fake modelled the *buggy*
+    contract, so the test agreed with the bug and stayed green.
+    """
     sent: list[Path] = []
 
     class Sender:
         def send_report(self, path, subject):
             sent.append(path)
-            return "msg-1"
+            return SendResult(message_id="msg-1", mode="send", recipient="me@example.invalid")
 
     filer = MatchFiler(tmp_path, GAME_ID, "uid", GROUPS, sender=Sender())
 
-    assert filer.send(tmp_path / "result.json") == "msg-1"
+    assert filer.send(tmp_path / "result.json") == "msg-1", "the id, not the object"
     assert sent
 
 

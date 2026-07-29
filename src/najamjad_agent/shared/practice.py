@@ -34,6 +34,7 @@ from typing import Any
 from .app_config import DEFAULT_PATH, load_setup, save_setup, setting
 
 BANNER = "PRACTICE RUN — not a counted match"
+SEND = "send"
 SUBJECT_PREFIX = "[PRACTICE] "
 ADDRESS = re.compile(r"<([^>]+)>")
 
@@ -104,6 +105,21 @@ class PracticeMode:
                 f"practice mode would have sent to {recipient!r}, not the "
                 f"redirect address {self.redirect_to!r}; refusing to send"
             )
+
+    def mode_for(self, configured: str) -> str:
+        """The send mode a practice run needs, or the configured one.
+
+        Practice mode forces a real send. That looks like the unsafe direction
+        and is the opposite: the entire design is that a practice run exercises
+        delivery for real — to *us* — because the send is the step assignment 6
+        lost matches to, and a draft would leave it untested.
+
+        Without this, "practice" was two switches: the toggle, and a hand-edit
+        of `email.mode`. Getting the pair half-right meant a practice run that
+        silently drafted, which reads exactly like a successful send until you
+        look in the wrong folder. One switch, as promised.
+        """
+        return SEND if self.enabled else configured
 
     def subject(self, subject: str) -> str:
         """Mark the mail so a practice report is never mistaken in the inbox."""

@@ -69,6 +69,11 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
     unauthorised — the artifacts are already on disk and can be sent by hand —
     so the absence is reported as an event and the series still closes cleanly.
 
+    The Gmail service is injected here. Nothing used to inject one, so every
+    sender was built unusable and each match ended with the report undelivered
+    — the assignment 6 failure, reproduced. `preflight` now checks the same
+    credentials before a match, which is the only moment the fix is cheap.
+
     `email.mode` stays `draft` until a counted match: a draft is recoverable, a
     wrongly-addressed send is not. Practice mode is passed down rather than
     applied here, so the redirect and its guard live at the point of no return
@@ -77,11 +82,13 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
     must reflect the operator's most recent decision, not the value that
     happened to be on disk when the process booted.
     """
+    from ..reporting.gmail_auth import service_or_none
     from ..reporting.gmail_sender import GmailSender
     from ..shared.gatekeeper import ApiGatekeeper
     from ..shared.practice import current
     from ..shared.rate_limits import for_service, load_rate_limits
 
+    practice = current()
     try:
         limits = load_rate_limits(
             Path(setting(setup, "paths.rate_limits", "config/rate_limits.json"))
@@ -89,11 +96,12 @@ def _mail_sender(manager: Any, bus: Any, setup: dict) -> Any:
         return GmailSender(
             gatekeeper=ApiGatekeeper(service="gmail", config=for_service(limits, "gmail"),
                                      emit=bus.publish),
+            service=service_or_none(),
             recipient=str(manager.require("email.recipient")),
-            mode=str(manager.get("email.mode", "draft")),
+            mode=practice.mode_for(str(manager.get("email.mode", "draft"))),
             emit=bus.publish,
             dead_letter_dir=Path(setting(setup, "paths.dead_letters", "workspace/dead_letters")),
-            practice=current(),
+            practice=practice,
         )
     except Exception as error:  # noqa: BLE001 - reported, never fatal to a match
         bus.publish({"event": "mail.unavailable", "reason": f"{type(error).__name__}: {error}"})
