@@ -52,6 +52,9 @@ RoleOption = Annotated[str, typer.Option("--role", help="police or thief; defaul
 #: Name of a card in `opponents/`. Carries their URL and group_id, so a match
 #: needs no hand-edit of the tracked config (see shared/opponents.py).
 OpponentOption = Annotated[str, typer.Option("--opponent", help="name of a card in opponents/")]
+#: A practice-only identity override. Never for a counted match: the committed
+#: config carries our real group_id and a test pins it.
+GroupIdOption = Annotated[str, typer.Option("--group-id", help="override our group_id (practice only)")]
 
 
 @app.command()
@@ -61,9 +64,10 @@ def peer(
     tunnel: Annotated[bool, typer.Option("--tunnel/--no-tunnel")] = True,
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = True,
     opponent: OpponentOption = "",
+    group_id: GroupIdOption = "",
 ) -> None:
     """Bring the agent online and serve until interrupted."""
-    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
     url = sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)
     typer.echo(f"agent online at {url}")
     _serve_until_interrupted(sdk)
@@ -76,9 +80,10 @@ def match(
     tunnel: Annotated[bool, typer.Option("--tunnel/--no-tunnel")] = False,
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = False,
     opponent: OpponentOption = "",
+    group_id: GroupIdOption = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
-    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     result = sdk.actions.play_match()
     for game in sdk.actions.games:
@@ -88,11 +93,14 @@ def match(
 
 @app.command()
 def preflight(
-    config: ConfigOption = None, role: RoleOption = "", opponent: OpponentOption = ""
+    config: ConfigOption = None,
+    role: RoleOption = "",
+    opponent: OpponentOption = "",
+    group_id: GroupIdOption = "",
 ) -> None:
     """Run the match-day checks and print the checklist."""
     report = _sdk(config=config, role=role, dashboard=False,
-                  opponent=opponent or None).actions.preflight()
+                  opponent=opponent or None, group_id=group_id or None).actions.preflight()
     typer.echo(report.render())
     raise typer.Exit(code=report.exit_code)
 

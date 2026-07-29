@@ -13,6 +13,7 @@ import os
 import platform
 import shutil
 import subprocess
+from typing import Any
 
 UNKNOWN = "unknown"
 BYTES_PER_GB = 1024**3
@@ -31,14 +32,69 @@ def _cpu_name() -> str:
     return platform.processor() or platform.machine() or UNKNOWN
 
 
-def _ram_gb() -> float | str:
-    """Total physical memory in GB."""
+def _ram_unix() -> float | str:
+    """Total physical memory via POSIX `sysconf`, or UNKNOWN off POSIX."""
     try:
-        pages = os.sysconf("SC_PHYS_PAGES")
-        page_size = os.sysconf("SC_PAGE_SIZE")
+        pages = os.sysconf("SC_PHYS_PAGES")  # type: ignore[attr-defined]
+        page_size = os.sysconf("SC_PAGE_SIZE")  # type: ignore[attr-defined]
     except (ValueError, OSError, AttributeError):
         return UNKNOWN
     return round(pages * page_size / BYTES_PER_GB, 1)
+
+
+def _ram_windows(kernel32: Any = None) -> float | str:
+    """Total physical memory via `GlobalMemoryStatusEx`, or UNKNOWN elsewhere.
+
+    `kernel32` is injectable so the Windows path is testable from any
+    platform — otherwise it is code that only ever runs where the suite does
+    not, which is how it stayed broken.
+    """
+    import ctypes
+
+    class _MemoryStatus(ctypes.Structure):
+        """The Win32 `MEMORYSTATUSEX` record, field-for-field.
+
+        Input: `dwLength` set to the struct size before the call — Windows
+            uses it to version the record and rejects a wrong value.
+        Output: `ullTotalPhys`, the only field we read.
+        Setup: field order and widths must match the Win32 header exactly;
+            a shorter struct silently misreads memory.
+        """
+
+        _fields_ = [
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+    try:
+        library = kernel32 or ctypes.windll.kernel32  # type: ignore[attr-defined]
+        status = _MemoryStatus()
+        status.dwLength = ctypes.sizeof(_MemoryStatus)
+        if not library.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return UNKNOWN
+        return round(status.ullTotalPhys / BYTES_PER_GB, 1)
+    except Exception:  # noqa: BLE001 - any probe failure degrades to UNKNOWN
+        return UNKNOWN
+
+
+def _ram_gb() -> float | str:
+    """Total physical memory in GB, by whichever probe this platform supports.
+
+    `os.sysconf` does not exist on Windows, so this reported UNKNOWN on every
+    Windows machine — and `collect_spec` files that straight into the Step-0
+    declaration, leaving rule 24's computational-fairness normalisation with a
+    blank. CI runs ubuntu, so it was green there and wrong on the machines the
+    matches are actually played from. Found by a teammate on Windows.
+    """
+    memory = _ram_unix()
+    return memory if memory != UNKNOWN else _ram_windows()
 
 
 def _gpu_name() -> str:

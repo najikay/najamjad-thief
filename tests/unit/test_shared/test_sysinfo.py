@@ -119,3 +119,45 @@ def test_git_commit_in_this_repository_is_a_hash_or_unknown() -> None:
 
 def _raising_open(*_args, **_kwargs):
     raise OSError("permission denied")
+
+
+# ------------------------------------------------------- the Windows RAM path
+
+
+class FakeKernel32:
+    """Stands in for `ctypes.windll.kernel32.GlobalMemoryStatusEx`.
+
+    Injected so the Windows branch is exercised from Linux. Without this it is
+    code that only runs where the suite does not — which is exactly how
+    `os.sysconf` (POSIX-only) shipped as the sole probe and left every Windows
+    machine reporting `ram_gb: unknown` into the Step-0 declaration.
+    """
+
+    def __init__(self, total_bytes: int = 8 * 1024**3, ok: bool = True) -> None:
+        self.total_bytes = total_bytes
+        self.ok = ok
+
+    def GlobalMemoryStatusEx(self, reference) -> int:  # noqa: N802 - Win32 spelling
+        if not self.ok:
+            return 0
+        reference._obj.ullTotalPhys = self.total_bytes
+        return 1
+
+
+def test_the_windows_probe_reports_physical_memory():
+    assert sysinfo._ram_windows(FakeKernel32(total_bytes=8 * 1024**3)) == 8.0
+
+
+def test_a_failing_windows_call_degrades_rather_than_raising():
+    """A blank is bad; a crash while building the declaration is worse."""
+    assert sysinfo._ram_windows(FakeKernel32(ok=False)) == sysinfo.UNKNOWN
+
+
+def test_the_windows_probe_is_absent_off_windows():
+    """`ctypes.windll` does not exist here, and that must be a quiet UNKNOWN."""
+    assert sysinfo._ram_windows() == sysinfo.UNKNOWN
+
+
+def test_the_combined_probe_prefers_whichever_platform_answers():
+    """One entry point, so `collect_spec` never has to know the platform."""
+    assert sysinfo._ram_gb() != sysinfo.UNKNOWN, "this suite runs on POSIX"

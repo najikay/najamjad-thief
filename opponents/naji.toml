@@ -1,5 +1,10 @@
-# The cop side of the practice pair.
-url      = "https://mask-matching-stevens-omissions.trycloudflare.com/mcp"
+# The cop side. A PERMANENT hostname (ADR-004): a named Cloudflare tunnel does
+# not mint a new URL on restart, so this card stays valid between sessions.
+#
+# An earlier version carried a quick-tunnel URL that belonged to the thief
+# machine's own local self-test — dialling it would have had the thief play
+# itself. Confirm an endpoint answers from the OTHER machine before trusting it.
+url      = "https://cop.4laboratory.com/mcp"
 group_id = "najamjad"
-name     = "Naji (practice, cop)"
-notes    = "Quick tunnel: the URL changes whenever cloudflared restarts."
+name     = "Naji (cop)"
+notes    = "Named tunnel, stable across restarts. Cop must run WITH --tunnel for this to answer."

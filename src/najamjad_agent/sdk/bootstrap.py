@@ -81,6 +81,7 @@ def build_sdk(
     dashboard: bool = True,
     workspace: Path | None = None,
     opponent: str | None = None,
+    group_id: str | None = None,
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -97,6 +98,14 @@ def build_sdk(
         workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
     )
     manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
+    if group_id:
+        # A practice-only identity, applied at runtime so it never touches the
+        # committed config. Two agents from one team both declaring "najamjad"
+        # collapse every per-group dict in the report to a single key — two
+        # scores, one entry, silently. The alternative was editing the shipped
+        # config and loosening the test that pins our real identity, which
+        # would let a wrong group_id ship at submission.
+        manager.overlay({"game": {"group_id": group_id}})
     if opponent:
         # Late and narrow: only `network.opponent_*`, so a card can never
         # reach a signed game term (see shared/opponents.py).
