@@ -38,6 +38,9 @@ from urllib.parse import urlparse
 from ..shared.events import Emit
 
 DEFAULT_PORTS = {"http": 80, "https": 443}
+#: How often to say we are still waiting. Silence for fifteen minutes reads as
+#: a hang, and an operator who suspects a hang restarts the working process.
+NOTE_EVERY_SEC = 60.0
 
 
 def endpoint_of(url: str) -> tuple[str, int] | None:
@@ -74,7 +77,7 @@ def is_ready(url: str, host: str, port: int, timeout: float = 5.0) -> bool:
 
 def wait_for_opponent(
     url: str,
-    timeout: float = 120.0,
+    timeout: float = 900.0,
     poll: float = 2.0,
     emit: Emit | None = None,
     clock: object = time.monotonic,
@@ -94,15 +97,26 @@ def wait_for_opponent(
 
     host, port = target
     started = clock()  # type: ignore[operator]
+    last_note = 0.0
     announced = False
     while clock() - started < timeout:  # type: ignore[operator]
         if is_ready(url, host, port):
             announce({"event": "opponent.ready", "waited": round(clock() - started, 1)})  # type: ignore[operator]
             return True
-        if not announced:
-            # Once, not every poll: a human watching the console needs to know
-            # we are waiting rather than stuck, and needs it said once.
-            announce({"event": "opponent.waiting", "host": host, "port": port})
+        if not announced or clock() - last_note >= NOTE_EVERY_SEC:  # type: ignore[operator]
+            # Once immediately, then every minute. A single line at the start
+            # was right for a two-minute wait and wrong for a fifteen-minute
+            # one: fourteen silent minutes is indistinguishable from a hang,
+            # and an operator who suspects a hang restarts the thing that was
+            # working.
+            announce({
+                "event": "opponent.waiting",
+                "host": host,
+                "port": port,
+                "waited": round(clock() - started, 0),  # type: ignore[operator]
+                "giving_up_in": round(timeout - (clock() - started), 0),  # type: ignore[operator]
+            })
+            last_note = clock()  # type: ignore[operator]
             announced = True
         sleep(poll)  # type: ignore[operator]
     announce({"event": "opponent.absent", "host": host, "port": port, "waited": timeout})

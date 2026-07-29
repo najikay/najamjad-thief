@@ -190,3 +190,26 @@ def test_actions_hold_no_decision_logic():
 
     assert source.count("    for ") == 0, "iteration is logic; delegate it"
     assert "while " not in source
+
+
+def test_an_absent_opponent_stops_the_match_instead_of_playing_on(monkeypatch):
+    """The defect a real match attempt exposed (T-2434).
+
+    The wait's result was discarded, so an expired wait recorded
+    `opponent.absent waited=120` and then went on to play anyway — dying three
+    stack frames deep in a `502 Bad Gateway` at the handshake. The wait already
+    knew the answer; using it is the whole point of having run it.
+    """
+    from najamjad_agent.sdk import actions as actions_module
+    from najamjad_agent.sdk.actions import AgentActions, OpponentUnreachableError
+
+    monkeypatch.setattr(actions_module, "wait_for_opponent", lambda *_a, **_k: False)
+
+    class Match:
+        def play_series(self):
+            raise AssertionError("must not play against an opponent who never arrived")
+
+    agent = AgentActions(opponent_url="https://absent.invalid/mcp", match=Match())
+
+    with pytest.raises(OpponentUnreachableError, match="did not answer"):
+        agent.play_match(wait_seconds=5)

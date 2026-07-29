@@ -123,3 +123,40 @@ def test_a_counted_run_keeps_whatever_mode_was_configured():
     """Off must change nothing — including not arming a send that was drafted."""
     assert OFF.mode_for("draft") == "draft"
     assert OFF.mode_for("send") == "send"
+
+
+def test_the_environment_can_arm_practice_without_touching_the_config(monkeypatch):
+    """Toggling the file to run a practice match dirties a tracked config and
+    trips the test pinning the shipped default to off — four times in one
+    afternoon, each needing the flag flipped back before a commit.
+
+    A per-process override expires with the process, which is the correct
+    lifetime for "this run is not counted".
+    """
+    from najamjad_agent.shared.practice import PRACTICE_ENV, current
+
+    monkeypatch.setenv(PRACTICE_ENV, "1")
+
+    mode = current()
+
+    assert mode.enabled is True
+    assert mode.redirect_to, "the redirect still comes from config, not the flag"
+
+
+@pytest.mark.parametrize("value", ["0", "false", "no", ""])
+def test_a_falsey_override_does_not_arm_practice(monkeypatch, value):
+    """`NAJAMJAD_PRACTICE=0` must mean counted, not "the variable exists"."""
+    from najamjad_agent.shared.practice import PRACTICE_ENV, current
+
+    monkeypatch.setenv(PRACTICE_ENV, value)
+
+    assert current().enabled is False
+
+
+def test_without_the_override_the_file_decides(monkeypatch):
+    """The dashboard toggle writes the file, and that must still work."""
+    from najamjad_agent.shared.practice import PRACTICE_ENV, current
+
+    monkeypatch.delenv(PRACTICE_ENV, raising=False)
+
+    assert current().enabled is False, "the shipped config is off"

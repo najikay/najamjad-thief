@@ -39,6 +39,11 @@ handshake_timeout_seconds = 60
 response_timeout_seconds = 30
 watchdog_threshold_seconds = 60
 max_retries = 3
+# How long to wait for the opponent to come up before giving up. Two teams
+# agreeing "20:00" do not both start within two minutes — the old default —
+# and a wait that expires now stops the match with a message rather than
+# walking into a 502 at the handshake. Set 0 to skip waiting entirely.
+opponent_wait_seconds = 900
 
 [tunnel]
 # A PERMANENT hostname — this is the whole point. Cloudflare named tunnels do

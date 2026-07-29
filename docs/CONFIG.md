@@ -91,6 +91,7 @@ to play. See that module before editing anything here.
 | `network.response_timeout_seconds` | 30 | How long we wait for their turn. |
 | `network.watchdog_threshold_seconds` | 60 | Series-level stall detection. |
 | `network.max_retries` | 3 | Retries before we call a turn timed out. |
+| `network.opponent_wait_seconds` | 900 | How long to wait for the opponent before giving up. Was 120 and **expired on a real match attempt** — two teams agreeing a time do not both start inside two minutes. The wait reports progress every 60 s, and an expiry now stops the match with a message instead of walking into a 502 at the handshake. `0` skips waiting. |
 | `tunnel.provider` / `hostname` / `name` | cloudflare / `cop.4laboratory.com` | A **named** tunnel: the hostname survives restarts, so the opponent's saved URL keeps working (ADR-004). |
 | `llm.primary` / `fallback` | deepseek / anthropic | Provider chain; templates are the floor beneath both. **A vendor whose API key is absent is skipped entirely**, not merely tried and failed — see §4. |
 | `llm.model` | `deepseek-v4-flash` | The **primary's** model, and the one declared to the opponent — those must be the same string, or the declaration artifact names a model we never call. `deepseek-chat` was retired; the current line is `deepseek-v4-flash` and `deepseek-v4-pro`. Flash writes a 15-word hint just as well for a third of the price. |

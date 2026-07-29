@@ -26,6 +26,20 @@ from .sdk.bootstrap import build_sdk
 from .shared.version import CODE_VERSION
 
 
+def _practice(enabled: bool) -> None:
+    """Arm practice mode for this process only.
+
+    Set before the SDK is built, because everything downstream reads the mode
+    fresh at the moment it needs it.
+    """
+    if enabled:
+        import os
+
+        from .shared.practice import PRACTICE_ENV
+
+        os.environ[PRACTICE_ENV] = "1"
+
+
 def _sdk(**kwargs):
     """Build the SDK, turning a bad `--opponent` into a message not a traceback.
 
@@ -55,6 +69,8 @@ OpponentOption = Annotated[str, typer.Option("--opponent", help="name of a card 
 #: A practice-only identity override. Never for a counted match: the committed
 #: config carries our real group_id and a test pins it.
 GroupIdOption = Annotated[str, typer.Option("--group-id", help="override our group_id (practice only)")]
+#: Runs this process in practice mode without touching any tracked file.
+PracticeOption = Annotated[bool, typer.Option("--practice/--counted", help="redirect reports to the operator")]
 
 
 @app.command()
@@ -65,8 +81,10 @@ def peer(
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = True,
     opponent: OpponentOption = "",
     group_id: GroupIdOption = "",
+    practice: PracticeOption = False,
 ) -> None:
     """Bring the agent online and serve until interrupted."""
+    _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
     url = sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)
     typer.echo(f"agent online at {url}")
@@ -81,11 +99,19 @@ def match(
     dashboard: Annotated[bool, typer.Option("--dashboard/--no-dashboard")] = False,
     opponent: OpponentOption = "",
     group_id: GroupIdOption = "",
+    practice: PracticeOption = False,
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
+    _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
-    result = sdk.actions.play_match()
+    from .sdk.actions import OpponentUnreachableError
+
+    try:
+        result = sdk.actions.play_match()
+    except OpponentUnreachableError as absent:
+        typer.echo(str(absent), err=True)
+        raise typer.Exit(code=UNUSABLE_INPUT) from absent
     for game in sdk.actions.games:
         typer.echo(f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} {game['audit']}")
     typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
@@ -97,8 +123,10 @@ def preflight(
     role: RoleOption = "",
     opponent: OpponentOption = "",
     group_id: GroupIdOption = "",
+    practice: PracticeOption = False,
 ) -> None:
     """Run the match-day checks and print the checklist."""
+    _practice(practice)
     report = _sdk(config=config, role=role, dashboard=False,
                   opponent=opponent or None, group_id=group_id or None).actions.preflight()
     typer.echo(report.render())

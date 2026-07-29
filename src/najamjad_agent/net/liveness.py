@@ -5,12 +5,17 @@ publishes it, and the opponent's endpoint. Before this existed, checking them
 meant three `curl`s and knowing which three, which is a bad thing to be doing at
 20:00 with an opponent waiting.
 
-**What a green light means, precisely:** something accepted a TCP connection at
-that host and port. It does not mean the MCP server is healthy, that it speaks
-our protocol, or that it will agree to our terms — that is what the handshake is
-for. The probe is deliberately no richer than `opponent_wait`'s, because a
-liveness panel that made stronger claims than it could check would be worse than
-none: an operator would stop verifying the things it silently did not cover.
+**What a green light means, precisely:** for an `http(s)` endpoint, an MCP
+server answered below the 5xx range — it is running and talking, though not
+necessarily agreeable to our terms; that is what the handshake is for. For a
+bare `host:port`, something accepted a TCP connection.
+
+It used to mean TCP in both cases, and that made the panel lie in the one
+configuration that matters. A tunnel edge accepts TCP whether or not the agent
+behind it is alive, so the panel reported "Everything configured is answering"
+about an opponent who was not there — while the match wait, probing the same
+address over HTTP, correctly recorded `opponent.absent`. Two probes disagreeing
+about the same host is one probe too many: both now use `is_ready`.
 
 The distinction that earns its keep is **unreachable versus unconfigured**. An
 empty `opponent_url` is not a failure, it is a match not yet scheduled, and
@@ -22,12 +27,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .opponent_wait import endpoint_of, is_listening
+from .opponent_wait import endpoint_of, is_ready
 
 UNCONFIGURED = "not configured"
 UNPARSEABLE = "not a usable URL"
-LISTENING = "accepting connections"
-SILENT = "nothing listening"
+LISTENING = "answering"
+SILENT = "not answering"
 
 
 @dataclass(frozen=True)
@@ -57,7 +62,7 @@ def check(name: str, url: str, timeout: float = 1.0) -> Probe:
     if endpoint is None:
         return Probe(name, url, False, UNPARSEABLE)
     host, port = endpoint
-    if is_listening(host, port, timeout=timeout):
+    if is_ready(url, host, port, timeout=timeout):
         return Probe(name, url, True, LISTENING)
     return Probe(name, url, False, SILENT)
 

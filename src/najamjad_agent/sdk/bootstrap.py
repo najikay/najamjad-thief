@@ -130,6 +130,7 @@ def build_sdk(
         workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
         emit=bus.publish,
         opponent_url=str(manager.get("network.opponent_url", "")),
+        wait_seconds=float(manager.get("network.opponent_wait_seconds", 900)),
     )
     # One meter for the whole process: the dashboard's budget panel and the
     # token figures in the emailed report must be the same numbers, not two

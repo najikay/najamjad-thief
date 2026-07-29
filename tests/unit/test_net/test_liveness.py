@@ -19,7 +19,15 @@ UP = "http://127.0.0.1:8801/mcp"
 
 
 def answering(monkeypatch, listening: bool) -> None:
-    monkeypatch.setattr(liveness, "is_listening", lambda *_a, **_k: listening)
+    """Patch the readiness check the panel actually calls.
+
+    This used to patch `is_listening`, the TCP probe. The panel now uses
+    `is_ready`, which speaks HTTP to an `http(s)` target — because a tunnel
+    edge accepts TCP whether or not the agent behind it is alive, so the panel
+    reported an absent opponent as "answering" while the match wait, probing
+    the same address, correctly recorded `opponent.absent`.
+    """
+    monkeypatch.setattr(liveness, "is_ready", lambda *_a, **_k: listening)
 
 
 def test_an_answering_endpoint_is_green(monkeypatch):
@@ -56,7 +64,7 @@ def test_probing_never_raises_on_a_dead_host():
     """The panel must survive what it is there to report on.
 
     A real connection to a closed local port, not a stubbed one: the point is
-    that the socket error is handled, and mocking `is_listening` here would
+    that the transport error is handled, and mocking the probe here would
     test nothing.
     """
     assert liveness.check("dead", "http://127.0.0.1:59999").reachable is False

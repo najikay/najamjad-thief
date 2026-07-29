@@ -26,6 +26,7 @@ gets mistaken for a real one, so everything hangs off `enabled`.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,8 @@ from .app_config import DEFAULT_PATH, load_setup, save_setup, setting
 
 BANNER = "PRACTICE RUN — not a counted match"
 SEND = "send"
+#: Per-process practice override; see `current`.
+PRACTICE_ENV = "NAJAMJAD_PRACTICE"
 SUBJECT_PREFIX = "[PRACTICE] "
 ADDRESS = re.compile(r"<([^>]+)>")
 
@@ -170,9 +173,23 @@ def save_practice(enabled: bool, path: Path | str = DEFAULT_PATH) -> PracticeMod
 
 
 def current() -> PracticeMode:
-    """The mode in force right now, read fresh from disk.
+    """The mode in force right now: the environment first, then disk.
 
     Deliberately not cached. A stale "practice is on" is the one belief that
     must never outlive the config that justified it.
+
+    `NAJAMJAD_PRACTICE` exists because toggling the *file* to run a practice
+    match dirties a tracked config and trips the test that pins the shipped
+    default to off — which happened four times in one afternoon, each time
+    needing the flag flipped back before a commit. A per-process override runs
+    a practice match without touching the repository, and expires with the
+    process, which is the correct lifetime for "this run is not counted".
     """
+    override = os.environ.get(PRACTICE_ENV, "")
+    if override:
+        setup = load_setup()
+        return PracticeMode(
+            enabled=override.strip().lower() not in ("", "0", "false", "no"),
+            redirect_to=str(setting(setup, "practice.redirect_to", "")),
+        )
     return load_practice(load_setup())

@@ -17,6 +17,10 @@ from ..replay.verifier import ReplayResult, verify_log
 from ..reporting.archive import ArchiveReport, build_archive
 
 
+class OpponentUnreachableError(RuntimeError):
+    """The opponent never came up within the wait window."""
+
+
 class AgentActions:
     """Operations, bound to whichever services were wired in."""
 
@@ -31,6 +35,7 @@ class AgentActions:
         dashboard: Any = None,
         match: Any = None,
         opponent_url: str = "",
+        wait_seconds: float = 900.0,
     ) -> None:
         """Hold the services; all are optional before a match is configured."""
         self._server = server
@@ -42,6 +47,7 @@ class AgentActions:
         self._dashboard = dashboard
         self._match = match
         self._opponent_url = opponent_url
+        self._wait_seconds = wait_seconds
         self._file_match: Any = None
         #: Where the last match's artifacts were written, for the CLI and dashboard.
         self.last_artifacts: dict[str, Any] = {}
@@ -122,7 +128,7 @@ class AgentActions:
         """Wire in the match runner once the opponent URL is known."""
         self._match = runner
 
-    def play_match(self, wait_seconds: float = 120.0) -> Any:
+    def play_match(self, wait_seconds: float | None = None) -> Any:
         """Play the agreed series against the opponent and return the result.
 
         Waits for the opponent to be listening first. Both peers dial each
@@ -133,8 +139,20 @@ class AgentActions:
         """
         if self._match is None:
             raise RuntimeError("no match configured — set network.opponent_url first")
-        if self._opponent_url and wait_seconds > 0:
-            wait_for_opponent(self._opponent_url, timeout=wait_seconds, emit=self._emit)
+        # The result was previously discarded, so a wait that expired went on to
+        # play anyway: `opponent.absent waited=120` was recorded and the
+        # handshake then died three stack frames deep in a 502. The wait already
+        # knew. Saying so is the whole point of having run it.
+        wait_seconds = self._wait_seconds if wait_seconds is None else wait_seconds
+        waiting = self._opponent_url and wait_seconds > 0
+        if waiting and not wait_for_opponent(
+            self._opponent_url, timeout=wait_seconds, emit=self._emit
+        ):
+                raise OpponentUnreachableError(
+                    f"opponent did not answer at {self._opponent_url} after "
+                    f"{wait_seconds:.0f}s — check they have started, and that "
+                    "their URL is current (a quick tunnel changes on restart)"
+                )
         self._emit({"event": "match.starting"})
         result = self._match.play_series()
         self._emit({"event": "match.finished", "games": len(self._match.games)})
