@@ -92,8 +92,9 @@ to play. See that module before editing anything here.
 | `network.watchdog_threshold_seconds` | 60 | Series-level stall detection. |
 | `network.max_retries` | 3 | Retries before we call a turn timed out. |
 | `tunnel.provider` / `hostname` / `name` | cloudflare / `cop.4laboratory.com` | A **named** tunnel: the hostname survives restarts, so the opponent's saved URL keeps working (ADR-004). |
-| `llm.primary` / `fallback` | anthropic / deepseek | Provider chain; templates are the floor beneath both. **A vendor whose API key is absent is skipped entirely**, not merely tried and failed — see §4. |
-| `llm.model` | `claude-haiku-4-5-20251001` | Hint model. |
+| `llm.primary` / `fallback` | deepseek / anthropic | Provider chain; templates are the floor beneath both. **A vendor whose API key is absent is skipped entirely**, not merely tried and failed — see §4. |
+| `llm.model` | `deepseek-v4-flash` | The **primary's** model, and the one declared to the opponent — those must be the same string, or the declaration artifact names a model we never call. `deepseek-chat` was retired; the current line is `deepseek-v4-flash` and `deepseek-v4-pro`. Flash writes a 15-word hint just as well for a third of the price. |
+| `llm.fallback_model` | `claude-haiku-4-5-20251001` | The understudy's model. Empty means "whatever the adapter defaults to", which keeps a vendor renaming its line a config change rather than a code change. |
 | `llm.negotiation_model` | `claude-sonnet-5` | **Inert.** `PRD_negotiation.md` rejected LLM negotiation; see `docs/OPEN_ITEMS.md`. |
 | `llm.series_token_budget` | 200000 | The agreed cap, enforced by a live `TokenMeter`. Until 2026-07-29 nothing built one, so every token figure in every report was `0` regardless of spend. |
 | `llm.every_n_steps` | 2 | Hint cadence. A **quality** dial, not a savings dial — measured at 46 % fewer tokens, but the budget has room either way. |
@@ -163,6 +164,21 @@ to boot rather than quietly breaking a rule.
 ## 5. Secrets
 
 Never in code, never in a committed file, `os.environ` only.
+
+**API keys go in `.env` at the repo root.** It is git-ignored, so it does not
+exist in a fresh clone — copy `.env-example` to `.env` and fill it in. `build_sdk`
+loads it before anything reads a credential, with `override=False`: a variable
+exported in the shell beats the file, which is what lets CI inject secrets as
+environment variables while shipping no `.env` at all.
+
+Until 2026-07-29 nothing loaded `.env`. The file was documented, git-ignored and
+referenced by the README, and a key pasted into it had exactly the effect of no
+key — silently, because an uncredentialed vendor is skipped rather than reported
+broken.
+
+**Leave a line blank rather than pasting a placeholder.** A non-empty value is
+treated as a real key: the vendor gets wired, authentication fails, and the cost
+is paid against the turn deadline.
 
 `.gitignore` covers `.env`, `*.pem`, `*.key`, `credentials.json`, `token.json`
 and `secrets/`, and `scripts/check_repo_rules.py` fails the build if one is ever

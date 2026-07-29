@@ -49,11 +49,22 @@ hostname = "thief.4laboratory.com"
 name = "najamjad-thief"
 
 [llm]
-# Provider chain: anthropic -> deepseek -> template (ADR-003). The active
+# Provider chain: deepseek -> anthropic -> template (ADR-003). The active
 # provider is always visible in the logs and the dashboard badge.
-primary = "anthropic"
-fallback = "deepseek"
-model = "claude-haiku-4-5-20251001"
+#
+# A vendor whose API key is absent is skipped entirely rather than tried and
+# failed: retrying a missing key cost 20 s on the first hint, against a 30 s
+# turn deadline (docs/CONFIG.md §4).
+primary = "deepseek"
+fallback = "anthropic"
+# The primary's model, and the one declared to the opponent — those must be the
+# same string or the declaration names a model we never call.
+#
+# `deepseek-chat` was retired; the current line is `deepseek-v4-flash` and
+# `deepseek-v4-pro`. Flash writes a 15-word hint just as well for a third of
+# the price, so pro is a deliberate upgrade rather than the default.
+model = "deepseek-v4-flash"
+fallback_model = "claude-haiku-4-5-20251001"
 negotiation_model = "claude-sonnet-5"
 step_deadline_seconds = 30
 # Hint cadence. This is a QUALITY dial, not a savings dial — the budget has

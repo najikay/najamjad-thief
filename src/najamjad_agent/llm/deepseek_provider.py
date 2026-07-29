@@ -17,7 +17,11 @@ from ..shared.gatekeeper import ApiGatekeeper
 from .base import Completion, ProviderUnavailableError, classify_error
 from .token_meter import Usage
 
-DEFAULT_MODEL = "deepseek-chat"
+#: `deepseek-chat` was retired; the current line is `deepseek-v4-flash` (cheap,
+#: 1M context) and `deepseek-v4-pro`. Flash is the default because a hint is
+#: capped at 15 words — paying pro rates to write one sentence buys nothing,
+#: and the series token budget is an agreed term rather than a spending limit.
+DEFAULT_MODEL = "deepseek-v4-flash"
 #: The endpoint lives in `config/setup.json` (`llm.deepseek_base_url`) and
 #: nowhere else — a vendor moving its API is a config change, and a URL written
 #: into a module is one that cannot be changed without a release.

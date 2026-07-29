@@ -57,8 +57,18 @@ def _gatekeeper(service: str, bus: Any) -> Any:
     return ApiGatekeeper(service=service, config=for_service(limits, service), emit=bus.publish)
 
 
-def paid_provider(name: str, manager: Any, bus: Any) -> Any:
-    """One configured vendor, or None if it is unnamed or uncredentialed."""
+def paid_provider(name: str, model: str, bus: Any) -> Any:
+    """One configured vendor, or None if it is unnamed or uncredentialed.
+
+    The model is passed in rather than read from a vendor-specific key,
+    because `llm.model` is also what we *declare to the opponent*. One key
+    naming the primary model keeps the declaration honest: a config that named
+    an Anthropic model while calling DeepSeek would put a model in the
+    declaration artifact that we never actually used.
+
+    An empty model means "whatever the adapter defaults to", which is how a
+    vendor renaming its line stays a config change rather than a code change.
+    """
     import os
 
     if name not in API_KEYS:
@@ -72,16 +82,15 @@ def paid_provider(name: str, manager: Any, bus: Any) -> Any:
             }
         )
         return None
-    model = str(manager.get("llm.model", "") or "")
+    keywords = {"model": model} if model else {}
     if name == ANTHROPIC:
         from ..llm.anthropic_provider import AnthropicProvider
 
-        keywords = {"model": model} if model else {}
         return AnthropicProvider(gatekeeper=_gatekeeper(ANTHROPIC, bus), **keywords)
     if name == DEEPSEEK:
         from ..llm.deepseek_provider import DeepSeekProvider
 
-        return DeepSeekProvider(gatekeeper=_gatekeeper(DEEPSEEK, bus))
+        return DeepSeekProvider(gatekeeper=_gatekeeper(DEEPSEEK, bus), **keywords)
     return None
 
 
@@ -108,12 +117,18 @@ def build_speaker(manager: Any, bus: Any, meter: Any = None) -> Any:
     from ..llm.template_provider import TemplateProvider
 
     template = TemplateProvider(map_area=str(manager.get("world.map_area", "")))
+    # Each slot carries its own model: `llm.model` is the primary's, and the
+    # one we declare; `llm.fallback_model` is the understudy's.
+    slots = (
+        (str(manager.get("llm.primary", "") or ""), str(manager.get("llm.model", "") or "")),
+        (
+            str(manager.get("llm.fallback", "") or ""),
+            str(manager.get("llm.fallback_model", "") or ""),
+        ),
+    )
     chain = [
         provider
-        for provider in (
-            paid_provider(str(manager.get("llm.primary", "") or ""), manager, bus),
-            paid_provider(str(manager.get("llm.fallback", "") or ""), manager, bus),
-        )
+        for provider in (paid_provider(name, model, bus) for name, model in slots)
         if provider is not None
     ]
     return Speaker(

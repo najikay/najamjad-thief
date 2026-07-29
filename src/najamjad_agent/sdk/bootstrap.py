@@ -23,6 +23,7 @@ from ..net.preflight_checks import standard_checks
 from ..net.tunnel import Tunnel
 from ..shared.app_config import load_setup, setting
 from ..shared.config import ConfigManager
+from ..shared.environment import load_env
 from ..shared.events import EventBus
 from ..shared.logging_setup import setup_logging
 from .actions import AgentActions
@@ -81,6 +82,11 @@ def build_sdk(
     workspace: Path | None = None,
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
+    # Before anything reads a credential. `.env` was documented, git-ignored and
+    # referenced by the README, and nothing ever loaded it — so a key pasted
+    # there had precisely the effect of no key at all, silently, because an
+    # uncredentialed vendor is skipped rather than reported broken.
+    load_env()
     role_dir = config or default_config_path()
     # Diagnostics first: everything after this point is entitled to a logger,
     # and a failure here is reported rather than raised (guidelines §7.2).
