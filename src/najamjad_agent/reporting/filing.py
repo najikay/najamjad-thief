@@ -81,9 +81,15 @@ class MatchFiler:
         _, theirs = self._groups
         rows = sub_game_rows(games, outcomes, self._groups, self._game_id)
         if confirmed is None:
-            confirmed = all(
+            # Agreement means two things, and only the first was ever checked:
+            # every sealed log verified, AND neither side stated an outcome the
+            # other contradicted. A dispute is precisely what rules 33-35 void
+            # both teams for, so reporting one as agreement is the worst
+            # available answer.
+            verified = all(
                 row["audit"]["log_verified"] and not row["audit"]["tampered"] for row in rows
             )
+            confirmed = verified and not any(game.get("disputed") for game in games)
         written: dict[str, Any] = {"config": [], "log": []}
 
         written["declaration"] = str(self._writer.write_declaration(groups_block))

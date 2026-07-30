@@ -175,3 +175,67 @@ def test_a_skipped_audit_is_not_agreement(tmp_path):
     """Silence is not consent. The nonces were never revealed, so nothing was
     verified and there is nothing to confirm."""
     assert filed_with(tmp_path, "AUDIT SKIPPED")["mutual_agreement"]["confirmed"] is False
+
+
+def test_a_disputed_outcome_is_not_agreement(tmp_path):
+    """The agreement the protocol actually affords, and it ran one-way.
+
+    Each side states how it thinks a mini-game ended inside its audit envelope
+    (`result_claim`). We always sent ours and never read theirs, so the only
+    channel the two agents have for agreeing on an outcome was used in one
+    direction — and `mutual_agreement.confirmed` could report agreement with
+    an opponent who had said something different. Rules 33-35 void both teams
+    for exactly that.
+    """
+    import json
+    from pathlib import Path
+
+    from najamjad_agent.reporting.filing import MatchFiler
+
+    class Outcome:
+        our_score, their_score = 20, 5
+
+    class Result:
+        total_score = {"a": 20, "b": 5}
+        sub_games_won = {"a": 1, "b": 0}
+        ties = 0
+        winner_group = "a"
+        series_tie = False
+        tie_award = None
+
+    def block(group: str) -> dict:
+        return {"group_id": group, "group_name": group.title(), "members": ["A"],
+                "repos": {"cop": "https://example.invalid/repo"}}
+
+    games = [{"sub_game": 1, "role": "police", "end_reason": "capture", "steps": 9,
+              "audit": "Verified OK", "disputed": True, "their_claim": "survival",
+              "records": [{"payload": {"step": 1}, "nonce": "n", "commit": "c" * 64}]}]
+    written = MatchFiler(tmp_path, "a-vs-b", "uid", ("a", "b")).file_match(
+        games, [Outcome()], Result(),
+        {"board_and_agents": {}, "movement_and_barriers": {}, "scoring": {}, "pheromones": {}},
+        "x" * 64, {"a": block("a"), "b": block("b")},
+    )
+    result = json.loads(Path(written["result"]).read_text(encoding="utf-8"))
+
+    assert result["mutual_agreement"]["confirmed"] is False, (
+        "their log verified, but they said the game ended differently"
+    )
+
+
+def test_a_matching_claim_leaves_agreement_intact():
+    """Reading their claim must not turn every clean match into a dispute."""
+    from dataclasses import replace
+
+    from najamjad_agent.domain.audit import AuditReport
+
+    report = replace(AuditReport(passed=True), their_claim="capture")
+
+    assert report.disputed is False
+
+
+def test_an_absent_claim_is_not_a_dispute():
+    """An opponent who revealed nothing has said nothing to disagree with —
+    that is `AUDIT SKIPPED`, a different verdict with a different meaning."""
+    from najamjad_agent.domain.audit import AuditReport
+
+    assert AuditReport(passed=False, skipped=True).disputed is False

@@ -29,6 +29,15 @@ class AuditReport:
     failed_steps: list[int] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     skipped: bool = False
+    #: How the opponent says the mini-game ended, from their audit envelope.
+    #: We have always *sent* ours and never read theirs, so the one channel the
+    #: protocol gives the two agents for agreeing on an outcome was used in one
+    #: direction only.
+    their_claim: str = ""
+    #: Set when their claim contradicts ours. Rules 33-35 void both teams on
+    #: contradictory reports, so this is worth knowing while both agents are
+    #: still talking rather than after the lecturer compares two emails.
+    disputed: bool = False
 
     @property
     def banner(self) -> str:

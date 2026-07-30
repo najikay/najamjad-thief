@@ -155,8 +155,20 @@ class MatchRunner:
             # figure we have ever emailed was 0 — true only while play was
             # template-only, and silently false the moment a vendor is wired.
             "tokens": self._tokens_for(sub_game),
+            # Their stated outcome, and whether it contradicts ours. Carried
+            # into the report so `mutual_agreement` cannot claim we agreed with
+            # an opponent who said something different (rules 33-35).
+            "their_claim": report.their_claim,
+            "disputed": report.disputed,
         }
         self.games.append(record)
+        if report.disputed:
+            self._emit({
+                "event": "result.disputed",
+                "sub_game": sub_game,
+                "ours": outcome.end_reason.value,
+                "theirs": report.their_claim,
+            })
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
 
