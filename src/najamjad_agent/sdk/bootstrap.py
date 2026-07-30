@@ -168,14 +168,14 @@ def _attach_match(
     # be written without both.
     session: dict[str, Any] = {}
     actions.attach_match(build_match(
-        manager, role, transport, build_speaker(manager, bus, meter), bus,
+        manager, role, transport, build_speaker(manager, bus, meter, observer), bus,
         handshake=_handshake(manager, bus, inboxes, transport, session),
         meter=meter,
         observer=observer,
     ))
     from .match_filing import build_filer
 
-    actions.attach_filer(build_filer(manager, bus, session, actions, load_setup()))
+    actions.attach_filer(build_filer(manager, bus, session, actions, load_setup(), observer))
 
 
 def _attach_dashboard(

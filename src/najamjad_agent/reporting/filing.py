@@ -149,6 +149,9 @@ class MatchFiler:
             self._emit({"event": "report.not_sent", "reason": "no mail sender configured"})
             return None
         sent = self._sender.send_report(Path(result_path), subject=self._game_id)
+        #: Kept so the caller can hand it to the dashboard's report panel,
+        #: which needs the delivery object rather than just the id.
+        self.last_send = sent
         self._emit(
             {
                 "event": "report.sent",

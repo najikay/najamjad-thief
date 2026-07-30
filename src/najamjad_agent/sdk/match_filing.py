@@ -15,7 +15,7 @@ from ..shared.app_config import setting
 
 
 def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
-                setup: dict | None = None) -> Any:
+                setup: dict | None = None, observer: Any = None) -> Any:
     """Turn a finished series into its four artifacts, and send the result."""
     from ..negotiation.contract import contract_hash, derive_game_ids
     from ..reporting.filing import MatchFiler
@@ -51,6 +51,10 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         # on disk and recoverable even when the mail fails, and rule 35 cares
         # that the report goes — so a failure here is loud rather than silent.
         filer.send(written["result"])
+        # The report panel showed "waiting for the match to end" after the mail
+        # had gone: `record_report` had no production caller either.
+        if observer is not None:
+            observer.record_report(send=getattr(filer, "last_send", None))
 
     return file_match
 

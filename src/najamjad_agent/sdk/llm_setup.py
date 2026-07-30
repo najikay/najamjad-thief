@@ -110,7 +110,7 @@ def token_meter(manager: Any, bus: Any) -> Any:
     )
 
 
-def build_speaker(manager: Any, bus: Any, meter: Any = None) -> Any:
+def build_speaker(manager: Any, bus: Any, meter: Any = None, observer: Any = None) -> Any:
     """The hint writer: configured vendors first, templates as the floor."""
     from ..llm.router import LLMRouter
     from ..llm.speaker import Speaker
@@ -138,4 +138,5 @@ def build_speaker(manager: Any, bus: Any, meter: Any = None) -> Any:
         hint_max_words=int(manager.get("world.hint_max_words", 15)),
         every_n_steps=int(manager.get("llm.every_n_steps", 1)),
         emit=bus.publish,
+        observer=observer,
     )

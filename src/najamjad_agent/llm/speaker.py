@@ -10,6 +10,7 @@ failure silently becomes a template line rather than a lost turn. Both are
 quality decisions rather than cost decisions: the budget has room.
 """
 
+import contextlib
 from typing import Any
 
 from ..shared.events import Emit
@@ -32,10 +33,12 @@ class Speaker:
         hint_max_words: int = 15,
         every_n_steps: int = 1,
         emit: Emit | None = None,
+        observer: Any = None,
     ) -> None:
         """Wire the speaker to its router and its offline floor."""
         self._router = router
         self._template = template
+        self._observer = observer
         self._arena = arena
         self._word_cap = hint_max_words
         self._every_n = max(1, every_n_steps)
@@ -65,9 +68,33 @@ class Speaker:
         text, model_intent = _read_hint(completion.text, offline["message"], intent)
         return self._vet(text, model_intent, step)
 
+    def _record(self, text: str, intent: str, step: int) -> None:
+        """Offer the hint we are about to send to whoever is watching.
+
+        Here rather than in the orchestrator for two reasons: this is where the
+        provenance lives — the panel shows which provider and model wrote each
+        line, and the conductor never learns that — and the orchestrator is at
+        its size cap.
+
+        `record_message` had existed on the SDK from the start with no
+        production caller, so the Dialogue panel stayed empty through six real
+        mini-games while hints flowed both ways. Failure here is swallowed: a
+        dashboard is a subscriber and must never cost us a turn (ADR-005).
+        """
+        if self._observer is None or not text:
+            return
+        # Suppressed deliberately: a dashboard is a subscriber and must never
+        # cost us a turn (ADR-005).
+        with contextlib.suppress(Exception):
+            self._observer.record_message(
+                "out", text, intent=intent, step=step,
+                provider=self._router.active, model=getattr(self._router, "model", ""),
+            )
+
     def _vet(self, text: str, intent: str, step: int) -> tuple[str, str]:
         """The single egress: everything we say passes the same guard."""
         result = guard_hint(text, intent, self._word_cap)
+        self._record(result.text, result.intent, step)
         if result.problems:
             self._emit({"event": "hint.corrected", "step": step, "problems": list(result.problems)})
         return result.text, result.intent
