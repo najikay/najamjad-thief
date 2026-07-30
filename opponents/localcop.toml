@@ -1,0 +1,9 @@
+# Our own cop half, for a role-swapped rehearsal needing nobody else.
+#
+# Both named tunnels live on this machine, so the pair can be played end to end
+# here: the cop takes `--group-id najamjad-b` and this card expects that id, so
+# the report keys stay distinct instead of collapsing to one.
+url      = "https://cop.4laboratory.com/mcp"
+group_id = "najamjad-b"
+name     = "our cop half (named tunnel)"
+notes    = "Run the cop with --group-id najamjad-b or the ids collide."

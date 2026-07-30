@@ -4511,3 +4511,5 @@
 {"event":"opponent.waiting","giving_up_in":594.0,"host":"cop.4laboratory.com","port":443,"waited":306.0}
 {"event":"opponent.waiting","giving_up_in":533.0,"host":"cop.4laboratory.com","port":443,"waited":367.0}
 {"event":"opponent.waiting","giving_up_in":473.0,"host":"cop.4laboratory.com","port":443,"waited":427.0}
+{"event":"opponent.waiting","giving_up_in":412.0,"host":"cop.4laboratory.com","port":443,"waited":488.0}
+{"event":"opponent.waiting","giving_up_in":351.0,"host":"cop.4laboratory.com","port":443,"waited":549.0}
