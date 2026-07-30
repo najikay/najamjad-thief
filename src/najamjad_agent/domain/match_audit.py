@@ -66,7 +66,8 @@ def receive_reveal(transport: Any, timeout: float) -> AuditReport:
     records = reply.get("records") if isinstance(reply, dict) else reply
     report = audit_records(records)
     claim = str(reply.get("result_claim", "") or "") if isinstance(reply, dict) else ""
-    return replace(report, their_claim=claim)
+    kept = [r for r in records if isinstance(r, dict)] if isinstance(records, list) else []
+    return replace(report, their_claim=claim, their_records=kept)
 
 
 def exchange_audit(

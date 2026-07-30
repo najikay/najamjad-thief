@@ -163,12 +163,16 @@ def _attach_match(
     from .match_setup import build_match, build_transport
 
     transport = build_transport(manager, bus, inboxes)
+    speaker = build_speaker(manager, bus, meter, observer)
+    if observer is not None:
+        # So the provider badge can name whoever actually answered.
+        observer.attach_router(speaker._router)
     # One dict shared by the handshake and the filer: the handshake learns the
     # opponent's identity and the locked contract hash, and the artifacts cannot
     # be written without both.
     session: dict[str, Any] = {}
     actions.attach_match(build_match(
-        manager, role, transport, build_speaker(manager, bus, meter, observer), bus,
+        manager, role, transport, speaker, bus,
         handshake=_handshake(manager, bus, inboxes, transport, session),
         meter=meter,
         observer=observer,

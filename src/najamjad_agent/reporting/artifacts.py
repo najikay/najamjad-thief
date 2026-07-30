@@ -100,12 +100,14 @@ class ArtifactWriter:
         opponent_group_id: str,
         confirmed: bool,
         sub_games: list[dict[str, Any]],
+        opponent_records: list[dict[str, Any]] | None = None,
     ) -> Path:
         """`log_<game_id>_g<NN>.json` — the sealed chain for replay verification."""
         payload = {
             **self._identity(),
             "summary": summary,
             "records": records,
+            "opponent_records": list(opponent_records or []),
             "mutual_agreement": agreement_block(
                 self.game_id, self.game_uid, self.groups, sub_games, opponent_group_id, confirmed
             ),

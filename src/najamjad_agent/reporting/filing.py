@@ -101,6 +101,7 @@ class MatchFiler:
             written["log"].append(str(self._writer.write_log(
                 number, self._log_summary(game, row), list(game.get("records") or []),
                 theirs, confirmed, rows,
+                opponent_records=list(game.get("their_records") or []),
             )))
         written["result"] = str(self._writer.write_result(
             rows,

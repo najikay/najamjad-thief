@@ -76,6 +76,16 @@ class AgentSdk:
         """True once a game is attached and the dashboard has data to show."""
         return self._state is not None
 
+    def attach_router(self, router: Any) -> None:
+        """Bind the LLM router so the provider badge can name who answered.
+
+        The badge read `None` and displayed "provider: —" through every match,
+        including ones where DeepSeek answered every hint: `AgentSdk` was never
+        passed a router. The router is built with the speaker, after the SDK
+        exists, so it has to be handed back rather than injected.
+        """
+        self._router = router
+
     def attach_game(self, state: Any, fsm: Any) -> None:
         """Bind a freshly started mini-game to the SDK."""
         self._state = state

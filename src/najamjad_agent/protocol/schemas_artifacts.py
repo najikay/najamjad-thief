@@ -127,5 +127,10 @@ class LogArtifact(ArtifactModel):
     game_uid: str
     summary: LogSummary
     records: list[dict[str, Any]] = Field(min_length=1)
+    #: The opponent's revealed records for the same mini-game, verified against
+    #: their own commits at audit. Stored so a replay can show *both* paths:
+    #: ours alone proves we did not cheat and says nothing about them, which is
+    #: the half of the cross-check that actually needs evidence.
+    opponent_records: list[dict[str, Any]] = Field(default_factory=list)
     mutual_agreement: MutualAgreement
     links: dict[str, str] = Field(default_factory=dict)

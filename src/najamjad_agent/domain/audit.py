@@ -33,6 +33,14 @@ class AuditReport:
     #: We have always *sent* ours and never read theirs, so the one channel the
     #: protocol gives the two agents for agreeing on an outcome was used in one
     #: direction only.
+    #: The opponent's revealed records, exactly as they sent them.
+    #:
+    #: We received these every mini-game, verified every commit hash in them,
+    #: and then dropped them on the floor — `AuditReport` kept only pass/fail.
+    #: So the one independently-verified copy of the opponent's moves that we
+    #: are ever given passed through our hands and was discarded, and a replay
+    #: could only ever show our own half of the game.
+    their_records: list[dict[str, Any]] = field(default_factory=list)
     their_claim: str = ""
     #: Set when their claim contradicts ours. Rules 33-35 void both teams on
     #: contradictory reports, so this is worth knowing while both agents are

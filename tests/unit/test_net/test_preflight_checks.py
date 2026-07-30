@@ -25,7 +25,11 @@ def manager(**overrides) -> ConfigManager:
         "version": "1.00",
         "game": {"group_id": "najamjad"},
         "network": {"opponent_url": "https://peer.example.com/mcp", "my_port": 8802},
-        "email": {"recipient": "grader@example.com"},
+        # `mode: send` is what a *counted* agent looks like. Left at the
+        # shipped `draft`, every checklist test would trip the delivery check —
+        # which is the check doing its job, not a fixture detail: a counted
+        # match configured to draft never delivers its report (rule 35).
+        "email": {"recipient": "grader@example.com", "mode": "send"},
     }
     values.update(overrides)
     return ConfigManager(values)
@@ -155,3 +159,46 @@ def test_unusable_gmail_credentials_block_the_match():
 
     assert report.ready is False
     assert "gmail_credentials" in [failure.name for failure in report.failures]
+
+
+def test_a_counted_run_refuses_to_start_while_the_report_would_be_drafted(monkeypatch):
+    """The trap found the day before the first counted match.
+
+    Practice mode forces `send`; a counted run falls back to `email.mode`,
+    which ships as `draft`. So a graded match would have played correctly,
+    filed four valid artifacts, built a correct report — and left it in a Gmail
+    drafts folder. Rule 35 scores a missing report as not having played, and
+    nothing would have looked wrong: `report.delivered` fires for a draft too.
+    """
+    monkeypatch.delenv("NAJAMJAD_PRACTICE", raising=False)
+    config = manager(email={"mode": "draft", "recipient": "grader@example.invalid"})
+
+    report = run_preflight(
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+    )
+
+    assert "report_delivery" in [failure.name for failure in report.failures]
+
+
+def test_a_counted_run_is_ready_once_sending_is_armed(monkeypatch):
+    monkeypatch.delenv("NAJAMJAD_PRACTICE", raising=False)
+    config = manager(email={"mode": "send", "recipient": "grader@example.invalid"})
+
+    report = run_preflight(
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+    )
+
+    assert "report_delivery" not in [failure.name for failure in report.failures]
+
+
+def test_a_practice_run_is_exempt(monkeypatch):
+    """There `send` is forced and the recipient is redirected to the operator,
+    so the draft setting is genuinely irrelevant rather than overlooked."""
+    monkeypatch.setenv("NAJAMJAD_PRACTICE", "1")
+    config = manager(email={"mode": "draft", "recipient": "grader@example.invalid"})
+
+    report = run_preflight(
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+    )
+
+    assert "report_delivery" not in [failure.name for failure in report.failures]

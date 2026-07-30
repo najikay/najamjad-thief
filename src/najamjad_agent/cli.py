@@ -115,6 +115,13 @@ def match(
     for game in sdk.actions.games:
         typer.echo(f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} {game['audit']}")
     typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
+    if dashboard:
+        # The process used to exit here, taking the dashboard with it — so the
+        # socket dropped ("reconnecting in 10s…") and the report panel froze on
+        # "waiting for the match to end" moments after the mail had gone. The
+        # one moment an operator most wants to read those panels is now.
+        typer.echo("dashboard still serving — Ctrl+C when you have finished reading it")
+        _serve_until_interrupted(sdk)
 
 
 @app.command()

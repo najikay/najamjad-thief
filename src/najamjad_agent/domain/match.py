@@ -159,6 +159,7 @@ class MatchRunner:
             # into the report so `mutual_agreement` cannot claim we agreed with
             # an opponent who said something different (rules 33-35).
             "their_claim": report.their_claim,
+            "their_records": list(report.their_records),
             "disputed": report.disputed,
         }
         self.games.append(record)

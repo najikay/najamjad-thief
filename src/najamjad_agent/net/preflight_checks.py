@@ -102,6 +102,38 @@ def gmail_check(load: Callable[[], Any] | None = None) -> Callable[[], str]:
     return probe
 
 
+def delivery_check(manager: ConfigManager) -> Callable[[], str]:
+    """Confirm the report will actually be SENT, not drafted (rule 35).
+
+    The trap this closes, found before the first counted match: practice mode
+    forces `send`, and a counted run falls back to `email.mode` — which ships
+    as `draft`. So a graded match would have filed its four artifacts, built a
+    correct report, and left it sitting in a Gmail drafts folder. Rule 35
+    zeroes both teams for a report that never arrives, and nothing would have
+    looked wrong: `report.delivered` fires for a draft too.
+
+    Practice runs are exempt, because there `send` is forced anyway and the
+    recipient is redirected to the operator.
+    """
+
+    def probe() -> str:
+        """Confirm a counted run is configured to send rather than draft."""
+        from ..shared.practice import current
+
+        mode = str(manager.get("email.mode", "draft") or "draft")
+        if current().enabled:
+            return f"practice run — forced to send, redirected ({mode!r} ignored)"
+        if mode != "send":
+            raise ValueError(
+                f"email.mode is {mode!r}: a counted match would DRAFT the report, "
+                "not send it, and rule 35 scores a missing report as not playing. "
+                "Set email.mode = \"send\" for a counted match, or pass --practice."
+            )
+        return "counted run — report will be sent"
+
+    return probe
+
+
 def standard_checks(
     manager: ConfigManager,
     server: Any,
@@ -116,5 +148,6 @@ def standard_checks(
         "opponent_url": required_setting(manager, "network.opponent_url"),
         "email_recipient": required_setting(manager, "email.recipient"),
         "gmail_credentials": gmail_check(credentials),
+        "report_delivery": delivery_check(manager),
         "group_id": required_setting(manager, "game.group_id"),
     }
