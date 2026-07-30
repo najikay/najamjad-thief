@@ -115,3 +115,63 @@ def test_a_team_that_declared_no_repositories_is_omitted():
     links = repository_links({"a": {"repos": {"cop": "https://x.invalid"}}, "b": {"repos": {}}})
 
     assert set(links) == {"a"}
+
+
+# ------------------------------------------------- the agreement we assert
+
+
+def filed_with(tmp_path, audit: str) -> dict:
+    """One filed match whose only variable is the audit verdict."""
+    import json
+
+    from najamjad_agent.reporting.filing import MatchFiler
+
+    class Outcome:
+        our_score, their_score = 20, 5
+
+    class Result:
+        total_score = {"a": 20, "b": 5}
+        sub_games_won = {"a": 1, "b": 0}
+        ties = 0
+        winner_group = "a"
+        series_tie = False
+        tie_award = None
+
+    def block(group: str) -> dict:
+        return {"group_id": group, "group_name": group.title(), "members": ["A", "B"],
+                "repos": {"cop": "https://example.invalid/repo"}}
+
+    games = [{"sub_game": 1, "role": "police", "end_reason": "capture", "steps": 9,
+              "audit": audit,
+              "records": [{"payload": {"step": 1}, "nonce": "n", "commit": "c" * 64}]}]
+    written = MatchFiler(tmp_path, "a-vs-b", "uid", ("a", "b")).file_match(
+        games, [Outcome()], Result(),
+        {"board_and_agents": {}, "movement_and_barriers": {}, "scoring": {}, "pheromones": {}},
+        "x" * 64, {"a": block("a"), "b": block("b")},
+    )
+    from pathlib import Path
+
+    return json.loads(Path(written["result"]).read_text(encoding="utf-8"))
+
+
+def test_mutual_agreement_is_earned_not_assumed(tmp_path):
+    """`confirmed` defaulted to True and no caller ever passed it.
+
+    So every report we filed asserted mutual agreement with the opponent
+    without checking anything — and rules 33-35 make contradictory reports
+    void both sides. It happened to be true in the first real match, which is
+    luck rather than verification.
+    """
+    assert filed_with(tmp_path, "Verified OK")["mutual_agreement"]["confirmed"] is True
+
+
+def test_a_tampered_log_is_not_agreement(tmp_path):
+    """The case the old default got exactly backwards: a report claiming we
+    agreed with an opponent whose log did not verify."""
+    assert filed_with(tmp_path, "TAMPERED")["mutual_agreement"]["confirmed"] is False
+
+
+def test_a_skipped_audit_is_not_agreement(tmp_path):
+    """Silence is not consent. The nonces were never revealed, so nothing was
+    verified and there is nothing to confirm."""
+    assert filed_with(tmp_path, "AUDIT SKIPPED")["mutual_agreement"]["confirmed"] is False

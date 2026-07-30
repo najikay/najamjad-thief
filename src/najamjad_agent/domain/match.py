@@ -61,6 +61,7 @@ class MatchRunner:
         max_retries: int = 3,
         handshake: Callable[[], Any] | None = None,
         meter: Any = None,
+        observer: Any = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -82,6 +83,7 @@ class MatchRunner:
         self._audit_timeout = audit_timeout
         self._handshake = handshake
         self._meter = meter
+        self._observer = observer
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
@@ -111,6 +113,13 @@ class MatchRunner:
             self._handshake()
         state = self._build_state(self.params, role, sub_game)
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
+        # Hand the live game to whoever is watching — the dashboard reads its
+        # board, belief and turn banner off this. `attach_game` existed from
+        # the start and nothing ever called it, so every panel that needs a
+        # game sat on "Waiting for a game to start…" through six real
+        # mini-games while the match played out behind it.
+        if self._observer is not None:
+            self._observer.attach_game(state, fsm)
         orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 

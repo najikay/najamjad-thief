@@ -63,11 +63,27 @@ class MatchFiler:
         terms: dict[str, Any],
         config_sha256: str,
         groups_block: dict[str, Any],
-        confirmed: bool = True,
+        confirmed: bool | None = None,
     ) -> dict[str, Any]:
-        """Write all four artifacts and return where they went."""
+        """Write all four artifacts and return where they went.
+
+        `confirmed` defaulted to `True` and no caller ever passed it, so every
+        report we have filed asserted mutual agreement with the opponent
+        without checking anything. Under rules 33-35 both sides must agree and
+        contradictory reports void both, so that is a claim worth earning.
+
+        Left unset, it is now *derived* from the audits: agreement means every
+        mini-game's sealed log was verified and none was tampered — which is
+        mutual verification we actually performed, on evidence the opponent
+        revealed. It is narrower than comparing final results (that needs a
+        result exchange, T-1725) and it is true.
+        """
         _, theirs = self._groups
         rows = sub_game_rows(games, outcomes, self._groups, self._game_id)
+        if confirmed is None:
+            confirmed = all(
+                row["audit"]["log_verified"] and not row["audit"]["tampered"] for row in rows
+            )
         written: dict[str, Any] = {"config": [], "log": []}
 
         written["declaration"] = str(self._writer.write_declaration(groups_block))

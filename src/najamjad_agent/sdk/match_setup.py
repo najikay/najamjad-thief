@@ -145,6 +145,7 @@ def build_match(
     scoring: dict[str, Any] | None = None,
     handshake: Any = None,
     meter: Any = None,
+    observer: Any = None,
 ) -> MatchRunner:
     """A runner ready to play the agreed series against one opponent."""
     params = GameParams.from_config(manager.as_dict())
@@ -168,6 +169,7 @@ def build_match(
         emit=bus.publish,
         handshake=handshake,
         meter=meter,
+        observer=observer,
         response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
         max_retries=int(manager.get("network.max_retries", 3)),
     )

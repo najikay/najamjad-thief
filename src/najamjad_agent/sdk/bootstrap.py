@@ -14,8 +14,6 @@ cop and thief configs to be kept strictly apart.
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
-
 from ..constants import Role
 from ..net.inbox import Inboxes
 from ..net.mcp_server import PeerServer
@@ -29,6 +27,7 @@ from ..shared.logging_setup import setup_logging
 from .actions import AgentActions
 
 # Cheap at import time: every vendor import inside it is deferred.
+from .handshake_setup import _handshake, _inbound_ceiling
 from .llm_setup import build_speaker, token_meter
 from .sdk import AgentSdk
 
@@ -140,12 +139,18 @@ def build_sdk(
                    controls_enabled=bool(setting(setup, "features.controls", False)))
     if dashboard:
         _attach_dashboard(sdk, actions, manager, bus)
-    _attach_match(actions, manager, chosen, bus, inboxes, meter)
+    _attach_match(actions, manager, chosen, bus, inboxes, meter, sdk)
     return sdk
 
 
 def _attach_match(
-    actions: AgentActions, manager: ConfigManager, role: Role, bus, inboxes, meter: Any = None
+    actions: AgentActions,
+    manager: ConfigManager,
+    role: Role,
+    bus,
+    inboxes,
+    meter: Any = None,
+    observer: Any = None,
 ) -> None:
     """Give the agent the ability to actually play, when it knows an opponent.
 
@@ -166,68 +171,11 @@ def _attach_match(
         manager, role, transport, build_speaker(manager, bus, meter), bus,
         handshake=_handshake(manager, bus, inboxes, transport, session),
         meter=meter,
+        observer=observer,
     ))
     from .match_filing import build_filer
 
     actions.attach_filer(build_filer(manager, bus, session, actions, load_setup()))
-
-
-def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
-    """The pre-game agreement swap, as a callable the match runs first."""
-    from ..negotiation.handshake import exchange_agreement
-    from ..negotiation.identity import identity_from_config
-    from ..negotiation.terms import terms_from_config
-
-    def run():
-        """Sign, swap and verify the terms before any move is played."""
-        terms = terms_from_config(manager)
-        session["terms"] = terms
-        session["identity"] = identity_from_config(manager)
-        peer = exchange_agreement(
-            terms=terms,
-            identity=session["identity"],
-            send=lambda payload: transport.send_negotiate(payload),
-            # The inbox hands back a validated pydantic model; the handshake and
-            # the contract both work in plain dicts, and `verify_peer` indexes
-            # the message directly.
-            receive=lambda timeout: _as_dict(inboxes.poll("negotiate", timeout=timeout)),
-            timeout=float(manager.get("network.handshake_timeout_seconds", 60)),
-            emit=bus.publish,
-        )
-        session["peer"] = peer
-        return peer
-
-    return run
-
-
-def _inbound_ceiling(manager: ConfigManager) -> int:
-    """How many messages a minute we will accept from the opponent.
-
-    From `config/rate_limits.json`, never a literal at the call site: this is a
-    tunable, and the last time it was hardcoded it silently forfeited a game.
-    """
-    from ..shared.rate_limits import for_service, load_rate_limits
-
-    limits = load_rate_limits(Path(setting(load_setup(), "paths.rate_limits",
-                                              "config/rate_limits.json")))
-    return int(for_service(limits, "inbound_peer").requests_per_minute)
-
-
-def _as_dict(message: Any) -> dict[str, Any] | None:
-    """A polled inbox message as a plain dict, or None when nothing arrived.
-
-    The inbox hands back a validated pydantic model; `Contract.verify_peer`
-    and the handshake both index a plain mapping.
-    """
-    if message is None:
-        return None
-    if isinstance(message, BaseModel):
-        return message.model_dump()
-    if isinstance(message, dict):
-        return message
-    return None
-
-
 
 
 def _attach_dashboard(

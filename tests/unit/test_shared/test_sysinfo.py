@@ -5,6 +5,7 @@ starting, so each fallback path is exercised explicitly here (they cannot all
 run natively on one machine).
 """
 
+import platform
 import subprocess
 from pathlib import Path
 
@@ -44,12 +45,30 @@ def test_ram_reports_a_number_or_unknown() -> None:
     assert value == sysinfo.UNKNOWN or value > 0
 
 
-def test_ram_degrades_when_sysconf_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_posix_probe_degrades_when_sysconf_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`raising=False`, and asserted on the POSIX probe rather than `_ram_gb`.
+
+    Two reasons, both found by a teammate running this on Windows:
+
+    `monkeypatch.setattr(os, "sysconf", ...)` cannot replace an attribute that
+    does not exist, and `os.sysconf` is POSIX-only — so the test guarding the
+    POSIX-only bug was itself POSIX-only, green on ubuntu CI and an error on
+    the machines matches are played from. Exactly the shape of the defect it
+    exists to catch.
+
+    And it asserted through `_ram_gb`, which now falls back to the Windows
+    probe: on Windows that legitimately returns a real number, so the
+    assertion was wrong there even once the patch worked.
+    """
+
     def _raise(_name: str) -> int:
         raise ValueError("unsupported")
 
-    monkeypatch.setattr(sysinfo.os, "sysconf", _raise)
-    assert sysinfo._ram_gb() == sysinfo.UNKNOWN
+    monkeypatch.setattr(sysinfo.os, "sysconf", _raise, raising=False)
+
+    assert sysinfo._ram_unix() == sysinfo.UNKNOWN
 
 
 def test_gpu_reports_none_when_nvidia_smi_is_absent(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -153,8 +172,16 @@ def test_a_failing_windows_call_degrades_rather_than_raising():
     assert sysinfo._ram_windows(FakeKernel32(ok=False)) == sysinfo.UNKNOWN
 
 
+@pytest.mark.skipif(platform.system() == "Windows", reason="windll exists here")
 def test_the_windows_probe_is_absent_off_windows():
-    """`ctypes.windll` does not exist here, and that must be a quiet UNKNOWN."""
+    """`ctypes.windll` does not exist off Windows, and that must be a quiet
+    UNKNOWN rather than a crash while building the declaration.
+
+    Skipped on Windows, where the probe correctly returns a real number — the
+    assertion is about the *absence* path, and asserting it unconditionally
+    made the test pass only on the platform that cannot exercise the branch.
+    The injected-stub tests above cover the Windows path from either OS.
+    """
     assert sysinfo._ram_windows() == sysinfo.UNKNOWN
 
 
