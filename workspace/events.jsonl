@@ -4500,3 +4500,14 @@
 {"attempts":3,"event":"gatekeeper.failed","service":"gmail"}
 {"event":"report.dead_letter","file":"result_najamjad-vs-segal-police-team.json","reason":"gmail: failed after 3 attempts"}
 {"error":"GmailError: report not delivered: gmail: failed after 3 attempts","event":"artifacts.failed"}
+{"event":"server.starting","url":"http://127.0.0.1:8801/mcp"}
+{"event":"server.started","url":"http://127.0.0.1:8801/mcp"}
+{"event":"agent.online","url":"http://127.0.0.1:8801/mcp"}
+{"event":"opponent.waiting","giving_up_in":899.0,"host":"cop.4laboratory.com","port":443,"waited":1.0}
+{"event":"opponent.waiting","giving_up_in":838.0,"host":"cop.4laboratory.com","port":443,"waited":62.0}
+{"event":"opponent.waiting","giving_up_in":777.0,"host":"cop.4laboratory.com","port":443,"waited":123.0}
+{"event":"opponent.waiting","giving_up_in":716.0,"host":"cop.4laboratory.com","port":443,"waited":184.0}
+{"event":"opponent.waiting","giving_up_in":656.0,"host":"cop.4laboratory.com","port":443,"waited":244.0}
+{"event":"opponent.waiting","giving_up_in":594.0,"host":"cop.4laboratory.com","port":443,"waited":306.0}
+{"event":"opponent.waiting","giving_up_in":533.0,"host":"cop.4laboratory.com","port":443,"waited":367.0}
+{"event":"opponent.waiting","giving_up_in":473.0,"host":"cop.4laboratory.com","port":443,"waited":427.0}

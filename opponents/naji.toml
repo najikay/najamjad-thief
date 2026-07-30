@@ -1,10 +1,9 @@
-# The cop side. A PERMANENT hostname (ADR-004): a named Cloudflare tunnel does
-# not mint a new URL on restart, so this card stays valid between sessions.
+# For the ROLE-SWAPPED practice run: our thief vs their cop.
 #
-# An earlier version carried a quick-tunnel URL that belonged to the thief
-# machine's own local self-test — dialling it would have had the thief play
-# itself. Confirm an endpoint answers from the OTHER machine before trusting it.
-url      = "https://cop.4laboratory.com/mcp"
+# Used by whoever runs the COP repo to dial the THIEF half. `thief.4laboratory.com`
+# is OUR named tunnel — Naji's account, Naji's connector on port 8801 — so this
+# card only answers while the thief agent is running on that machine.
+url      = "https://thief.4laboratory.com/mcp"
 group_id = "najamjad"
-name     = "Naji (cop)"
-notes    = "Named tunnel, stable across restarts. Cop must run WITH --tunnel for this to answer."
+name     = "the thief half (named tunnel, stable)"
+notes    = "502 here means the connector is up and the thief agent is not started."

@@ -102,6 +102,31 @@ def gmail_check(load: Callable[[], Any] | None = None) -> Callable[[], str]:
     return probe
 
 
+def recipient_check(manager: ConfigManager) -> Callable[[], str]:
+    """Where the report will actually go — not merely what is configured.
+
+    The plain setting check printed the lecturer's address on a *practice* run,
+    which reads as "about to email the grader" at the exact moment an operator
+    is looking for reassurance that it will not. In practice mode the send is
+    redirected, so the configured value is not the answer to the question the
+    line appears to answer.
+    """
+
+    def probe() -> str:
+        """Report the effective recipient for this run."""
+        from ..shared.practice import current
+
+        configured = str(manager.get("email.recipient", "") or "").strip()
+        if not configured:
+            raise ValueError("email.recipient is not set — fill it in before the match")
+        mode = current()
+        if mode.enabled:
+            return f"{mode.redirect_to} (practice — {configured} NOT contacted)"
+        return configured
+
+    return probe
+
+
 def delivery_check(manager: ConfigManager) -> Callable[[], str]:
     """Confirm the report will actually be SENT, not drafted (rule 35).
 
@@ -146,7 +171,7 @@ def standard_checks(
         "port": port_check(server),
         "tunnel": tunnel_check(tunnel),
         "opponent_url": required_setting(manager, "network.opponent_url"),
-        "email_recipient": required_setting(manager, "email.recipient"),
+        "email_recipient": recipient_check(manager),
         "gmail_credentials": gmail_check(credentials),
         "report_delivery": delivery_check(manager),
         "group_id": required_setting(manager, "game.group_id"),

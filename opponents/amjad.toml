@@ -1,0 +1,10 @@
+# The practice pair, from the THIEF side.
+#
+# Both repos now carry a card per opponent under the SAME name, so one command
+# shape works from either side. Previously the cop dialled `amjad` and the
+# thief dialled `naji`, which meant remembering which half you were running —
+# an easy thing to get wrong at 20:00, and it fails with "no opponent card".
+url      = "https://cop.4laboratory.com/mcp"
+group_id = "najamjad"
+name     = "the cop half of the practice pair"
+notes    = "Named tunnel, stable. The cop must be running for this to answer."
