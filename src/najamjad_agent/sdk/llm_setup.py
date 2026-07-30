@@ -57,7 +57,7 @@ def _gatekeeper(service: str, bus: Any) -> Any:
     return ApiGatekeeper(service=service, config=for_service(limits, service), emit=bus.publish)
 
 
-def paid_provider(name: str, model: str, bus: Any) -> Any:
+def paid_provider(name: str, model: str, bus: Any, timeout: float = 8.0) -> Any:
     """One configured vendor, or None if it is unnamed or uncredentialed.
 
     The model is passed in rather than read from a vendor-specific key,
@@ -82,7 +82,14 @@ def paid_provider(name: str, model: str, bus: Any) -> Any:
             }
         )
         return None
-    keywords = {"model": model} if model else {}
+    # Bounded because a hint is optional and the turn deadline is not: a cold
+    # vendor call measured 27-61 s against a 30 s deadline, and before this
+    # there was no timeout at all — a hanging vendor blocked on the SDK default
+    # (~600 s). The template floor below is instant and free, so erring short
+    # costs hint quality and never the turn.
+    keywords: dict[str, Any] = {"timeout": timeout}
+    if model:
+        keywords["model"] = model
     if name == ANTHROPIC:
         from ..llm.anthropic_provider import AnthropicProvider
 
@@ -116,6 +123,7 @@ def build_speaker(manager: Any, bus: Any, meter: Any = None, observer: Any = Non
     from ..llm.speaker import Speaker
     from ..llm.template_provider import TemplateProvider
 
+    seconds = float(manager.get("llm.hint_timeout_seconds", 8))
     template = TemplateProvider(map_area=str(manager.get("world.map_area", "")))
     # Each slot carries its own model: `llm.model` is the primary's, and the
     # one we declare; `llm.fallback_model` is the understudy's.
@@ -128,7 +136,7 @@ def build_speaker(manager: Any, bus: Any, meter: Any = None, observer: Any = Non
     )
     chain = [
         provider
-        for provider in (paid_provider(name, model, bus) for name, model in slots)
+        for provider in (paid_provider(name, model, bus, seconds) for name, model in slots)
         if provider is not None
     ]
     return Speaker(
