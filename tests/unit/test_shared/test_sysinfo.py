@@ -186,5 +186,31 @@ def test_the_windows_probe_is_absent_off_windows():
 
 
 def test_the_combined_probe_prefers_whichever_platform_answers():
-    """One entry point, so `collect_spec` never has to know the platform."""
-    assert sysinfo._ram_gb() != sysinfo.UNKNOWN, "this suite runs on POSIX"
+    """One entry point, so `collect_spec` never has to know the platform.
+
+    Asserted without naming a platform: this must hold on ubuntu CI *and* on
+    the Windows machines the matches are played from, by whichever probe
+    answers there. The old message claimed "this suite runs on POSIX", which
+    stopped being true the moment a teammate ran it.
+    """
+    assert sysinfo._ram_gb() != sysinfo.UNKNOWN, "one probe must answer on any platform we run on"
+
+
+def test_the_posix_probe_computes_memory_from_pages(monkeypatch: pytest.MonkeyPatch):
+    """The POSIX arithmetic, exercised from any OS — including Windows.
+
+    Injected rather than monkeypatched onto `os`, because `os.sysconf` does not
+    exist on Windows: there is no attribute to replace with a *success*, so
+    this multiplication was unreachable from half the team's machines. The
+    mirror of the Windows-path gap `FakeKernel32` already closes.
+    """
+    monkeypatch.delattr(sysinfo.os, "sysconf", raising=False)
+
+    assert sysinfo._ram_unix(lambda name: {"SC_PHYS_PAGES": 2 * 1024**2, "SC_PAGE_SIZE": 4096}[name]) == 8.0
+
+
+def test_the_posix_probe_is_absent_off_posix(monkeypatch: pytest.MonkeyPatch):
+    """No `os.sysconf` is a quiet UNKNOWN, not an AttributeError mid-declaration."""
+    monkeypatch.delattr(sysinfo.os, "sysconf", raising=False)
+
+    assert sysinfo._ram_unix() == sysinfo.UNKNOWN
