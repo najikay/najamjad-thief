@@ -35,6 +35,10 @@ opponent_url = "https://mask-matching-stevens-omissions.trycloudflare.com/mcp"
 opponent_group_id = "them"
 # How long to wait for their signed terms before giving up on the handshake.
 handshake_timeout_seconds = 60
+# T-2447: a failed agreement exchange retries the SAME sub-game this many
+# times before resolving it as a technical outcome. Advancing on failure is
+# what desynchronised our numbering from the opponent's (rules 33-35).
+handshake_retries = 2
 # Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
 response_timeout_seconds = 30
 watchdog_threshold_seconds = 60
