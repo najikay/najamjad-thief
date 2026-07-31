@@ -23,6 +23,7 @@ from .match_audit import exchange_audit
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
+from .subgame_failure import abandoned_record
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
@@ -87,10 +88,35 @@ class MatchRunner:
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
-        """Play every remaining mini-game and return the series result."""
+        """Play every remaining mini-game and return the series result.
+
+        A mini-game that blows up costs *that* mini-game and nothing more.
+        Previously any exception — most plausibly the `RuntimeError` the
+        gatekeeper raises once a send has exhausted its retries — propagated
+        straight out through `play_match` to the CLI and killed the process.
+
+        That happened in a real match: three failed `receive_turn` calls at
+        sub-game 3 ended the process, so sub-games 4, 5 and 6 were never
+        played and our endpoint went dark. The opponent handled the same blip
+        with a watchdog, scored the sub-game, and carried on; we forfeited four
+        games to one bad moment on the wire.
+
+        Recorded as a `TIMEOUT` for the role we were playing, which is what the
+        opponent's watchdog scores it as — so both sides reach the same verdict
+        rather than disagreeing about a game one of us never finished.
+        """
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
-            self.play_sub_game(sub_game, role_for(sub_game, self.first_role))
+            role = role_for(sub_game, self.first_role)
+            try:
+                self.play_sub_game(sub_game, role)
+            except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
+                self._emit({
+                    "event": "subgame.abandoned", "sub_game": sub_game,
+                    "role": role.value, "error": f"{type(error).__name__}: {error}",
+                })
+                self.tracker.record(end_reason=EndReason.TIMEOUT, role=role)
+                self.games.append(abandoned_record(sub_game, role.value, self._tokens_for(sub_game)))
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})
         return result
