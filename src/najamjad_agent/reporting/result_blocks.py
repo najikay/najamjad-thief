@@ -123,6 +123,39 @@ def final_result_block(
 
 
 
+#: Field names other teams use for the same hardware claim. The reference's
+#: names are ours; these are what real opponents actually sent.
+SPEC_ALIASES = {
+    "cpu": "cpu_type",
+    "processor": "cpu_type",
+    "cpu_count": "cpu_cores",
+    "cores": "cpu_cores",
+    "ram": "ram_gb",
+    "memory_gb": "ram_gb",
+    "gpu": "gpu_model",
+    "gpu_type": "gpu_model",
+}
+
+
+def normalise_spec(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """Their hardware claim in our field names, or None if unusable.
+
+    Returns None rather than raising: an opponent's declaration is *their*
+    claim, and a shape we cannot read is a gap in the fairness data, never a
+    reason to abandon a match we already played.
+    """
+    mapped = {SPEC_ALIASES.get(str(key), str(key)): value for key, value in (raw or {}).items()}
+    try:
+        return {
+            **mapped,
+            "cpu_type": str(mapped["cpu_type"]),
+            "cpu_cores": int(mapped["cpu_cores"]),
+            "ram_gb": float(mapped["ram_gb"]),
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def declaration_group(identity: dict[str, Any]) -> dict[str, Any]:
     """One group's declaration block, translated from the wire identity.
 
@@ -135,11 +168,24 @@ def declaration_group(identity: dict[str, Any]) -> dict[str, Any]:
 
     Both names are kept on the way out: the artifact needs `hardware_spec`,
     and dropping `spec` would change what a reader of the raw identity sees.
+
+    The opponent's block is normalised, never validated. `uoh-sqak` declared
+    `cpu`/`cpu_count` where our schema wants `cpu_type`/`cpu_cores`, and the
+    strict model rejected the entire declaration — six games played, zero
+    artifacts written, nothing emailed, which rule 35 scores as not having
+    played. Their names map to ours where we recognise them; where we do not,
+    the hardware block is dropped and the raw claim kept under `spec`, so the
+    cost of an unreadable spec is that one field and not the match.
     """
     block = dict(identity or {})
     spec = block.get("hardware_spec") or block.get("spec")
-    if spec:
-        block["hardware_spec"] = spec
+    if not spec:
+        return block
+    normalised = normalise_spec(spec)
+    if normalised is None:
+        block.pop("hardware_spec", None)
+        return block
+    block["hardware_spec"] = normalised
     return block
 
 

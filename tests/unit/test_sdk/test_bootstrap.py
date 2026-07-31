@@ -132,3 +132,28 @@ def test_the_config_root_is_returned_when_no_role_directory_exists(monkeypatch, 
     monkeypatch.setattr(bootstrap, "CONFIG_ROOT", tmp_path / "config")
 
     assert bootstrap.default_config_path() == tmp_path / "config"
+
+
+def test_the_llm_warm_up_is_invoked_before_the_match_is_attached():
+    """T-2433's wiring, pinned structurally.
+
+    This project's recurring defect is correct code that nothing calls — the
+    match runner, reporting and negotiation each shipped fully tested and
+    unreachable. A warm-up that exists but is never invoked would recreate the
+    153 s game 1 while every unit test above stays green, so the call site
+    itself is the thing this test asserts.
+    """
+    import ast as _ast
+    from pathlib import Path as _Path
+
+    source = (_Path(__file__).resolve().parents[3] / "src/najamjad_agent/sdk/bootstrap.py").read_text(
+        encoding="utf-8"
+    )
+    calls = [
+        node
+        for node in _ast.walk(_ast.parse(source))
+        if isinstance(node, _ast.Call)
+        and getattr(node.func, "id", getattr(node.func, "attr", "")) == "warm_up"
+    ]
+
+    assert calls, "bootstrap never calls warm_up — the cold start is back inside game 1"

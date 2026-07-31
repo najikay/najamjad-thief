@@ -68,16 +68,25 @@ def test_the_declaration_finds_the_hardware_under_either_name():
     """The wire calls it `spec` because that is what the reference reads; the
     artifact schema calls it `hardware_spec`. Nothing mapped between them, so
     every Step-0 fairness declaration (rule 24) shipped `hardware_spec: null`
-    while the identity beside it held the whole spec."""
-    block = declaration_group({"group_id": "x", "spec": {"os": "Windows 10", "ram_gb": 7.9}})
+    while the identity beside it held the whole spec.
 
-    assert block["hardware_spec"] == {"os": "Windows 10", "ram_gb": 7.9}
+    The fixtures carry a *complete* spec because T-2446 made completeness the
+    condition for the block appearing at all: a spec missing `cpu_type` or
+    `cpu_cores` is what `validate_egress` rejected, taking the whole
+    declaration — and the match — with it. A partial spec is now dropped rather
+    than passed on, covered in `test_peer_spec.py`.
+    """
+    spec = {"os": "Windows 10", "cpu_type": "Intel64", "cpu_cores": 4, "ram_gb": 7.9}
+    block = declaration_group({"group_id": "x", "spec": spec})
+
+    assert block["hardware_spec"] == spec
 
 
 def test_an_identity_that_already_uses_the_artifact_name_is_untouched():
-    block = declaration_group({"group_id": "x", "hardware_spec": {"ram_gb": 16.0}})
+    spec = {"cpu_type": "arm", "cpu_cores": 8, "ram_gb": 16.0}
+    block = declaration_group({"group_id": "x", "hardware_spec": spec})
 
-    assert block["hardware_spec"] == {"ram_gb": 16.0}
+    assert block["hardware_spec"] == spec
 
 
 def test_a_missing_spec_does_not_invent_one():

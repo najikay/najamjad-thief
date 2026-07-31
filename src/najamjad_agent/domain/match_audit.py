@@ -13,8 +13,26 @@ turn their failure into our technical loss.
 from dataclasses import replace
 from typing import Any
 
-from .audit import AuditReport, audit_records
+from ..constants import EndReason
+from .audit import SKIP_AUDIT_REASONS, AuditReport, audit_records
+from .game_state import GameState
 from .ledger import CommitLedger
+
+
+def audit_or_skip(
+    state: GameState, reason: EndReason, transport: Any, timeout: float, emit: Any
+) -> AuditReport:
+    """Exchange reveals — unless the protocol never reached a clean close.
+
+    `domain.audit` already declares which endings have nothing to audit: a
+    timeout, a stop, an opponent quitting. Demanding a reveal there means
+    holding a peer to a step they never got to, and reading their silence as
+    forgery.
+    """
+    if reason in SKIP_AUDIT_REASONS:
+        emit({"event": "audit.skipped", "reason": reason.value})
+        return AuditReport(passed=False, skipped=True)
+    return exchange_audit(state.ledger, transport, timeout, state.role.value, reason.value)
 
 
 def send_reveal(

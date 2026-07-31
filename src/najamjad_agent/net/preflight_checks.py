@@ -15,6 +15,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..shared.config import ConfigManager
+from .preflight_opponent import opponent_tools_check
 
 
 def required_setting(manager: ConfigManager, dotted: str) -> Callable[[], str]:
@@ -164,6 +165,7 @@ def standard_checks(
     server: Any,
     tunnel: Any = None,
     credentials: Callable[[], Any] | None = None,
+    tools: Callable[[str], Any] | None = None,
 ) -> dict[str, Any]:
     """Everything that must hold before the agent claims to be match-ready."""
     return {
@@ -171,6 +173,9 @@ def standard_checks(
         "port": port_check(server),
         "tunnel": tunnel_check(tunnel),
         "opponent_url": required_setting(manager, "network.opponent_url"),
+        "opponent_tools": opponent_tools_check(
+            str(manager.get("network.opponent_url", "") or ""), tools
+        ),
         "email_recipient": recipient_check(manager),
         "gmail_credentials": gmail_check(credentials),
         "report_delivery": delivery_check(manager),

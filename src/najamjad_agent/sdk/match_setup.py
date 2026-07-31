@@ -168,6 +168,10 @@ def build_match(
         first_role=role,
         emit=bus.publish,
         handshake=handshake,
+        # T-2447: a failed agreement retries the SAME sub-game this many times
+        # before it resolves as a technical outcome. Config, not code — like
+        # every other limit here.
+        handshake_retries=int(manager.get("network.handshake_retries", 2)),
         meter=meter,
         observer=observer,
         response_timeout=float(manager.get("network.response_timeout_seconds", 30)),

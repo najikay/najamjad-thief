@@ -105,9 +105,19 @@ def stub_credentials() -> StubCredentials:
     return StubCredentials()
 
 
+def stub_tools(_url: str) -> list[str]:
+    """A peer exposing the mandated surface.
+
+    Injected for the same reason the credentials are: otherwise the check dials
+    a real opponent, and a suite whose verdict depends on who is online proves
+    nothing about the code.
+    """
+    return ["negotiate", "receive_turn", "submit_audit", "receive_control"]
+
+
 def test_a_fully_configured_agent_is_ready():
     report = run_preflight(
-        standard_checks(manager(), FakeServer(), tunnel=None, credentials=stub_credentials)
+        standard_checks(manager(), FakeServer(), tunnel=None, credentials=stub_credentials, tools=stub_tools)
     )
 
     assert report.ready is True
@@ -117,7 +127,7 @@ def test_a_fully_configured_agent_is_ready():
 def test_a_missing_opponent_url_blocks_readiness():
     config = manager(network={"opponent_url": "", "my_port": 8802})
 
-    report = run_preflight(standard_checks(config, FakeServer(), credentials=stub_credentials))
+    report = run_preflight(standard_checks(config, FakeServer(), credentials=stub_credentials, tools=stub_tools))
 
     assert report.ready is False
     assert [failure.name for failure in report.failures] == ["opponent_url"]
@@ -127,7 +137,7 @@ def test_every_check_actually_proves_something():
     """A probe returning None is recorded as "not applicable" — only the
     tunnel check may legitimately do that, and only when there is no tunnel."""
     checks = standard_checks(
-        manager(), FakeServer(), tunnel=None, credentials=stub_credentials
+        manager(), FakeServer(), tunnel=None, credentials=stub_credentials, tools=stub_tools
     )
     results = {name: probe() for name, probe in checks.items()}
 
@@ -174,7 +184,7 @@ def test_a_counted_run_refuses_to_start_while_the_report_would_be_drafted(monkey
     config = manager(email={"mode": "draft", "recipient": "grader@example.invalid"})
 
     report = run_preflight(
-        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials, tools=stub_tools)
     )
 
     assert "report_delivery" in [failure.name for failure in report.failures]
@@ -185,7 +195,7 @@ def test_a_counted_run_is_ready_once_sending_is_armed(monkeypatch):
     config = manager(email={"mode": "send", "recipient": "grader@example.invalid"})
 
     report = run_preflight(
-        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials, tools=stub_tools)
     )
 
     assert "report_delivery" not in [failure.name for failure in report.failures]
@@ -198,7 +208,7 @@ def test_a_practice_run_is_exempt(monkeypatch):
     config = manager(email={"mode": "draft", "recipient": "grader@example.invalid"})
 
     report = run_preflight(
-        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials)
+        standard_checks(config, FakeServer(), tunnel=None, credentials=stub_credentials, tools=stub_tools)
     )
 
     assert "report_delivery" not in [failure.name for failure in report.failures]

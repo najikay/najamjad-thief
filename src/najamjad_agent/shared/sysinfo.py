@@ -32,11 +32,22 @@ def _cpu_name() -> str:
     return platform.processor() or platform.machine() or UNKNOWN
 
 
-def _ram_unix() -> float | str:
-    """Total physical memory via POSIX `sysconf`, or UNKNOWN off POSIX."""
+def _ram_unix(sysconf: Any = None) -> float | str:
+    """Total physical memory via POSIX `sysconf`, or UNKNOWN off POSIX.
+
+    `sysconf` is injectable for the same reason `_ram_windows` takes a
+    `kernel32`: otherwise this arithmetic only ever runs on POSIX, and the
+    Windows half of the team can never exercise it. The asymmetry was the
+    unfixed half of the original defect — the Windows path was made testable
+    from Linux, but the POSIX path stayed untestable from Windows, where
+    `os.sysconf` does not exist to monkeypatch a success from.
+    """
+    probe = sysconf or getattr(os, "sysconf", None)
+    if probe is None:
+        return UNKNOWN
     try:
-        pages = os.sysconf("SC_PHYS_PAGES")  # type: ignore[attr-defined]
-        page_size = os.sysconf("SC_PAGE_SIZE")  # type: ignore[attr-defined]
+        pages = probe("SC_PHYS_PAGES")
+        page_size = probe("SC_PAGE_SIZE")
     except (ValueError, OSError, AttributeError):
         return UNKNOWN
     return round(pages * page_size / BYTES_PER_GB, 1)

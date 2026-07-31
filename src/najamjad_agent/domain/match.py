@@ -11,19 +11,19 @@ all decided elsewhere and merely recorded here.
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import Any
 
 from ..constants import EndReason, Role
 from ..shared.events import Emit
-from .audit import SKIP_AUDIT_REASONS, AuditReport
+from .audit import AuditReport
 from .fsm import GameStateMachine
 from .game_state import GameState
-from .match_audit import exchange_audit
+from .handshake_retry import agree_on_terms
+from .match_audit import audit_or_skip
+from .match_record import now_iso, played_record, unplayed_record
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
-from .subgame_failure import abandoned_record
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
@@ -32,15 +32,6 @@ StateFactory = Callable[[GameParams, Role, int], GameState]
 # caller no way to wire that, and every real brain raised `AttributeError` the
 # first time it was asked to move.
 BrainFactory = Callable[[Role, GameState], Any]
-
-
-def _now_iso() -> str:
-    """An aware UTC timestamp for the artifacts.
-
-    Aware, not naive: a bare local time in a report read in another timezone
-    is a different moment, and the sample carries an offset.
-    """
-    return datetime.now(tz=UTC).isoformat()
 
 
 class MatchRunner:
@@ -61,6 +52,7 @@ class MatchRunner:
         response_timeout: float = 30.0,
         max_retries: int = 3,
         handshake: Callable[[], Any] | None = None,
+        handshake_retries: int = 2,
         meter: Any = None,
         observer: Any = None,
     ) -> None:
@@ -83,6 +75,7 @@ class MatchRunner:
         self._emit = emit or (lambda _event: None)
         self._audit_timeout = audit_timeout
         self._handshake = handshake
+        self._handshake_retries = handshake_retries
         self._meter = meter
         self._observer = observer
         self.games: list[dict[str, Any]] = []
@@ -90,24 +83,36 @@ class MatchRunner:
     def play_series(self) -> SeriesResult:
         """Play every remaining mini-game and return the series result.
 
-        A mini-game that blows up costs *that* mini-game and nothing more.
-        Previously any exception — most plausibly the `RuntimeError` the
-        gatekeeper raises once a send has exhausted its retries — propagated
-        straight out through `play_match` to the CLI and killed the process.
+        Two different failures, two different resolutions, and the series
+        survives both.
 
-        That happened in a real match: three failed `receive_turn` calls at
-        sub-game 3 ended the process, so sub-games 4, 5 and 6 were never
-        played and our endpoint went dark. The opponent handled the same blip
-        with a watchdog, scored the sub-game, and carried on; we forfeited four
-        games to one bad moment on the wire.
+        The handshake runs here, not inside the sub-game, because its failure
+        must not consume a number. We used to advance the counter on a failed
+        sub-game while the opponent retried the same one — after two failures
+        we were numbering games 3 and 4 against their 5 and 6, and two reports
+        describing one match with different `sub_game_number`s are contradictory
+        (rules 33-35 can void both teams). A failed agreement now retries the
+        *same* sub-game, bounded; only exhaustion resolves it as a technical
+        outcome.
 
-        Recorded as a `TIMEOUT` for the role we were playing, which is what the
-        opponent's watchdog scores it as — so both sides reach the same verdict
-        rather than disagreeing about a game one of us never finished.
+        A mini-game that agreed and then blew up is a separate case: most
+        plausibly the `RuntimeError` the gatekeeper raises once a send has
+        exhausted its retries. That used to propagate through `play_match` to
+        the CLI and kill the process — in a real match three failed
+        `receive_turn` calls ended it at sub-game 3, so 4, 5 and 6 were never
+        played and our endpoint went dark. The opponent met the same blip with
+        a watchdog, scored the game, and carried on. It is now scored a
+        `TIMEOUT`, the verdict their watchdog reaches, so both sides describe
+        the game the same way.
         """
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
             role = role_for(sub_game, self.first_role)
+            if not agree_on_terms(
+                self._handshake, sub_game, self._handshake_retries, self._emit
+            ):
+                self._resolve_without_play(sub_game, role, EndReason.OPPONENT_QUIT)
+                continue
             try:
                 self.play_sub_game(sub_game, role)
             except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
@@ -115,11 +120,27 @@ class MatchRunner:
                     "event": "subgame.abandoned", "sub_game": sub_game,
                     "role": role.value, "error": f"{type(error).__name__}: {error}",
                 })
-                self.tracker.record(end_reason=EndReason.TIMEOUT, role=role)
-                self.games.append(abandoned_record(sub_game, role.value, self._tokens_for(sub_game)))
+                self._resolve_without_play(sub_game, role, EndReason.TIMEOUT)
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})
         return result
+
+    def _resolve_without_play(self, sub_game: int, role: Role, reason: EndReason) -> None:
+        """Score a mini-game that produced no result, and keep the series alive.
+
+        Two ways in, one shape out. `OPPONENT_QUIT` when the handshake never
+        completed — a peer that never agreed has nothing to reveal, and
+        demanding an audit would read absence as forgery. `TIMEOUT` when they
+        agreed and then went silent mid-play, which is the verdict their own
+        watchdog reaches, so both sides describe the game the same way.
+
+        Both build from `match_record`, so the played and unplayed shapes
+        cannot drift apart under the filer.
+        """
+        outcome = self.tracker.record(
+            end_reason=reason, role=role, steps=0, audit_passed=True
+        )
+        self.games.append(unplayed_record(sub_game, now_iso(), outcome))
 
     def play_sub_game(self, sub_game: int, role: Role) -> dict[str, Any]:
         """Play one mini-game to its end, audit it, and record the outcome.
@@ -130,13 +151,7 @@ class MatchRunner:
         next one unplayable.
         """
         self._transport.reset()
-        started_at = _now_iso()
-        if self._handshake is not None:
-            # Per mini-game, not per match: the opponent rebuilds its peer for
-            # every sub-game and re-runs the agreement exchange, so a handshake
-            # done once at match start leaves it waiting from game 2 onward with
-            # "Opponent never sent its agreement".
-            self._handshake()
+        started_at = now_iso()
         state = self._build_state(self.params, role, sub_game)
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
         # Hand the live game to whoever is watching — the dashboard reads its
@@ -161,33 +176,9 @@ class MatchRunner:
             # result in the report we file.
             audit_passed=report.passed or report.skipped,
         )
-        record = {
-            "sub_game": sub_game,
-            # Chapter 9 wants match timing, and the lecturer's own sample
-            # carries real ISO timestamps where ours shipped empty strings.
-            "started_at": started_at,
-            "ended_at": _now_iso(),
-            "role": role.value,
-            "end_reason": outcome.end_reason.value,
-            "steps": state.step,
-            "audit": report.banner,
-            # Only after an audit actually happened. With no audit the nonces
-            # were never released, and the ledger rightly refuses to hand them
-            # over (rule 18) — a game that ended in a timeout has nothing to
-            # reveal, and asking anyway raised into the match loop.
-            "records": [] if report.skipped else state.ledger.audit_payload(),
-            # What this mini-game actually cost. The field has always been read
-            # by the report builder and never written here, so every token
-            # figure we have ever emailed was 0 — true only while play was
-            # template-only, and silently false the moment a vendor is wired.
-            "tokens": self._tokens_for(sub_game),
-            # Their stated outcome, and whether it contradicts ours. Carried
-            # into the report so `mutual_agreement` cannot claim we agreed with
-            # an opponent who said something different (rules 33-35).
-            "their_claim": report.their_claim,
-            "their_records": list(report.their_records),
-            "disputed": report.disputed,
-        }
+        record = played_record(
+            sub_game, started_at, outcome, state, report, self._tokens_for(sub_game)
+        )
         self.games.append(record)
         if report.disputed:
             self._emit({
@@ -212,21 +203,10 @@ class MatchRunner:
         return int(getattr(meter, "per_sub_game", {}).get(sub_game, 0))
 
     def _audit(self, state: GameState, reason: EndReason) -> AuditReport:
-        """Exchange reveals — unless the protocol never reached a clean close.
-
-        `domain.audit` already declares which endings have nothing to audit: a
-        timeout, a stop, an opponent quitting. Demanding a reveal there means
-        holding a peer to a step they never got to, and reading their silence
-        as forgery.
-        """
-        if reason in SKIP_AUDIT_REASONS:
-            self._emit({"event": "audit.skipped", "reason": reason.value})
-            return AuditReport(passed=False, skipped=True)
-        return exchange_audit(
-            state.ledger, self._transport, self._audit_timeout,
-            state.role.value, reason.value,
+        """Exchange reveals — unless the protocol never reached a clean close."""
+        return audit_or_skip(
+            state, reason, self._transport, self._audit_timeout, self._emit
         )
-
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""

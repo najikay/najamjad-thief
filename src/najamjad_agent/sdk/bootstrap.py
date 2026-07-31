@@ -167,6 +167,14 @@ def _attach_match(
     if observer is not None:
         # So the provider badge can name whoever actually answered.
         observer.attach_router(speaker._router)
+    # Before the series, so the vendor's cold start is paid here and not inside
+    # game 1's turn deadline. Measured: a cold DeepSeek call takes 27-61 s
+    # against a 30 s turn budget, and game 1 of a real match took 153 s while
+    # games 2-6 took ~15 s. A timeout cannot fix it — those calls succeed,
+    # just slowly — so the cost has to move, not be bounded.
+    from ..llm.warm_up import warm_up
+
+    warm_up(speaker._router, emit=bus.publish)
     # One dict shared by the handshake and the filer: the handshake learns the
     # opponent's identity and the locked contract hash, and the artifacts cannot
     # be written without both.
