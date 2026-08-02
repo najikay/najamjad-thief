@@ -1,0 +1,9 @@
+# ahk-yosi
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://p2p-pursuit-thief-1035205205472.me-west1.run.app/mcp"
+group_id = "ahk-yosi"
+name     = "ahk-yosi"
+notes    = "THEIR THIEF — dial with OUR cop. Yosef Shanaa + Ahmad Kaiss. Cloud Run, stable URL. They take thief on odd; we take police on odd."
