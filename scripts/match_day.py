@@ -57,6 +57,27 @@ def write_card(team: str, url: str, group_id: str, notes: str) -> None:
         print(f"  wrote {target.relative_to(repo.parent)}")
 
 
+def set_strength(level: str) -> None:
+    """Set the play strength in both repos' private config.
+
+    Paired with `set_mode` on purpose: the two switches that decide what a match
+    is worth are armed by one subcommand, because arming half of them is the
+    mistake. A counted run refuses to start at anything but `full`.
+    """
+    for repo in REPOS:
+        role = ROLE_CONFIG.get(repo.name)
+        if role is None:
+            continue
+        path = repo / "config" / role / "game.toml"
+        text = path.read_text(encoding="utf-8")
+        if re.search(r'^level = "\w+"', text, flags=re.M):
+            updated = re.sub(r'^level = "\w+"', f'level = "{level}"', text, count=1, flags=re.M)
+        else:
+            updated = text.rstrip() + f'\n\n[strength]\nlevel = "{level}"\n'
+        path.write_text(updated, encoding="utf-8")
+        print(f"  {path.relative_to(repo.parent)}: strength.level = {level!r}")
+
+
 def set_mode(mode: str) -> None:
     """Flip `email.mode` in both repos' private config.
 
@@ -110,8 +131,9 @@ def main() -> int:
     keep = sub.add_parser("archive", help="move artifacts aside before a rerun")
     keep.add_argument("--team", required=True, help="what to label the archive")
 
-    sub.add_parser("counted", help="arm a counted match (email.mode = send)")
-    sub.add_parser("practice", help="restore the safe default (email.mode = draft)")
+    sub.add_parser("counted", help="arm a counted match (send + full strength)")
+    sub.add_parser("practice", help="safe default (draft + full strength)")
+    sub.add_parser("warmup", help="an uncounted warm-up, played sandbagged")
 
     args = parser.parse_args()
     if args.command == "card":
@@ -120,8 +142,11 @@ def main() -> int:
     elif args.command == "archive":
         archive(args.team)
     else:
-        set_mode("send" if args.command == "counted" else "draft")
-        print("\nNext: preflight will refuse a counted run until this reads 'send'.")
+        counted = args.command == "counted"
+        set_mode("send" if counted else "draft")
+        set_strength("full" if args.command in ("counted", "practice") else "sandbagged")
+        print("\nNext: preflight refuses a counted run until mode reads 'send'")
+        print("and strength reads 'full'.")
     return 0
 
 

@@ -25,7 +25,9 @@ from ..constants import EndReason, Role
 from .match_record import abandoned_record, now_iso, unplayed_record
 
 
-def resolve_abandoned(tracker: Any, sub_game: int, role: Role, steps: int) -> dict[str, Any]:
+def resolve_abandoned(
+    tracker: Any, sub_game: int, role: Role, steps: int, fault: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Score a mini-game that played and then died — as played, not void.
 
     Input: the series tracker, the mini-game number, our role, steps reached.
@@ -38,7 +40,7 @@ def resolve_abandoned(tracker: Any, sub_game: int, role: Role, steps: int) -> di
     outcome = tracker.record(
         end_reason=EndReason.TIMEOUT, role=role, steps=steps, audit_passed=True
     )
-    return abandoned_record(sub_game, now_iso(), outcome, steps)
+    return {**abandoned_record(sub_game, now_iso(), outcome, steps), **(fault or {})}
 
 
 def resolve_unplayed(tracker: Any, sub_game: int, role: Role, reason: EndReason) -> dict[str, Any]:

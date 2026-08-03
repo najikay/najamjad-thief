@@ -56,6 +56,7 @@ class MatchRunner:
         handshake_retries: int = 2,
         meter: Any = None,
         observer: Any = None,
+        urls: tuple[str, str] | None = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -79,6 +80,9 @@ class MatchRunner:
         self._handshake_retries = handshake_retries
         self._meter = meter
         self._observer = observer
+        # (ours, theirs) public endpoints, for attributing a connection failure
+        # to a side. None disables the probe rather than guessing.
+        self._urls = urls
         # The mini-game currently in play, so a crash can still report how far
         # it got. None until the first one starts.
         self._live_state: GameState | None = None
@@ -123,11 +127,15 @@ class MatchRunner:
                 self.play_sub_game(sub_game, role)
             except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
                 steps = getattr(self._live_state, "step", 0)
+                fault = self._who_failed(error)
                 self._emit({
                     "event": "subgame.abandoned", "sub_game": sub_game, "steps": steps,
                     "role": role.value, "error": f"{type(error).__name__}: {error}",
+                    **fault,
                 })
-                self.games.append(resolve_abandoned(self.tracker, sub_game, role, steps))
+                self.games.append(
+                    resolve_abandoned(self.tracker, sub_game, role, steps, fault)
+                )
             finally:
                 # Whatever happened, we are between mini-games now, so the
                 # opponent's next handshake must be welcome again.
@@ -186,6 +194,31 @@ class MatchRunner:
             })
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
+
+    def _who_failed(self, error: Exception) -> dict[str, Any]:
+        """Establish which side of the wire failed, while it is still failing.
+
+        Recording `end_reason: timeout` and nothing else reads as *we went
+        silent*, which quietly accepts blame for an outage on their side. The
+        book scores a technical loss 0/0 both ways, so the team that stayed up
+        gets nothing for having stayed up — and the record should at least say
+        who did.
+
+        Probed now rather than reconstructed later, because a tunnel that
+        dropped for fifty seconds is answering again by the time anyone reads
+        the report. Never raises: this runs inside a failure and must not become
+        a second one.
+        """
+        if self._urls is None:
+            return {}
+        try:
+            from ..net.fault_attribution import attribute
+
+            ours, theirs = self._urls
+            return {"fault": attribute(ours, theirs, f"{error}").as_dict()}
+        except Exception as probe_error:  # noqa: BLE001 - diagnosis is best-effort
+            self._emit({"event": "fault.probe_failed", "error": type(probe_error).__name__})
+            return {}
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""

@@ -142,6 +142,17 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
     return PeerTransport(inboxes=inboxes, client=client, deadlines=deadlines, emit=bus.publish)
 
 
+def _our_endpoint(manager: Any) -> str:
+    """The public address peers reach us on, from the declared tunnel hostname.
+
+    Empty when no tunnel is configured, which `fault_attribution` reads as "we
+    cannot demonstrate our own health" and answers `indeterminate` — the right
+    answer, since a local-only run has nothing to compare against.
+    """
+    hostname = str(manager.get("tunnel.hostname", "") or "").strip()
+    return f"https://{hostname}/mcp" if hostname else ""
+
+
 def build_match(
     manager: Any,
     role: Role,
@@ -174,6 +185,13 @@ def build_match(
         first_role=role,
         emit=bus.publish,
         handshake=handshake,
+        # Our endpoint and theirs, so a connection failure can be attributed to
+        # a side while it is still failing rather than argued about later.
+        # Built from `tunnel.hostname` because that is the declared key; there
+        # is no `network.public_url` — `AgentActions.public_url` is a derived
+        # property, and reading it as config was a key nobody declares. Caught
+        # by `test_no_hardcoded_tunables`, which is exactly its job.
+        urls=(_our_endpoint(manager), str(manager.get("network.opponent_url", "") or "")),
         # T-2447: a failed agreement retries the SAME sub-game this many times
         # before it resolves as a technical outcome. Config, not code — like
         # every other limit here.

@@ -24,6 +24,7 @@ from typing import Any
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
+from ..shared.strength import plays_full_strength
 from . import solver, thief_safety
 from .base import apply, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
@@ -47,6 +48,12 @@ class ThiefBrain:
     """Deterministic evasion policy for the thief role."""
 
     board_supplier: Any = None
+    #: How hard to play. At anything but full strength the safety invariant and
+    #: the exact solve are both skipped, leaving the weighted-sum policy that
+    #: actually lost three games to uoh-sqak — credible weakness, because it was
+    #: genuinely ours. See `shared/strength.py` for why this exists and why it
+    #: is named rather than hidden.
+    strength: str = "full"
     horizon: int = 3
     #: How many steps from the survival horizon the policy switches to stalling.
     #: Surviving to step 35 and surviving to step 100 score the same, so the last
@@ -87,7 +94,7 @@ class ThiefBrain:
             return Move.STAY
         belief = dict(getattr(facts, "belief", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
-        cop = self._cop_cell(belief)
+        cop = self._cop_cell(belief) if plays_full_strength(self.strength) else None
         if cop is not None:
             # No `barriers_left` argument: `facts.barriers_left` is *our* quota,
             # and a thief's is always zero, so passing it disabled the cut-cell
