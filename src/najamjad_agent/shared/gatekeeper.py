@@ -25,6 +25,10 @@ from .rate_limits import RateLimitConfig
 
 ResultT = TypeVar("ResultT")
 
+# Enough to identify a fault, short enough that an HTML error page from a
+# tunnel edge cannot flood the event log it is meant to make readable.
+MAX_ERROR_DETAIL = 200
+
 
 class QueueFullError(Exception):
     """Raised when the queue is at its configured depth (backpressure signal)."""
@@ -145,6 +149,14 @@ class ApiGatekeeper:
                     "gatekeeper.retry",
                     attempt=attempt,
                     error=type(error).__name__,
+                    # The type alone is not enough to act on, and finding that
+                    # out cost a day. Three police mini-games died to ten
+                    # `RuntimeError`s each, and `RuntimeError` is what fastmcp
+                    # raises for *every* connect-level fault — its own message
+                    # is the only thing that separates "nothing is listening"
+                    # from a protocol error. Truncated because a vendor can
+                    # return a whole HTML page as its `str()`.
+                    detail=f"{error}"[:MAX_ERROR_DETAIL],
                     backoff=self.config.retry_after_seconds,
                 )
                 if attempt < self.config.max_retries:
@@ -154,5 +166,10 @@ class ApiGatekeeper:
                 return result
             finally:
                 self._release()
-        self._event("gatekeeper.failed", attempts=self.config.max_retries)
+        self._event(
+            "gatekeeper.failed",
+            attempts=self.config.max_retries,
+            error=type(last_error).__name__ if last_error else "",
+            detail=f"{last_error}"[:MAX_ERROR_DETAIL] if last_error else "",
+        )
         raise RuntimeError(f"{self.service}: failed after {self.config.max_retries} attempts") from last_error
