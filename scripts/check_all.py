@@ -60,9 +60,23 @@ def missing_mandated_files() -> list[str]:
 def run(name: str, command: list[str]) -> tuple[bool, float, str]:
     """Run one gate, returning whether it passed, how long it took, and its tail."""
     started = time.monotonic()
-    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, check=False)
+    # Decoded as UTF-8 explicitly, not in the console's locale. `text=True`
+    # alone decodes with `locale.getpreferredencoding()` — cp1255 on a Hebrew
+    # Windows profile — and pytest output carries characters that codec cannot
+    # map. The reader thread then dies inside subprocess, `stdout` comes back
+    # None, and the gate runner crashes with a TypeError that names no cause.
+    # Green on ubuntu CI, unrunnable on the machines the matches are played
+    # from: the same shape as the `os.sysconf` defect.
+    #
+    # `errors="replace"` because this output is a human-readable tail, never
+    # parsed — a mangled glyph in a traceback is worth infinitely more than
+    # losing the whole report to a decode error.
+    result = subprocess.run(
+        command, cwd=ROOT, capture_output=True, text=True, check=False,
+        encoding="utf-8", errors="replace",
+    )
     elapsed = time.monotonic() - started
-    output = (result.stdout + result.stderr).strip().splitlines()
+    output = ((result.stdout or "") + (result.stderr or "")).strip().splitlines()
     return result.returncode == 0, elapsed, "\n".join(output[-15:])
 
 

@@ -80,29 +80,6 @@ def list_tools(url: str, timeout: float = 10.0) -> list[str]:
     return _run_isolated(_ask, timeout)
 
 
-def list_tools(url: str, timeout: float = 10.0) -> list[str]:
-    """The tool names the opponent's MCP server exposes.
-
-    A real MCP session, unlike `endpoint_answers` — the tool list is only
-    available after initialisation, and the question here is what we can
-    actually call rather than whether anyone is home. Asked once at preflight,
-    so the session cost that rules it out for polling is irrelevant.
-
-    Raises rather than returning empty on failure: "we could not ask" and "they
-    expose nothing" are different answers, and a preflight that reports the
-    second when it means the first sends an operator to fix the wrong machine.
-    """
-    import asyncio
-
-    from fastmcp import Client
-
-    async def _ask() -> list[str]:
-        async with Client(url) as client:
-            return [str(getattr(tool, "name", tool)) for tool in await client.list_tools()]
-
-    return asyncio.run(asyncio.wait_for(_ask(), timeout=timeout))
-
-
 def endpoint_answers(url: str, timeout: float = 5.0) -> bool:
     """Whether an MCP server — not merely a tunnel edge — answers at `url`.
 

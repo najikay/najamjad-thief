@@ -43,10 +43,6 @@ handshake_retries = 2
 response_timeout_seconds = 30
 watchdog_threshold_seconds = 60
 max_retries = 3
-# T-2447: a failed agreement exchange retries the SAME sub-game this many
-# times before resolving it as a technical outcome. Advancing on failure is
-# what desynchronised our numbering from the opponent's (rules 33-35).
-handshake_retries = 2
 # How long to wait for the opponent to come up before giving up. Two teams
 # agreeing "20:00" do not both start within two minutes — the old default —
 # and a wait that expires now stops the match with a message rather than
