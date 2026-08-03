@@ -716,7 +716,7 @@
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]
 - [ ] **T-2324** (P1) Run the weekly interop regression vs the reference simulator during the league window — DoD: regression log green each week [ADR-012; deps: T-2111]
 
-## E24 — Submission & freeze (18 tasks)
+## E24 — Submission & freeze (54 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
 - [ ] **T-2402** (P0) Run the review-checked audit: SDK single entry, gatekeeper on ALL external calls, DRY (2+ copies extracted), docstrings everywhere, relative imports, package checklist (`__init__`/`__all__`/`__version__`) — DoD: two-person review sign-off recorded
@@ -743,6 +743,17 @@
 - [x] **T-2441** (P1) Attach the live game to the SDK: `attach_game` existed from the start with no production caller, so the board, belief and turn panels sat on "Waiting for a game to start" through six real mini-games — DoD: observer threaded from bootstrap to MatchRunner
 - [ ] **T-2442** (P0) Wire `reconcile()` into the send path — it has full comparison logic and NO production caller, so `mutual_agreement` is audit-derived rather than a real result comparison. Needs a result exchange with the opponent (T-1725) — DoD: send blocks on the reconcile outcome; a mismatch alerts an operator
 - [x] **T-2443** (P1) Wire the Dialogue and Match-report panels: `record_message` and `record_report` had no production callers. Outgoing hints are recorded by the Speaker — where the provider and model the panel displays actually live, and the orchestrator was at its size cap — and the filer hands the delivery to the report panel — DoD: transcript carries provenance; a dashboard failure cannot cost a turn
+- [x] **T-2444** (P0) Check the opponent exposes a *playable surface*, not merely a reachable one: one team's agent exposed a single non-spec tool, `receive_move`, and it took three failed matches to find. Every check we had passed — URL configured, endpoint answering, tunnel up — and none asked whether there was anything there to call. `net/preflight_opponent.py` lists their tools and insists on all four mandated ones; a superset passes, since their extras are their business — DoD: missing tool fails preflight; the lister is injectable so CI does not depend on an opponent being online [FR-NET-10]
+- [x] **T-2445** (P1) Warm the LLM vendor before the series rather than inside game 1: DeepSeek's first call measured 27-61 s against a 30 s turn deadline, warm calls ~2 s — DoD: one warm-up call at startup; `llm/warm_up.py`
+- [x] **T-2446** (P1) Make the POSIX hardware probe as testable from Windows as the Windows one is from Linux — the two branches had asymmetric coverage, and the untested one is the one that shipped wrong before (T-2436) — DoD: both branches tested from either platform via injected stubs
+- [x] **T-2447** (P0) A failed handshake must retry the *same* sub-game, never renumber it: the counter advanced on failure while the opponent retried the same game, so after two failures we were numbering games 3 and 4 against their 5 and 6. Two reports describing one match with different `sub_game_number`s are contradictory and rules 33-35 can void both — DoD: bounded retry of the same number; only exhaustion resolves it as a technical outcome (`domain/handshake_retry.py`)
+- [x] **T-2448** (P0) One dropped turn must cost one mini-game, not the series: a `RuntimeError` from an exhausted send propagated through `play_match` to the CLI and killed the process, so games 4-6 were never played and our endpoint went dark while the opponent's watchdog scored and carried on — DoD: abandonment is scored `TIMEOUT` and the series continues
+- [x] **T-2449** (P1) Fix the readiness panel showing `checks: 0` with a green preflight one terminal away: `cockpit()` read `getattr(report, "checks", None) or []` and `PreflightReport` has never had a `checks` attribute — it has `results`. The `getattr` default swallowed the mistake, so the panel was always empty and never *looked* wrong — DoD: tests cover the path where preflight returns a real report, which no test did; a preflight that raises emits `cockpit.preflight_failed` rather than showing an empty panel
+- [ ] **T-2450** (P2) Replay viewer renders only our path; `opponent_records` is already stored and unused — DoD: both paths drawn, ours distinguishable from theirs
+- [x] **T-2453** (P1) Fix the `RuntimeWarning` flood and the check that failed only in the dashboard: `mcp_probe.list_tools` called `asyncio.run`, which refuses to nest. The CLI is not inside a loop so preflight passed there; `/api/cockpit` is an async route, so the same check raised `RuntimeError`, `run_check` recorded it as *failed*, and every attempt left a coroutine unawaited — the warnings for those are what filled the terminal. Same root cause as T-2449's neighbourhood, different mechanism — DoD: `_run_isolated` runs the coroutine on its own thread when a loop is already running; a test asserts no coroutine is left unawaited (with `gc.collect()` inside the block — the warning fires on collection, and without it the test passes against the broken code too) [FR-NET-8]
+- [x] **T-2454** (P0) Stop `check_repo_rules.py` dying on a tracked file the working tree no longer has: `match_day.py archive` moves tracked artifacts out of `workspace/`, and the gate reads its file list from `git ls-files --cached`, so it opened missing paths and raised a `FileNotFoundError` traceback instead of a verdict — blocking the very commit that would have fixed it, on a match evening, with three P0 fixes behind it. The live artifacts directory is now ignored; the versioned copy is the archive under `matches/` — DoD: missing paths skipped; a deleted secret file is still flagged by name so the skip cannot be used to smuggle one past [FR-REP-9]
+- [x] **T-2455** (P1) Record *why* an external call failed, not only the exception's class name: fastmcp wraps every connect-level fault as a bare `RuntimeError`, so thirty logged `RuntimeError`s across three lost police mini-games distinguished nothing and a day went into experiments the log should have answered. `drop()` additionally used `contextlib.suppress`, making a leaked connection and a clean close identical — DoD: gatekeeper and session events carry the message (200 chars) and the asyncio task name; `tests/integration/test_stateless_peer.py` covers a *stateless* peer, which no test did — ours is stateful, theirs is not, and that is why the suite never saw it [ADR-018]
+- [ ] **T-2456** (P1) Find what actually made the connection fail in the uoh-sqak police games. Established: the three fatal storms were connect failures (`RuntimeError`, zero `client.session_opened`, nothing in their access log), lasting ~50 s and recovering unaided; all three of their proposed causes are disproved by measurement. NOT established: the cause, which is outside this process — DoD: reproduced, or ruled out with the same rigour as the three already eliminated
 - [ ] **T-2451** (P1) Fix `authorise_gmail.py --manual`, which cannot work: `oauthlib` rejects the `http://localhost` redirect with `InsecureTransportError` unless `OAUTHLIB_INSECURE_TRANSPORT=1` is set, and only the automatic `run_local_server` path gets it via the library. The manual path is the documented WSL fallback — where the Windows browser often cannot reach the WSL listener — so the fallback is broken exactly where it is needed. Set the variable inside the script for the loopback redirect — DoD: test proves the manual flow parses an `http://localhost` response
 - [ ] **T-2452** (P1) `authorise_gmail.py --check` reports a revoked token as healthy: it only inspects the file for a `refresh_token` field and never attempts a refresh. It printed "scope is correct" while preflight was getting `invalid_grant: Token has been expired or revoked` — a false all-clear on the one credential a counted match cannot proceed without (rule 35). Attempt the refresh — DoD: a revoked token fails `--check`
 - [ ] **T-2433** (P0) Bound the LLM hint call and warm the provider before play — MEASURED 2026-07-29: DeepSeek's first call took 27-61 s against a 30 s turn deadline; warm calls are ~2 s, and no timeout exists on the vendor call at all, so a hanging vendor blocks on the SDK default (~600 s). The template floor is free and instant, so a hint that misses a short deadline should fall back rather than spend the turn — DoD: hard per-call timeout with template fallback; one warm-up call at startup; test proves a slow vendor cannot exceed the budget
@@ -782,33 +793,33 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 
 ## Progress tracking
 
-| Epic | Title | Milestone | Total | Done | Blocked |
+| Epic | Title | Milestone | Total | Done | Open |
 |---|---|---|---:|---:|---:|
-| E01 | Workspace & two-repo bootstrap | M1 | 29 | 20 | 2 |
-| E02 | CI compliance gates | M1 | 23 | 7 | 0 |
-| E03 | Config system | M2 | 24 | 6 | 0 |
-| E04 | Shared infrastructure | M2 | 28 | 20 | 0 |
-| E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 32 | 0 |
+| E01 | Workspace & two-repo bootstrap | M1 | 29 | 27 | 2 |
+| E02 | CI compliance gates | M1 | 23 | 23 | 0 |
+| E03 | Config system | M2 | 24 | 24 | 0 |
+| E04 | Shared infrastructure | M2 | 28 | 28 | 0 |
+| E05 | Domain: board/movement/barriers/capture/scoring | M2 | 35 | 35 | 0 |
 | E06 | Scent & belief | M2 | 30 | 30 | 0 |
 | E07 | Commit-reveal crypto, audit & Step-0 | M3 | 32 | 32 | 0 |
-| E08 | Game FSM & orchestrator | M3 | 26 | 21 | 0 |
-| E09 | Protocol schemas & goldens | M3 | 24 | 23 | 0 |
-| E10 | MCP networking | M3 | 30 | 29 | 0 |
+| E08 | Game FSM & orchestrator | M3 | 26 | 21 | 5 |
+| E09 | Protocol schemas & goldens | M3 | 24 | 24 | 0 |
+| E10 | MCP networking | M3 | 30 | 30 | 0 |
 | E11 | Tunnel & preflight | M5 | 16 | 16 | 0 |
-| E12 | Negotiation | M5 | 31 | 22 | 0 |
-| E13 | LLM layer | M4 | 32 | 29 | 0 |
-| E14 | Cop strategy | M4 | 26 | 16 | 0 |
-| E15 | Thief strategy | M4 | 26 | 13 | 0 |
-| E16 | Hint policy & opponent modeling | M4 | 18 | 13 | 0 |
-| E17 | Reporting | M5 | 28 | 19 | 4 |
-| E18 | UI dashboard | M5 | 28 | 24 | 4 |
+| E12 | Negotiation | M5 | 31 | 27 | 4 |
+| E13 | LLM layer | M4 | 32 | 30 | 2 |
+| E14 | Cop strategy | M4 | 26 | 26 | 0 |
+| E15 | Thief strategy | M4 | 26 | 26 | 0 |
+| E16 | Hint policy & opponent modeling | M4 | 18 | 14 | 4 |
+| E17 | Reporting | M5 | 28 | 22 | 6 |
+| E18 | UI dashboard | M5 | 28 | 28 | 0 |
 | E19 | Replay viewer | M5 | 14 | 14 | 0 |
 | E20 | SDK & CLI | M5 | 16 | 16 | 0 |
-| E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 0 | 0 |
-| E22 | Documentation deliverables | M2–M7 | 33 | 0 | 0 |
-| E23 | League operations | M6 | 24 | 0 | 0 |
-| E24 | Submission & freeze | M7 | 18 | 0 | 0 |
-| **Total** | | | **617** | **0** | **0** |
+| E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 26 | 0 |
+| E22 | Documentation deliverables | M2–M7 | 33 | 33 | 0 |
+| E23 | League operations | M6 | 24 | 9 | 15 |
+| E24 | Submission & freeze | M7 | 54 | 33 | 21 |
+| **Total** | | | **653** | **594** | **59** |
 
 
 

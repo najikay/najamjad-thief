@@ -24,6 +24,16 @@ class Actions:
 class Sdk:
     ready = True
     actions = Actions()
+    # The double borrows `AgentSdk.cockpit`, so it has to carry what that
+    # method reaches for. Leaving these off is the same defect this file
+    # already warns about under `practice()`: a double missing a method the
+    # real facade has lets a route ship broken, and it did — the cockpit route
+    # raised `AttributeError` here while working in the app.
+    _events = None
+
+    from najamjad_agent.sdk.sdk import AgentSdk as _Real
+
+    _emit_cockpit_failure = _Real._emit_cockpit_failure
 
     def snapshot(self) -> dict[str, Any]:
         return {"board": {}, "turn": {}, "transcript": [], "negotiation": [],
