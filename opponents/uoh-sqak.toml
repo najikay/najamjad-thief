@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://0d11-176-229-170-175.ngrok-free.app/mcp"
+url      = "https://d664-176-229-170-175.ngrok-free.app/mcp"
 group_id = "uoh-sqak"
 name     = "uoh-sqak"
-notes    = "One endpoint, both roles; they take thief on odd. Salah Qadah + Andalus Kalash. ngrok — URL is minted at match start, always re-ask."
+notes    = "Salah Qadah + Andalus Kalash. ONE endpoint both roles; they are thief-natural (thief on odd). ngrok free URL re-mints every session - reconfirm before every match. They dial our cop; we dial them. Practice 2026-08-02."

@@ -19,6 +19,12 @@ dist/
 # Runtime artifacts (archived per match under version control only via matches/)
 logs/
 *.log
+# The live artifacts directory is scratch: `game_id` keys the filenames, so a
+# rerun against the same opponent overwrites it. The versioned copy is the one
+# `match_day.py archive` moves to `matches/<team>-<stamp>/` (T-2318). Tracking
+# both meant every archive showed up as a tree full of deletions — and one of
+# those took the repo-rules gate down with it.
+workspace/artifacts/
 
 # Per-match private material stays out of history
 matches/**/secrets*

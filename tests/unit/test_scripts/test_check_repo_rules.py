@@ -97,6 +97,24 @@ def test_header_fixture_marker_exempts_planted_patterns(load_script, tmp_path: P
     assert _scan_one(gate, tmp_path, "fixtures.py", body) == []
 
 
+def test_deleted_but_still_tracked_file_does_not_crash_the_gate(load_script, tmp_path: Path) -> None:
+    """`git ls-files` names files the working tree no longer has.
+
+    `match_day.py archive` moves tracked artifacts out of `workspace/`, and the
+    gate then died with a FileNotFoundError traceback — no verdict, no way to
+    commit the very move that caused it.
+    """
+    gate = load_script("check_repo_rules")
+    assert gate._scan(tmp_path / "workspace" / "artifacts" / "gone.json", tmp_path) == []
+
+
+def test_deleted_secret_file_is_still_flagged_by_name(load_script, tmp_path: Path) -> None:
+    """Skipping missing files must not become a way to smuggle one past the gate."""
+    gate = load_script("check_repo_rules")
+    issues = gate._scan(tmp_path / "credentials.json", tmp_path)
+    assert any("SECRET-FILE" in issue for issue in issues)
+
+
 def test_fixture_marker_below_the_header_does_not_exempt(load_script, tmp_path: Path) -> None:
     """The escape hatch must not be hideable deep inside a real module."""
     gate = load_script("check_repo_rules")
