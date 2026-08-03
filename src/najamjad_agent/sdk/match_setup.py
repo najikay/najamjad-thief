@@ -15,6 +15,7 @@ from typing import Any
 from ..constants import Role
 from ..domain.belief import BeliefGrid
 from ..domain.board import Board
+from ..domain.fair_play import FairPlayMonitor
 from ..domain.game_state import GameState
 from ..domain.ledger import CommitLedger
 from ..domain.match import MatchRunner
@@ -47,6 +48,11 @@ def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
         own_scent=ScentField(board_size=board.size),
         opponent_scent=ScentField(board_size=board.size),
         ledger=CommitLedger(sub_game=sub_game),
+        # One monitor per mini-game, because the barrier budget and the step
+        # numbering both reset with it. Watching the opponent is not optional
+        # equipment: commit-reveal proves they did not rewrite what they did,
+        # and this is the only thing that asks whether they were allowed to.
+        fair_play=FairPlayMonitor(max_barriers=params.max_barriers),
     )
 
 

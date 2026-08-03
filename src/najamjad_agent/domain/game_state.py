@@ -61,6 +61,11 @@ class GameState:
     # final sealed turn, and only then closes the game.
     pending_end: EndReason | None = None
     barriers_used: int = 0
+    # Watches the opponent's declared turns for rule breaches commit-reveal
+    # cannot see — an opponent who reports truthfully but plays something the
+    # rules disallow. Optional so every existing construction still works, and
+    # observational only: it records, it never changes our play.
+    fair_play: Any = None
     history: list[dict[str, Any]] = field(default_factory=list)
 
     @property

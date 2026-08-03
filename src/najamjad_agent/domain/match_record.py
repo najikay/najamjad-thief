@@ -57,6 +57,14 @@ def played_record(
         "their_claim": report.their_claim,
         "their_records": list(report.their_records),
         "disputed": report.disputed,
+        # What the fair-play monitor saw. Carried on every played record, clean
+        # or not, because "we checked and found nothing" is the sentence that
+        # makes the finding credible on the one occasion there is something.
+        "fair_play": (
+            state.fair_play.summary()
+            if state.fair_play is not None
+            else {"clean": True, "violations": [], "rules_broken": []}
+        ),
     }
 
 
@@ -81,6 +89,7 @@ def unplayed_record(sub_game: int, started_at: str, outcome: SubGameOutcome) -> 
         "their_claim": None,
         "their_records": [],
         "disputed": False,
+        "fair_play": {"clean": True, "violations": [], "rules_broken": []},
     }
 
 
@@ -119,4 +128,8 @@ def abandoned_record(
         "their_claim": "",
         "their_records": [],
         "disputed": False,
+        # A game that never reached a clean close still had turns to watch, but
+        # the monitor lives on the state a crash may not have left us, so the
+        # honest default is "nothing observed" rather than "nothing happened".
+        "fair_play": {"clean": True, "violations": [], "rules_broken": []},
     }

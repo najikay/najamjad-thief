@@ -152,6 +152,12 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
   reachability: a tunnel edge answers while the agent behind it is dead, and an agent answers
   while exposing tools we cannot call. Preflight lists their tools and insists on all four
   mandated ones (T-2444).
+- **FR-NET-12 (S)** **Fair-play monitoring.** Every declared opponent turn is checked
+  against the rules they agreed to — barrier law, budget, reach, step order, move
+  legality, hint cap — and breaches are recorded with evidence. Observational only: a
+  finding never alters our play and never forfeits their game, because deciding a match
+  on our own accusation is the contradiction rules 33-35 void both teams for. Every
+  played record carries the result, clean or not.
 - **FR-NET-11 (S)** Every failed external call records the exception's **message**, not only
   its type, and the asyncio task it ran in. Transport libraries collapse unrelated faults into
   one exception type, so a type name alone cannot tell an operator which machine to fix

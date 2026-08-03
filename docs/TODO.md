@@ -716,7 +716,7 @@
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]
 - [ ] **T-2324** (P1) Run the weekly interop regression vs the reference simulator during the league window — DoD: regression log green each week [ADR-012; deps: T-2111]
 
-## E24 — Submission & freeze (61 tasks)
+## E24 — Submission & freeze (62 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
 - [ ] **T-2402** (P0) Run the review-checked audit: SDK single entry, gatekeeper on ALL external calls, DRY (2+ copies extracted), docstrings everywhere, relative imports, package checklist (`__init__`/`__all__`/`__version__`) — DoD: two-person review sign-off recorded
@@ -761,6 +761,7 @@
 - [x] **T-2461** (P1) Turn on branch coverage — guidelines page 16 requires statement, branch and path coverage and we measured statements only, so a half-tested `if` read as fully covered — DoD: `branch = true`; suite still clears the 85 % floor (96.2 %)
 - [x] **T-2462** (P0) Re-baseline the cop. `test_self_play_uncertainty` asserted our cop captures our thief under perfect information; that described the old thief, not the cop. With no cop able to force a capture, the 100 % capture rates in `results/latest.json` measured baselines conceding — the `fakes-must-fail-like-reality` pattern again — DoD: the assertion is inverted with its reasoning recorded; every cop tuning number re-derived against the invariant thief
 - [ ] **T-2463** (P1) Verify on match day whether each opponent transmits a full smell grid. Our own field's freshest deposit is always its unique maximum (240/240 verified), so against a full-field peer both sides know each other exactly. A truncated or noised field puts the belief grid back in charge — DoD: one check per opponent card, recorded in `matches/<team>/profile.md`
+- [x] **T-2464** (P1) Add the fair-play monitor: commit-reveal proves an opponent did not rewrite what they did, and nothing asked whether they were allowed to do it. A replayed series found a peer's cop moving *and* walling on the same turn, fourteen times, against a Barrier Law that is explicitly in lieu of moving — fourteen free actions nobody noticed. Observational by design: findings carry evidence and never change our play, because deciding a match on our own accusation is what rules 33-35 void both teams for — DoD: eight rule checks tested; wired into `absorb_turn` with an end-to-end test, since the commonest defect in this repo is a class with no production caller; every played record carries the result, clean or not [FR-NET-12]
 - [ ] **T-2451** (P1) Fix `authorise_gmail.py --manual`, which cannot work: `oauthlib` rejects the `http://localhost` redirect with `InsecureTransportError` unless `OAUTHLIB_INSECURE_TRANSPORT=1` is set, and only the automatic `run_local_server` path gets it via the library. The manual path is the documented WSL fallback — where the Windows browser often cannot reach the WSL listener — so the fallback is broken exactly where it is needed. Set the variable inside the script for the loopback redirect — DoD: test proves the manual flow parses an `http://localhost` response
 - [ ] **T-2452** (P1) `authorise_gmail.py --check` reports a revoked token as healthy: it only inspects the file for a `refresh_token` field and never attempts a refresh. It printed "scope is correct" while preflight was getting `invalid_grant: Token has been expired or revoked` — a false all-clear on the one credential a counted match cannot proceed without (rule 35). Attempt the refresh — DoD: a revoked token fails `--check`
 - [ ] **T-2433** (P0) Bound the LLM hint call and warm the provider before play — MEASURED 2026-07-29: DeepSeek's first call took 27-61 s against a 30 s turn deadline; warm calls are ~2 s, and no timeout exists on the vendor call at all, so a hanging vendor blocks on the SDK default (~600 s). The template floor is free and instant, so a hint that misses a short deadline should fall back rather than spend the turn — DoD: hard per-call timeout with template fallback; one warm-up call at startup; test proves a slow vendor cannot exceed the budget
@@ -825,8 +826,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E21 | Integration, self-play & interop | M4–M5 (self-play T-2101–T-2110 in M4; interop/chaos T-2111–T-2126 in M5) | 26 | 26 | 0 |
 | E22 | Documentation deliverables | M2–M7 | 33 | 33 | 0 |
 | E23 | League operations | M6 | 24 | 9 | 15 |
-| E24 | Submission & freeze | M7 | 61 | 39 | 22 |
-| **Total** | | | **660** | **600** | **60** |
+| E24 | Submission & freeze | M7 | 62 | 40 | 22 |
+| **Total** | | | **661** | **601** | **60** |
 
 
 

@@ -111,3 +111,41 @@ moves, and mid-turn disconnects.
 | Crypto checklist (source-scanning) | `tests/unit/test_domain/test_crypto_review.py` |
 | Egress validation | `tests/unit/test_protocol/test_egress_*.py` |
 | Hostile network input | `tests/integration/test_fault_*.py` |
+
+
+## Fair-play monitoring (2026-08-03)
+
+Commit-reveal proves an opponent did not **rewrite** what they did. Nothing
+asked whether what they did was **allowed**, and that gap is not hypothetical:
+replaying a real series turned up a peer whose cop moved to a new cell *and*
+declared a barrier on the same turn, fourteen times, against a Barrier Law that
+is explicitly *in lieu of moving* (FR-ENG-3). Fourteen free actions is a large
+edge and nothing in our agent noticed.
+
+`domain/fair_play.py` watches every declared opponent turn for:
+
+| rule | what it catches |
+|---|---|
+| `barrier-and-move` | a wall placed on a turn they also moved |
+| `barrier-out-of-reach` | a wall further than one orthogonal step from them |
+| `barrier-budget` | more walls than the agreed `max_barriers` |
+| `teleport` | a declared position more than one step from the last |
+| `through-barrier` | a move onto a cell they themselves declared walled |
+| `off-board` | a coordinate outside the agreed grid |
+| `step-order` | a skipped step, hiding a turn no audit can reconstruct |
+| `hint-length` | a hint beyond the negotiated word cap |
+
+Three design rules, and the first two are the important ones:
+
+* **Observe, never retaliate.** A finding is recorded and surfaced; it never
+  changes our play and never forfeits their game. Deciding a match on our own
+  accusation is exactly the contradiction rules 33-35 void *both* teams for, and
+  an honest peer with an off-by-one bug is far more likely than a cheat.
+* **Evidence, not verdicts.** Each finding carries the step and the two facts
+  that conflict, so a human can settle it with the opponent in one message.
+* **Silence is recorded too.** Every played record carries a `fair_play` block
+  whether or not anything was found, because "we checked and found nothing" is
+  what makes the finding credible on the one occasion there is something.
+
+The monitor is pure and takes no I/O, so a stored log re-audits identically
+offline — which is what makes a finding arguable after the fact.
