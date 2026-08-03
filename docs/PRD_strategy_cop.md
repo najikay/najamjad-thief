@@ -93,3 +93,46 @@ says it does not matter here. Recording that is the point of a sweep.
 | Illegal proposal | Filtered by the orchestrator | `test_orchestrator.py` |
 | Walled-in thief | Capture recognised | `test_endings.py` |
 | Versus the baseline | Beats greedy decisively | `test_self_play_harness.py` |
+
+
+## Re-baseline, 2026-08-03 — what the cop is actually worth
+
+Every capture-rate number previously recorded here was measured against our own
+old thief, and it was fiction. The published cop number of a Cartesian product
+of two trees is 2, so **one cop cannot force a capture on a 7×7 grid** — a
+saturated 100 % capture rate could therefore only ever have been describing the
+opponent's weakness. Confirmed by exact backward induction over all 4802
+perfect-information states: the only cop-win positions are the 49 where the two
+already share a cell.
+
+Re-swept against the current thief (`--games 24 --seed 7`):
+
+| knob | values swept | capture rate |
+|---|---|---|
+| `cop.barrier_threshold` | 0.05 … 0.60 | **0/24 at every value** |
+| `cop.lookahead` | 1 … 4 | **0/24 at every value** |
+
+Both dials are inert against a correct thief. That is not a tuning failure, it
+is the theorem: pursuit cannot win, and neither knob changes what barriers do.
+
+### What this means for match day
+
+* **The cop's floor is 5 points per game (survival), not 20.** Plan the series
+  around 3 thief games at 10 and 3 cop games at 5 — a **45-point floor** — and
+  treat every cop capture as opportunistic.
+* **Cop captures will come from opponent error, not from our pursuit.** The one
+  configuration that still beats our own thief is a barrier trap under *exact*
+  information; one cell of belief error defeats it.
+* **Barriers only matter when they make the region acyclic.** Shrinking the
+  thief's room achieves nothing on its own — a sealed 2×2 pocket is a 4-cycle
+  and is *not* cop-win, while a sealed 1×3 path is. Every tree is cop-win, so
+  "does this placement reduce the cycle rank" is the correct objective, and
+  `cop_barriers.score_placement`'s weighted escape-route count is a poor proxy
+  for it.
+
+The counting bound behind all of this, since it is short: a guaranteed sweep
+needs each of the *n²* cells cleared, a move turn clears at most one
+permanently, and a barrier turn clears none while removing one cell from the
+board — so `n² − b ≤ 35 − b`, i.e. `n² ≤ 35`. The barrier budget cancels. A 5×5
+board is sweepable (25 ≤ 35); a 7×7 is not (49 > 35), and no amount of
+computation changes that.

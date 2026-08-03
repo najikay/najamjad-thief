@@ -124,12 +124,13 @@ def test_our_cop_still_traps_our_thief_with_barriers_under_perfect_information()
     100 % capture rate against the old thief measured the thief conceding, not
     the cop attacking. It is only meaningful now because the thief is hard.
 
-    Measured across blur levels: capture at 0 and 1, survival at 2 and 3. The
-    trap needs the cop to know where we are within about a cell; past that it
-    walls the wrong corner.
+    Measured across blur levels: capture at 0, survival at 1, 2 and 3. Adding
+    the exact solve moved blur 1 from capture to survival — the trap now needs
+    the cop to know our cell *exactly*, and one cell of error is enough to make
+    it wall the wrong corner.
     """
     assert play_blurred(CopBrain(), ThiefBrain(), spread=0) == "capture"
-    assert play_blurred(CopBrain(), ThiefBrain(), spread=1) == "capture"
+    assert play_blurred(CopBrain(), ThiefBrain(), spread=1) == "survival"
     assert play_blurred(CopBrain(), ThiefBrain(), spread=2) == "survival"
 
 
