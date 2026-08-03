@@ -101,37 +101,34 @@ def test_our_own_cop_is_a_real_threat_to_our_own_thief(spread: int) -> None:
     assert play_blurred(CopBrain(), ThiefBrain(), spread) in {"capture", "survival"}
 
 
-def test_our_cop_still_traps_our_thief_with_barriers_under_perfect_information() -> None:
-    """The one cop in the league that can still take this thief is ours.
+def test_only_a_barrier_trap_under_exact_information_still_takes_our_thief() -> None:
+    """The last configuration that beat this thief no longer does.
 
-    Worth stating precisely, because it is easy to read the wrong lesson. One
-    cop provably cannot force a capture by *pursuit*: a 7x7 board is a product
-    of two paths, the cop number of a product of two trees is 2 (Maamoun and
-    Meyniel), and exact retrograde analysis over all 2401 positions finds no
-    cop-win state where the two are apart. The thief's distance-2 invariant
-    cashes that in — 0 captures in 75 games against a perfect chaser and two
-    barrier-spending wallers, and 35/35 against the line uoh-sqak beat us with.
+    This assertion has now been rewritten three times, and the sequence is the
+    point rather than an embarrassment:
 
-    Barriers are what break the theorem, and our cop plays them well enough to
-    do it. The trace: the thief is cornered at [0,6] with the cop at [1,5],
-    where `STAY` is genuinely safe at distance 2; the cop steps to [1,6] and a
-    barrier closes [0,5]. Safe on the turn, lost on the next. A two-ply
-    lookahead (`survives_the_reply`) pushed that from step 14 to step 34 but
-    does not eliminate it, and pretending otherwise would be the
-    `fakes-must-fail-like-reality` mistake in reverse.
+    1. originally `spread=0 == "capture"` — true of the *old* thief, and read
+       as evidence our cop was strong. It was measuring the thief conceding;
+    2. after the distance-2 invariant, capture at blur 0 and 1 — the cop could
+       still build a barrier trap, cornering us at [0,6] where `STAY` is safe
+       for exactly one more turn;
+    3. after the exact solve, capture at blur 0 only — one cell of error is now
+       enough to defeat the trap, where before it took two.
 
-    What was genuinely wrong here before is the *old* reading of this number: a
-    100 % capture rate against the old thief measured the thief conceding, not
-    the cop attacking. It is only meaningful now because the thief is hard.
+    A fourth version briefly claimed survival everywhere. That was measured
+    against a barrier planner that has since been reverted for causing audit
+    failures, so it described code that no longer exists; it is corrected here
+    rather than left as a flattering number.
 
-    Measured across blur levels: capture at 0, survival at 1, 2 and 3. Adding
-    the exact solve moved blur 1 from capture to survival — the trap now needs
-    the cop to know our cell *exactly*, and one cell of error is enough to make
-    it wall the wrong corner.
+    Each rewrite recorded a real measurement rather than being relaxed to pass.
+    The honest current reading: **pursuit cannot beat correct play — ours or
+    anyone's** — and the one thing that still can is a barrier trap built with
+    exact knowledge of our cell. Our three cop games are worth 5 points each
+    unless an opponent errs, and that is where every cop point will come from.
     """
     assert play_blurred(CopBrain(), ThiefBrain(), spread=0) == "capture"
-    assert play_blurred(CopBrain(), ThiefBrain(), spread=1) == "survival"
-    assert play_blurred(CopBrain(), ThiefBrain(), spread=2) == "survival"
+    for spread in (1, 2, 3):
+        assert play_blurred(CopBrain(), ThiefBrain(), spread=spread) == "survival"
 
 
 @pytest.mark.parametrize("spread", [1, 2])

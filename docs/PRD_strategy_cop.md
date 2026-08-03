@@ -136,3 +136,40 @@ permanently, and a barrier turn clears none while removing one cell from the
 board — so `n² − b ≤ 35 − b`, i.e. `n² ≤ 35`. The barrier budget cancels. A 5×5
 board is sweepable (25 ≤ 35); a 7×7 is not (49 > 35), and no amount of
 computation changes that.
+
+
+## Retargeting the barrier planner at cycle rank — tried, measured, reverted
+
+Recorded as a negative result because the reasoning still looks right and the
+measurement still says no.
+
+**The idea.** `score_placement` values a wall by the weighted escape routes it
+removes, and that is the wrong target: a region with a cycle in it is not
+cop-win however small it gets. A sealed 2x2 pocket is a 4-cycle the thief
+circles forever; wall one of its cells and the remaining L is a tree, and every
+tree is cop-win. So the planner should be closing loops, gated on
+`remaining_loops < barriers_left` — an intact 7x7 has cycle rank 84 − 49 + 1 =
+36 against a quota of 14, so it can only pay in a small region.
+
+**What happened.** Every measurement got worse:
+
+| | before | after |
+|---|---|---|
+| vs our thief (correct play) | 0/24 | 0/24 |
+| vs greedy thief (sweep) | 16/24 | 15/24 |
+| vs greedy thief (harness) | ≥ 0.80 | **0.375** |
+| audit failures | 0 | **5** |
+
+The audit failures are the decisive part: games were voiding, which costs more
+than any tuning gains. Spending barriers on a cycle-rank argument changed which
+cells were walled often enough to desynchronise the two peers' boards.
+
+**Reverted in full**, along with `territory.cycle_rank`, which had no other
+caller — unused production code is worse than none. What was kept from the
+attempt is the `solver` module itself, which pays for itself on the thief side.
+
+**The lesson worth keeping**: the cycle-rank reasoning is sound about *what a
+winning position looks like* and useless as a *turn-by-turn objective*, because
+the cop cannot reach a tree from an intact board inside 35 moves anyway. The
+theory tells you the destination; it does not follow that steering toward it one
+barrier at a time is better than playing the position in front of you.

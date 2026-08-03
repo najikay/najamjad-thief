@@ -41,6 +41,20 @@ def test_the_two_peers_never_disagree_about_how_a_game_ended(summary, matchup):
     "matchup", ["ours_cop_vs_greedy_thief", "ours_thief_vs_greedy_cop", "greedy_vs_greedy"]
 )
 def test_every_game_audits_clean_and_none_stall(summary, matchup):
+    """A voided game costs more than a lost one, so this stays strict.
+
+    It went red three times on 2026-08-03 while passing 4/4 in isolation, and
+    the cause was in the harness rather than the agent: `_runner` gave each peer
+    a `response_timeout` of 0.2 s. Two real threads exchanging real messages
+    under a full test suite miss a 200 ms window, the mini-game records a
+    timeout, its audit is skipped, and `audit_failures` goes non-zero. The
+    harness was reporting voided games because the laptop was busy.
+
+    Raised to 5 s there. The assertion itself is deliberately unchanged —
+    "some games voided" is exactly what this exists to catch, and rules 33-35
+    make it expensive — so the fix belongs in what the harness measures, not in
+    what it is willing to accept.
+    """
     assert summary[matchup]["audit_failures"] == 0
     assert summary[matchup]["stalled"] == 0
     assert summary[matchup]["played"] > 0, "a sweep that played nothing proves nothing"
