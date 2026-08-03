@@ -121,3 +121,6 @@ claim_threshold = 0.12
 [strategy.thief]
 horizon = 3
 stall_trigger = 3
+
+[strength]
+level = "full"

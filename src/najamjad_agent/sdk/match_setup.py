@@ -119,10 +119,22 @@ build_brain = brain_factory()
 
 
 def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
-    """The live link to the opponent, rate-limited and deadline-bounded."""
+    """The live link to the opponent, rate-limited and deadline-bounded.
+
+    The resolver cache is installed here, before the first call, because DNS is
+    what actually cost us mini-games: three against uoh-sqak died to
+    `Temporary failure in name resolution` on a mid-game reconnect, on a machine
+    whose lookups measure 502 ms median and 1.9 s worst case. An opponent's
+    address does not move inside a match, so asking twice buys nothing.
+    """
+    from ..net import dns_cache
+
+    opponent = str(manager.require("network.opponent_url"))
+    dns_cache.install()
+    dns_cache.warm(opponent, emit=bus.publish)
     limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
     client = PeerClient(
-        opponent_url=str(manager.require("network.opponent_url")),
+        opponent_url=opponent,
         # `mcp_peer`, the name the config actually declares. Asking for "peer"
         # fell through to `default` — 30 requests a minute, one message every
         # two seconds — and the opponent is not a quota-limited third-party
