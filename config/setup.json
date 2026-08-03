@@ -13,7 +13,9 @@
     "events": "workspace/events.jsonl",
     "rate_limits": "config/rate_limits.json",
     "logging": "config/logging_config.json",
-    "dead_letters": "workspace/dead_letters"
+    "dead_letters": "workspace/dead_letters",
+    "counted_games": "workspace/counted_games.json",
+    "_counted_games_note": "The counted-match ledger (rules 37-38). State we accumulate, not a setting: the figure is declared to every opponent at match start and a false declaration found at project review disqualifies the team, so it is derived from this file and never typed. Under workspace/ because editing it by hand is precisely the failure the rule names."
   },
   "features": {
     "dashboard": true,

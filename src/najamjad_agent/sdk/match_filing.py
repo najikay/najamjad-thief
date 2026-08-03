@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ..domain.match_record import now_iso
 from ..shared.app_config import setting
 
 
@@ -55,8 +56,51 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         # had gone: `record_report` had no production caller either.
         if observer is not None:
             observer.record_report(send=getattr(filer, "last_send", None))
+        _record_counted(manager, bus, theirs, game_uid)
 
     return file_match
+
+
+def _record_counted(manager: Any, bus: Any, opponent: str, game_uid: str) -> None:
+    """Add a finished counted match to the tracker, once, after it is filed.
+
+    **After** filing and sending, not before: the number we declare is "matches
+    played", and a series that died before producing a report has not been
+    played in the sense rules 33-35 care about. Recording early would make our
+    next declaration overstate us, which is the direction that disqualifies.
+
+    Skipped entirely for practice and warm-up runs — an uncounted game must
+    never touch the count, and `practice.current()` is the same switch that
+    redirects the mail, so the two cannot disagree about what kind of run this
+    was.
+
+    Never raises. A tracker write that fails must not undo a match that really
+    happened; it is evented loudly instead, because the recovery is to add the
+    entry by hand before the next handshake.
+    """
+    from ..shared.practice import current
+
+    try:
+        if current().enabled:
+            bus.publish({"event": "counted.skipped", "reason": "practice run"})
+            return
+        from ..negotiation.counted_games import tracker_for
+
+        tracker = tracker_for(manager)
+        if tracker.already_played(opponent):
+            bus.publish({"event": "counted.duplicate", "opponent": opponent})
+            return
+        bus.publish({
+            "event": "counted.recorded",
+            "opponent": opponent,
+            "count": tracker.record(opponent, game_uid=game_uid, timestamp=now_iso()),
+        })
+    except Exception as error:  # noqa: BLE001 - reported; never undoes a played match
+        bus.publish({
+            "event": "counted.record_failed",
+            "opponent": opponent,
+            "error": f"{type(error).__name__}: {error}",
+        })
 
 
 def _config_body(manager: Any) -> dict[str, Any]:
