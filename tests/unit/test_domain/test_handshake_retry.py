@@ -32,6 +32,8 @@ class QuietPeer:
 
     def reset(self) -> None: ...
 
+    def finish_sub_game(self) -> None: ...
+
     def send_turn(self, message: dict[str, Any]) -> bool:
         return True
 

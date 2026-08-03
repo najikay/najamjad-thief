@@ -130,3 +130,56 @@ def test_audit_and_negotiate_messages_validate(inboxes: Inboxes) -> None:
 def test_a_turn_without_a_step_skips_the_sequence_guard(inboxes: Inboxes) -> None:
     """Guard on what exists: a message with no step cannot be out of order."""
     assert inboxes._check_sequence(object()) is None
+
+
+NEGOTIATE = {"identity": "rival", "terms": {}, "nonce": "n", "signature": "s"}
+
+
+def test_a_handshake_mid_mini_game_is_refused_not_queued(
+    inboxes: Inboxes, events: list[dict]
+) -> None:
+    """The ahk-yosi failure, reproduced.
+
+    Their hosted peer retried our endpoint on a loop while we dialled theirs.
+    We accepted 58 inbound handshakes during one six-game series, so two games
+    ran over a single inbox and every mini-game scored 0-0 technical. The
+    handshake had to be refused *before* it reached a queue.
+    """
+    inboxes.begin_sub_game()
+
+    result = inboxes.accept("negotiate", NEGOTIATE)
+
+    assert not result.ok
+    assert inboxes.pending("negotiate") == 0
+    assert any(event["event"] == "handshake.refused" for event in events)
+
+
+def test_the_refusal_tells_the_peer_to_try_again(inboxes: Inboxes) -> None:
+    """Retriable, never fatal.
+
+    Opponents re-handshake before every mini-game, and one whose clock runs
+    ahead of ours proposes the next game while we finish this one. Answering
+    anything that reads as "you are broken" would turn a timing skew into a
+    forfeit; their retry is what resynchronises us.
+    """
+    inboxes.begin_sub_game()
+
+    errors = " ".join(inboxes.accept("negotiate", NEGOTIATE).errors)
+
+    assert "re-send" in errors and "boundary" in errors
+
+
+def test_a_handshake_between_mini_games_still_lands(inboxes: Inboxes) -> None:
+    """The gate must not break the normal per-sub-game re-handshake."""
+    inboxes.begin_sub_game()
+    inboxes.gate.end_sub_game()
+
+    assert inboxes.accept("negotiate", NEGOTIATE).ok
+    assert inboxes.pending("negotiate") == 1
+
+
+def test_turns_are_unaffected_by_the_gate(inboxes: Inboxes) -> None:
+    """Only handshakes are gated — a live game's own turns must flow."""
+    inboxes.begin_sub_game()
+
+    assert inboxes.accept("turn", TURN).ok

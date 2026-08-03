@@ -13,17 +13,18 @@ all decided elsewhere and merely recorded here.
 from collections.abc import Callable
 from typing import Any
 
-from ..constants import EndReason, Role
+from ..constants import EndReason, Phase, Role
 from ..shared.events import Emit
-from .audit import AuditReport
 from .fsm import GameStateMachine
 from .game_state import GameState
 from .handshake_retry import agree_on_terms
 from .match_audit import audit_or_skip
-from .match_record import now_iso, played_record, unplayed_record
+from .match_record import now_iso, played_record
+from .match_resolution import resolve_abandoned, resolve_unplayed, tokens_for
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
+from .turn_loop import run_turn_loop
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
@@ -78,6 +79,9 @@ class MatchRunner:
         self._handshake_retries = handshake_retries
         self._meter = meter
         self._observer = observer
+        # The mini-game currently in play, so a crash can still report how far
+        # it got. None until the first one starts.
+        self._live_state: GameState | None = None
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
@@ -103,7 +107,7 @@ class MatchRunner:
         played and our endpoint went dark. The opponent met the same blip with
         a watchdog, scored the game, and carried on. It is now scored a
         `TIMEOUT`, the verdict their watchdog reaches, so both sides describe
-        the game the same way.
+        the game the same way. `match_resolution` holds both shapes.
         """
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
@@ -111,36 +115,26 @@ class MatchRunner:
             if not agree_on_terms(
                 self._handshake, sub_game, self._handshake_retries, self._emit
             ):
-                self._resolve_without_play(sub_game, role, EndReason.OPPONENT_QUIT)
+                self.games.append(
+                    resolve_unplayed(self.tracker, sub_game, role, EndReason.OPPONENT_QUIT)
+                )
                 continue
             try:
                 self.play_sub_game(sub_game, role)
             except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
+                steps = getattr(self._live_state, "step", 0)
                 self._emit({
-                    "event": "subgame.abandoned", "sub_game": sub_game,
+                    "event": "subgame.abandoned", "sub_game": sub_game, "steps": steps,
                     "role": role.value, "error": f"{type(error).__name__}: {error}",
                 })
-                self._resolve_without_play(sub_game, role, EndReason.TIMEOUT)
+                self.games.append(resolve_abandoned(self.tracker, sub_game, role, steps))
+            finally:
+                # Whatever happened, we are between mini-games now, so the
+                # opponent's next handshake must be welcome again.
+                self._transport.finish_sub_game()
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})
         return result
-
-    def _resolve_without_play(self, sub_game: int, role: Role, reason: EndReason) -> None:
-        """Score a mini-game that produced no result, and keep the series alive.
-
-        Two ways in, one shape out. `OPPONENT_QUIT` when the handshake never
-        completed — a peer that never agreed has nothing to reveal, and
-        demanding an audit would read absence as forgery. `TIMEOUT` when they
-        agreed and then went silent mid-play, which is the verdict their own
-        watchdog reaches, so both sides describe the game the same way.
-
-        Both build from `match_record`, so the played and unplayed shapes
-        cannot drift apart under the filer.
-        """
-        outcome = self.tracker.record(
-            end_reason=reason, role=role, steps=0, audit_passed=True
-        )
-        self.games.append(unplayed_record(sub_game, now_iso(), outcome))
 
     def play_sub_game(self, sub_game: int, role: Role) -> dict[str, Any]:
         """Play one mini-game to its end, audit it, and record the outcome.
@@ -153,6 +147,9 @@ class MatchRunner:
         self._transport.reset()
         started_at = now_iso()
         state = self._build_state(self.params, role, sub_game)
+        # Held so an abandoned game can report the steps it actually played;
+        # filing those as zero is what made our ledger contradict theirs.
+        self._live_state = state
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
         # Hand the live game to whoever is watching — the dashboard reads its
         # board, belief and turn banner off this. `attach_game` existed from
@@ -164,8 +161,8 @@ class MatchRunner:
         orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 
-        reason = self._turn_loop(orchestrator) or EndReason.SURVIVAL
-        report = self._audit(state, reason)
+        reason = run_turn_loop(orchestrator, self.params.max_moves) or EndReason.SURVIVAL
+        report = audit_or_skip(state, reason, self._transport, self._audit_timeout, self._emit)
         outcome = self.tracker.record(
             end_reason=reason,
             role=role,
@@ -177,7 +174,7 @@ class MatchRunner:
             audit_passed=report.passed or report.skipped,
         )
         record = played_record(
-            sub_game, started_at, outcome, state, report, self._tokens_for(sub_game)
+            sub_game, started_at, outcome, state, report, tokens_for(self._meter, sub_game)
         )
         self.games.append(record)
         if report.disputed:
@@ -190,28 +187,8 @@ class MatchRunner:
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
 
-    def _tokens_for(self, sub_game: int) -> int:
-        """Tokens spent on this mini-game, or 0 when nothing is metering.
-
-        Read off the meter rather than counted here: the meter is what the
-        router already writes to and what the budget panel reads, so the report
-        cannot disagree with the dashboard about how close to the cap we are.
-        """
-        meter = self._meter
-        if meter is None:
-            return 0
-        return int(getattr(meter, "per_sub_game", {}).get(sub_game, 0))
-
-    def _audit(self, state: GameState, reason: EndReason) -> AuditReport:
-        """Exchange reveals — unless the protocol never reached a clean close."""
-        return audit_or_skip(
-            state, reason, self._transport, self._audit_timeout, self._emit
-        )
-
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""
-        from ..constants import Phase
-
         fsm.to(Phase.WAITING_FOR_OPPONENT)
         return Orchestrator(
             state=state,
@@ -224,22 +201,3 @@ class MatchRunner:
             response_timeout=self._response_timeout,
             max_retries=self._max_retries,
         )
-
-    def _turn_loop(self, orchestrator: Orchestrator) -> EndReason | None:
-        """Alternate with the peer until someone's move ends the mini-game.
-
-        The bound is `max_moves` full turns, not a `while True`: a peer that
-        answers forever must not be able to keep us in a game the rules say has
-        already been decided on survival.
-        """
-        for _ in range(self.params.max_moves + 1):
-            first, second = (
-                (orchestrator.take_turn, orchestrator.receive_turn)
-                if orchestrator.moves_first
-                else (orchestrator.receive_turn, orchestrator.take_turn)
-            )
-            for act in (first, second):
-                ended = act()
-                if ended is not None:
-                    return ended
-        return None

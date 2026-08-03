@@ -32,9 +32,19 @@ class RecordingTransport:
 
     def __init__(self) -> None:
         self.resets = 0
+        self.boundaries = 0
 
     def reset(self) -> None:
         self.resets += 1
+
+    def finish_sub_game(self) -> None:
+        """Counted, not stubbed: every reset must be paired with a boundary.
+
+        The reset shuts the handshake gate. If a mini-game could end without
+        this running, the gate would stay shut and the agent would refuse
+        every later opponent while still reporting itself healthy.
+        """
+        self.boundaries += 1
 
     def send_turn(self, message): ...
     def receive_turn(self, timeout): return None

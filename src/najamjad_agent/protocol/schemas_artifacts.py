@@ -126,7 +126,15 @@ class LogArtifact(ArtifactModel):
     game_id: str
     game_uid: str
     summary: LogSummary
-    records: list[dict[str, Any]] = Field(min_length=1)
+    #: Empty is legal, and refusing it cost us an entire series report. The
+    #: constraint used to be `min_length=1`, on the reasonable-sounding theory
+    #: that a log with no moves cannot be replayed. But a mini-game that was
+    #: abandoned mid-play genuinely *has* no sealed records, and blocking its
+    #: log aborted the whole filing run — including the `result` artifact that
+    #: gets emailed and graded. Against uoh-sqak that turned a 15-60 loss into
+    #: zero artifacts written, which rule 35 scores as not playing at all.
+    #: A truthful empty log beats no report; `summary.end_reason` says why.
+    records: list[dict[str, Any]] = Field(default_factory=list)
     #: The opponent's revealed records for the same mini-game, verified against
     #: their own commits at audit. Stored so a replay can show *both* paths:
     #: ours alone proves we did not cheat and says nothing about them, which is

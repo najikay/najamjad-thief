@@ -23,6 +23,7 @@ from typing import Any
 
 from ..shared.events import Emit
 from .artifacts import ArtifactWriter
+from .resilient_filing import attempt, missing
 from .result_blocks import (
     final_result_block,
     repository_links,
@@ -92,26 +93,44 @@ class MatchFiler:
             confirmed = verified and not any(game.get("disputed") for game in games)
         written: dict[str, Any] = {"config": [], "log": []}
 
-        written["declaration"] = str(self._writer.write_declaration(groups_block))
+        # Every write is attempted independently. One mini-game's log failing
+        # must never suppress the `result` artifact below it — that is the file
+        # the league grades, and losing it scores as not having played (rule 35).
+        written["declaration"] = attempt(
+            "declaration", lambda: self._writer.write_declaration(groups_block), self._emit
+        )
         for game, row in zip(games, rows, strict=False):
             number = int(game.get("sub_game", 0))
-            written["config"].append(
-                str(self._writer.write_config(number, terms, config_sha256))
-            )
-            written["log"].append(str(self._writer.write_log(
-                number, self._log_summary(game, row), list(game.get("records") or []),
-                theirs, confirmed, rows,
-                opponent_records=list(game.get("their_records") or []),
-            )))
-        written["result"] = str(self._writer.write_result(
-            rows,
-            final_result_block(result, tokens=series_tokens(rows), rename=self.rename),
-            theirs,
-            confirmed,
-            repositories=repository_links(groups_block or {}),
-        ))
+            written["config"].append(attempt(
+                f"config/g{number:02d}",
+                lambda n=number: self._writer.write_config(n, terms, config_sha256),
+                self._emit,
+            ))
+            written["log"].append(attempt(
+                f"log/g{number:02d}",
+                lambda g=game, r=row, n=number: self._writer.write_log(
+                    n, self._log_summary(g, r), list(g.get("records") or []),
+                    theirs, confirmed, rows,
+                    opponent_records=list(g.get("their_records") or []),
+                ),
+                self._emit,
+            ))
+        written["result"] = attempt(
+            "result",
+            lambda: self._writer.write_result(
+                rows,
+                final_result_block(result, tokens=series_tokens(rows), rename=self.rename),
+                theirs,
+                confirmed,
+                repositories=repository_links(groups_block or {}),
+            ),
+            self._emit,
+        )
         self._emit({"event": "artifacts.written", **{k: len(v) if isinstance(v, list) else 1
                                                      for k, v in written.items()}})
+        gaps = missing(written)
+        if gaps:
+            self._emit({"event": "artifacts.incomplete", "missing": gaps})
         return written
 
     def _log_summary(self, game: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
