@@ -13,16 +13,18 @@ all decided elsewhere and merely recorded here.
 from collections.abc import Callable
 from typing import Any
 
-from ..constants import EndReason, Role
+from ..constants import EndReason, Phase, Role
 from ..shared.events import Emit
-from .audit import AuditReport
 from .fsm import GameStateMachine
 from .game_state import GameState
+from .handshake_retry import agree_on_terms
 from .match_audit import audit_or_skip
-from .match_record import now_iso, played_record, unplayed_record
+from .match_record import now_iso, played_record
+from .match_resolution import resolve_abandoned, resolve_unplayed, tokens_for
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
+from .turn_loop import run_turn_loop
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
@@ -54,6 +56,7 @@ class MatchRunner:
         handshake_retries: int = 2,
         meter: Any = None,
         observer: Any = None,
+        urls: tuple[str, str] | None = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -77,10 +80,19 @@ class MatchRunner:
         self._handshake_retries = handshake_retries
         self._meter = meter
         self._observer = observer
+        # (ours, theirs) public endpoints, for attributing a connection failure
+        # to a side. None disables the probe rather than guessing.
+        self._urls = urls
+        # The mini-game currently in play, so a crash can still report how far
+        # it got. None until the first one starts.
+        self._live_state: GameState | None = None
         self.games: list[dict[str, Any]] = []
 
     def play_series(self) -> SeriesResult:
         """Play every remaining mini-game and return the series result.
+
+        Two different failures, two different resolutions, and the series
+        survives both.
 
         The handshake runs here, not inside the sub-game, because its failure
         must not consume a number. We used to advance the counter on a failed
@@ -88,57 +100,49 @@ class MatchRunner:
         we were numbering games 3 and 4 against their 5 and 6, and two reports
         describing one match with different `sub_game_number`s are contradictory
         (rules 33-35 can void both teams). A failed agreement now retries the
-        *same* sub-game, bounded; only exhaustion resolves it, as a technical
-        outcome, so a dead peer costs one mini-game and never the series.
+        *same* sub-game, bounded; only exhaustion resolves it as a technical
+        outcome.
+
+        A mini-game that agreed and then blew up is a separate case: most
+        plausibly the `RuntimeError` the gatekeeper raises once a send has
+        exhausted its retries. That used to propagate through `play_match` to
+        the CLI and kill the process — in a real match three failed
+        `receive_turn` calls ended it at sub-game 3, so 4, 5 and 6 were never
+        played and our endpoint went dark. The opponent met the same blip with
+        a watchdog, scored the game, and carried on. It is now scored a
+        `TIMEOUT`, the verdict their watchdog reaches, so both sides describe
+        the game the same way. `match_resolution` holds both shapes.
         """
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
             role = role_for(sub_game, self.first_role)
-            if not self._agree(sub_game):
-                self._record_unplayed(sub_game, role)
+            if not agree_on_terms(
+                self._handshake, sub_game, self._handshake_retries, self._emit
+            ):
+                self.games.append(
+                    resolve_unplayed(self.tracker, sub_game, role, EndReason.OPPONENT_QUIT)
+                )
                 continue
-            self.play_sub_game(sub_game, role)
+            try:
+                self.play_sub_game(sub_game, role)
+            except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
+                steps = getattr(self._live_state, "step", 0)
+                fault = self._who_failed(error)
+                self._emit({
+                    "event": "subgame.abandoned", "sub_game": sub_game, "steps": steps,
+                    "role": role.value, "error": f"{type(error).__name__}: {error}",
+                    **fault,
+                })
+                self.games.append(
+                    resolve_abandoned(self.tracker, sub_game, role, steps, fault)
+                )
+            finally:
+                # Whatever happened, we are between mini-games now, so the
+                # opponent's next handshake must be welcome again.
+                self._transport.finish_sub_game()
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})
         return result
-
-    def _agree(self, sub_game: int) -> bool:
-        """Run the pre-game handshake, retrying the same sub-game on failure.
-
-        Catches broadly because the handshake is an injected boundary — the
-        domain must not import the negotiation layer to name its exception, and
-        any failure here means the same thing: no agreed terms, nothing to play
-        yet. Every attempt is announced; a silent retry hides the tunnel
-        problem the operator needs to hear about before it happens mid-series.
-        """
-        if self._handshake is None:
-            return True
-        for attempt in range(1 + self._handshake_retries):
-            try:
-                self._handshake()
-            except Exception as error:  # noqa: BLE001 - injected boundary, reported
-                self._emit({
-                    "event": "handshake.retry" if attempt < self._handshake_retries
-                    else "handshake.exhausted",
-                    "sub_game": sub_game,
-                    "attempt": attempt + 1,
-                    "error": f"{type(error).__name__}: {error}",
-                })
-            else:
-                return True
-        return False
-
-    def _record_unplayed(self, sub_game: int, role: Role) -> None:
-        """Resolve a sub-game whose handshake died: one technical loss, 0-0.
-
-        `OPPONENT_QUIT` is already in `SKIP_AUDIT_REASONS` — a peer that never
-        agreed to play has nothing to reveal, and demanding an audit would read
-        their absence as forgery.
-        """
-        outcome = self.tracker.record(
-            end_reason=EndReason.OPPONENT_QUIT, role=role, steps=0, audit_passed=True
-        )
-        self.games.append(unplayed_record(sub_game, now_iso(), outcome))
 
     def play_sub_game(self, sub_game: int, role: Role) -> dict[str, Any]:
         """Play one mini-game to its end, audit it, and record the outcome.
@@ -151,6 +155,9 @@ class MatchRunner:
         self._transport.reset()
         started_at = now_iso()
         state = self._build_state(self.params, role, sub_game)
+        # Held so an abandoned game can report the steps it actually played;
+        # filing those as zero is what made our ledger contradict theirs.
+        self._live_state = state
         fsm = GameStateMachine(game_uid=f"g{sub_game:02d}")
         # Hand the live game to whoever is watching — the dashboard reads its
         # board, belief and turn banner off this. `attach_game` existed from
@@ -162,8 +169,8 @@ class MatchRunner:
         orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 
-        reason = self._turn_loop(orchestrator) or EndReason.SURVIVAL
-        report = self._audit(state, reason)
+        reason = run_turn_loop(orchestrator, self.params.max_moves) or EndReason.SURVIVAL
+        report = audit_or_skip(state, reason, self._transport, self._audit_timeout, self._emit)
         outcome = self.tracker.record(
             end_reason=reason,
             role=role,
@@ -175,7 +182,7 @@ class MatchRunner:
             audit_passed=report.passed or report.skipped,
         )
         record = played_record(
-            sub_game, started_at, outcome, state, report, self._tokens_for(sub_game)
+            sub_game, started_at, outcome, state, report, tokens_for(self._meter, sub_game)
         )
         self.games.append(record)
         if report.disputed:
@@ -188,28 +195,33 @@ class MatchRunner:
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
 
-    def _tokens_for(self, sub_game: int) -> int:
-        """Tokens spent on this mini-game, or 0 when nothing is metering.
+    def _who_failed(self, error: Exception) -> dict[str, Any]:
+        """Establish which side of the wire failed, while it is still failing.
 
-        Read off the meter rather than counted here: the meter is what the
-        router already writes to and what the budget panel reads, so the report
-        cannot disagree with the dashboard about how close to the cap we are.
+        Recording `end_reason: timeout` and nothing else reads as *we went
+        silent*, which quietly accepts blame for an outage on their side. The
+        book scores a technical loss 0/0 both ways, so the team that stayed up
+        gets nothing for having stayed up — and the record should at least say
+        who did.
+
+        Probed now rather than reconstructed later, because a tunnel that
+        dropped for fifty seconds is answering again by the time anyone reads
+        the report. Never raises: this runs inside a failure and must not become
+        a second one.
         """
-        meter = self._meter
-        if meter is None:
-            return 0
-        return int(getattr(meter, "per_sub_game", {}).get(sub_game, 0))
+        if self._urls is None:
+            return {}
+        try:
+            from ..net.fault_attribution import attribute
 
-    def _audit(self, state: GameState, reason: EndReason) -> AuditReport:
-        """Exchange reveals — unless the protocol never reached a clean close."""
-        return audit_or_skip(
-            state, reason, self._transport, self._audit_timeout, self._emit
-        )
+            ours, theirs = self._urls
+            return {"fault": attribute(ours, theirs, f"{error}").as_dict()}
+        except Exception as probe_error:  # noqa: BLE001 - diagnosis is best-effort
+            self._emit({"event": "fault.probe_failed", "error": type(probe_error).__name__})
+            return {}
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""
-        from ..constants import Phase
-
         fsm.to(Phase.WAITING_FOR_OPPONENT)
         return Orchestrator(
             state=state,
@@ -222,22 +234,3 @@ class MatchRunner:
             response_timeout=self._response_timeout,
             max_retries=self._max_retries,
         )
-
-    def _turn_loop(self, orchestrator: Orchestrator) -> EndReason | None:
-        """Alternate with the peer until someone's move ends the mini-game.
-
-        The bound is `max_moves` full turns, not a `while True`: a peer that
-        answers forever must not be able to keep us in a game the rules say has
-        already been decided on survival.
-        """
-        for _ in range(self.params.max_moves + 1):
-            first, second = (
-                (orchestrator.take_turn, orchestrator.receive_turn)
-                if orchestrator.moves_first
-                else (orchestrator.receive_turn, orchestrator.take_turn)
-            )
-            for act in (first, second):
-                ended = act()
-                if ended is not None:
-                    return ended
-        return None

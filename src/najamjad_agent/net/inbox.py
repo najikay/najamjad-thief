@@ -23,6 +23,7 @@ from ..protocol.schemas_wire import (
     TurnMessage,
 )
 from ..shared.events import Emit
+from .match_gate import MatchGate
 from .session_guard import DEFAULT_MAX_PER_MINUTE, SessionGuard
 from .sub_game_boundary import FIRST_STEP, clear_finished_game
 
@@ -44,6 +45,7 @@ class Inboxes:
         maxsize: int = 1000,
         guard: SessionGuard | None = None,
         max_per_minute: int = DEFAULT_MAX_PER_MINUTE,
+        gate: MatchGate | None = None,
     ) -> None:
         """Create the queues; `emit` receives every accept/reject event."""
         self._queues = {kind: queue.Queue(maxsize=maxsize) for kind in KINDS}
@@ -51,6 +53,7 @@ class Inboxes:
         self._last_step = -1
         self._lock = threading.Lock()
         self.guard = guard or SessionGuard(emit=emit, max_per_minute=max_per_minute)
+        self.gate = gate or MatchGate(emit=emit)
 
     def accept(self, kind: str, raw: Any) -> ParseResult:
         """Validate and enqueue one inbound message, returning the verdict."""
@@ -72,6 +75,13 @@ class Inboxes:
         if refusal:
             self._emit({"event": "inbox.unauthorised", "kind": kind, "reason": refusal})
             return ParseResult(errors=[refusal])
+        if kind == "negotiate":
+            # A handshake mid-mini-game would restart the game we are playing.
+            # Retriable by design: the peer asks again at the boundary, and
+            # that retry is what resynchronises two clocks that drifted.
+            busy = self.gate.refuse()
+            if busy:
+                return ParseResult(errors=[busy])
         if kind == "turn":
             problem = self._check_sequence(result.model)
             if problem:
@@ -142,6 +152,9 @@ class Inboxes:
         The rule for what survives the boundary lives in `sub_game_boundary`.
         """
         dropped, held_opening = clear_finished_game(self._queues)
+        # From here until the mini-game resolves, an inbound handshake is
+        # premature and gets a retriable refusal rather than restarting us.
+        self.gate.begin_sub_game()
         with self._lock:
             # If the opening turn is already in hand, the mark moves with it —
             # otherwise accepting it off the queue would read as a replay.

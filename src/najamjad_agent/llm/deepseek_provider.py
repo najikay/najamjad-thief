@@ -45,6 +45,7 @@ class DeepSeekProvider:
         client: Any = None,
         model: str = DEFAULT_MODEL,
         api_key: str | None = None,
+        timeout: float = 8.0,
         base_url: str = DEFAULT_BASE_URL,
     ) -> None:
         """Wire the adapter; the client is built lazily unless injected."""
@@ -52,6 +53,7 @@ class DeepSeekProvider:
         self._client = client
         self._model = model
         self._api_key = api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+        self._timeout = timeout
         self._base_url = base_url
 
     @property
@@ -70,7 +72,12 @@ class DeepSeekProvider:
                 raise ProviderUnavailableError(
                     "llm.deepseek_base_url is not set in config/setup.json"
                 )
-            self._client = OpenAI(api_key=self._api_key, base_url=self._base_url)
+            self._client = OpenAI(
+                # The SDK retries internally by default, so an 8 s timeout became
+                # 38 s of wall clock — measured against a blackhole. Retrying a
+                # hint is the gatekeeper's job, and one that must not spend the
+                # turn: the template floor is instant and free.
+                max_retries=0,api_key=self._api_key, base_url=self._base_url)
         return self._client
 
     def _call(self, system: str, user: str, max_tokens: int) -> Any:
@@ -79,6 +86,7 @@ class DeepSeekProvider:
         return client.chat.completions.create(
             model=self._model,
             max_tokens=max_tokens,
+            timeout=self._timeout,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},

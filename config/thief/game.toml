@@ -43,6 +43,10 @@ handshake_retries = 2
 response_timeout_seconds = 30
 watchdog_threshold_seconds = 60
 max_retries = 3
+# T-2447: a failed agreement exchange retries the SAME sub-game this many
+# times before resolving it as a technical outcome. Advancing on failure is
+# what desynchronised our numbering from the opponent's (rules 33-35).
+handshake_retries = 2
 # How long to wait for the opponent to come up before giving up. Two teams
 # agreeing "20:00" do not both start within two minutes — the old default —
 # and a wait that expires now stops the match with a message rather than
@@ -79,6 +83,12 @@ step_deadline_seconds = 30
 # Hint cadence. This is a QUALITY dial, not a savings dial — the budget has
 # room (see docs/TOKEN_BUDGET.md).
 every_n_steps = 2
+# Seconds one hint call may take. The turn deadline is 30 s and a COLD vendor
+# call was measured at 27-61 s, so an unbounded call can spend the whole turn.
+# There was no timeout at all before this: a hanging vendor blocked on the SDK
+# default (~600 s). A hint is optional and has a free template floor; the
+# deadline is not. Erring short costs hint quality, never the turn.
+hint_timeout_seconds = 8
 series_token_budget = 200000
 project_token_budget = 5000000
 

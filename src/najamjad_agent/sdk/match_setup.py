@@ -15,6 +15,7 @@ from typing import Any
 from ..constants import Role
 from ..domain.belief import BeliefGrid
 from ..domain.board import Board
+from ..domain.fair_play import FairPlayMonitor
 from ..domain.game_state import GameState
 from ..domain.ledger import CommitLedger
 from ..domain.match import MatchRunner
@@ -47,6 +48,11 @@ def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
         own_scent=ScentField(board_size=board.size),
         opponent_scent=ScentField(board_size=board.size),
         ledger=CommitLedger(sub_game=sub_game),
+        # One monitor per mini-game, because the barrier budget and the step
+        # numbering both reset with it. Watching the opponent is not optional
+        # equipment: commit-reveal proves they did not rewrite what they did,
+        # and this is the only thing that asks whether they were allowed to.
+        fair_play=FairPlayMonitor(max_barriers=params.max_barriers),
     )
 
 
@@ -136,6 +142,17 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
     return PeerTransport(inboxes=inboxes, client=client, deadlines=deadlines, emit=bus.publish)
 
 
+def _our_endpoint(manager: Any) -> str:
+    """The public address peers reach us on, from the declared tunnel hostname.
+
+    Empty when no tunnel is configured, which `fault_attribution` reads as "we
+    cannot demonstrate our own health" and answers `indeterminate` — the right
+    answer, since a local-only run has nothing to compare against.
+    """
+    hostname = str(manager.get("tunnel.hostname", "") or "").strip()
+    return f"https://{hostname}/mcp" if hostname else ""
+
+
 def build_match(
     manager: Any,
     role: Role,
@@ -168,6 +185,13 @@ def build_match(
         first_role=role,
         emit=bus.publish,
         handshake=handshake,
+        # Our endpoint and theirs, so a connection failure can be attributed to
+        # a side while it is still failing rather than argued about later.
+        # Built from `tunnel.hostname` because that is the declared key; there
+        # is no `network.public_url` — `AgentActions.public_url` is a derived
+        # property, and reading it as config was a key nobody declares. Caught
+        # by `test_no_hardcoded_tunables`, which is exactly its job.
+        urls=(_our_endpoint(manager), str(manager.get("network.opponent_url", "") or "")),
         # T-2447: a failed agreement retries the SAME sub-game this many times
         # before it resolves as a technical outcome. Config, not code — like
         # every other limit here.

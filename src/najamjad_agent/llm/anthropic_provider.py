@@ -32,12 +32,14 @@ class AnthropicProvider:
         client: Any = None,
         model: str = DEFAULT_MODEL,
         api_key: str | None = None,
+        timeout: float = 8.0,
     ) -> None:
         """Wire the adapter; the client is built lazily unless injected."""
         self._gatekeeper = gatekeeper
         self._client = client
         self._model = model
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._timeout = timeout
 
     @property
     def model(self) -> str:
@@ -51,7 +53,12 @@ class AnthropicProvider:
                 raise ProviderUnavailableError("ANTHROPIC_API_KEY is not set")
             from anthropic import Anthropic  # imported lazily: optional at runtime
 
-            self._client = Anthropic(api_key=self._api_key)
+            self._client = Anthropic(
+                # The SDK retries internally by default, so an 8 s timeout became
+                # 38 s of wall clock — measured against a blackhole. Retrying a
+                # hint is the gatekeeper's job, and one that must not spend the
+                # turn: the template floor is instant and free.
+                max_retries=0,api_key=self._api_key)
         return self._client
 
     def _call(self, system: str, user: str, max_tokens: int) -> Any:
@@ -60,6 +67,7 @@ class AnthropicProvider:
         return client.messages.create(
             model=self._model,
             max_tokens=max_tokens,
+            timeout=self._timeout,
             system=system,
             messages=[{"role": "user", "content": user}],
         )

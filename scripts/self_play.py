@@ -73,9 +73,17 @@ def _runner(link, brain_class, role: Role, start) -> MatchRunner:
         speaker=FixedSpeaker(),
         clock=FakeClock(),
         first_role=role,
-        response_timeout=0.2,
+        # Two real threads exchanging real messages, so this is a budget for the
+        # *machine*, not for the agent. At 0.2 s it was measuring load: under a
+        # full test suite a peer misses the window, the mini-game records a
+        # timeout, its audit is skipped, and `audit_failures` goes non-zero — a
+        # self-play harness reporting voided games because the laptop was busy.
+        # It cost two red CI runs that looked like a correctness regression and
+        # passed 4/4 in isolation. Generous here is free; the real deadline is
+        # the negotiated 30 s and lives in `config/`, not in a test harness.
+        response_timeout=5.0,
         max_retries=2,
-        audit_timeout=3.0,
+        audit_timeout=10.0,
     )
 
 

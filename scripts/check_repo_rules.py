@@ -65,6 +65,14 @@ def _scan(path: Path, root: Path) -> list[str]:
         return problems
     if path.suffix not in TEXT_SUFFIXES or path.name == Path(__file__).name:
         return problems
+    if not path.is_file():
+        # `git ls-files --cached` lists files deleted in the working tree but
+        # not yet staged. That is an ordinary state — `match_day.py archive`
+        # moves artifacts out of `workspace/` — and it used to abort the whole
+        # gate with a FileNotFoundError traceback instead of a verdict. Deleted
+        # content cannot violate a content rule; the name rules above already
+        # ran, so skipping here loses nothing.
+        return problems
     text = path.read_text(encoding="utf-8", errors="replace")
     if FIXTURE_MARKER in "\n".join(text.splitlines()[:FIXTURE_HEADER_LINES]):
         return problems

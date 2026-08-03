@@ -58,6 +58,7 @@ def absorb_turn(
     if _has_position(message):
         event("peer.leaked_position", step=step)
 
+    _watch_fair_play(state, step, message, event)
     state.last_opponent_hint = str(message.get("hint", "") or "")
     problems = state.opponent_scent.absorb(message.get("smell_grid") or {})
     for problem in problems:
@@ -65,6 +66,23 @@ def absorb_turn(
     _absorb_barrier(state, message, event)
     _absorb_capture_claim(state, message, event)
     return None
+
+
+def _watch_fair_play(
+    state: GameState, step: int, message: dict[str, Any], event: Callable[..., None]
+) -> None:
+    """Record any rule breach in their declared turn — never act on it.
+
+    Observational by design. Deciding a match on our own accusation is the
+    contradiction rules 33-35 void both teams for, and an honest peer with an
+    off-by-one is far likelier than a cheat. It is checked *before* the barrier
+    is absorbed, so the board still shows the position they moved from.
+    """
+    monitor = state.fair_play
+    if monitor is None:
+        return
+    for finding in monitor.observe(state.board, step, message):
+        event("opponent.violation", **finding.as_dict())
 
 
 def _step_of(message: dict[str, Any], fallback: int) -> int:

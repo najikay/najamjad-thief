@@ -213,21 +213,41 @@ class AgentSdk:
         report = None
         try:
             report = self.actions.preflight()
-        except Exception:  # noqa: BLE001 - an unconfigured agent is not an error here
-            report = None
+        except Exception as error:  # noqa: BLE001 - an unconfigured agent is not an error here
+            self._emit_cockpit_failure(error)
+        # `.results`, not `.checks`. `PreflightReport` has never had a `checks`
+        # attribute, so `getattr(report, "checks", None) or []` quietly returned
+        # nothing every single time — the readiness panel showed "checks: 0"
+        # with a full green preflight one terminal away (T-2449). A default on a
+        # `getattr` is a silent fallback, and this is what one costs.
+        results = report.results if report is not None else []
         return {
             "ready": self.ready,
             "public_url": getattr(self.actions, "public_url", ""),
             "checks": [
                 {"name": check.name, "passed": check.passed, "detail": check.detail}
-                for check in (getattr(report, "checks", None) or [])
+                for check in results
             ],
-            "exit_code": getattr(report, "exit_code", None),
+            "exit_code": report.exit_code if report is not None else None,
             "provider": self.provider(),
             "budget": self.budget(),
             "artifacts": dict(getattr(self.actions, "last_artifacts", {}) or {}),
             "practice": self.practice(),
         }
+
+    def _emit_cockpit_failure(self, error: Exception) -> None:
+        """Say that preflight could not run, rather than showing an empty panel.
+
+        An unconfigured agent legitimately has nothing to check, so this is not
+        fatal — but "no checks because there is nothing to check" and "no checks
+        because the run blew up" look identical on the panel, and the operator
+        reads both as ready.
+        """
+        _emitter(self._events)({
+            "event": "cockpit.preflight_failed",
+            "error": type(error).__name__,
+            "detail": f"{error}"[:200],
+        })
 
     def recent_events(self, limit: int = 100) -> list[dict[str, Any]]:
         """The tail of the event stream that feeds the incident feed."""

@@ -12,12 +12,28 @@ owning its lifecycle.
 """
 
 import asyncio
-import contextlib
 from typing import Any
 
 from fastmcp import Client
 
 from ..shared.events import Emit
+
+MAX_ERROR_DETAIL = 200
+
+
+def _task_name() -> str:
+    """Which asyncio task we are running in, for the event log.
+
+    Every call reaches the background loop through
+    `asyncio.run_coroutine_threadsafe`, which wraps it in a *new* task, so the
+    task that opens the session is rarely the task that later uses or closes
+    it. Whether that matters was the leading theory for a day of lost
+    mini-games and could not be settled from the logs, because the logs did not
+    say. Now they do. (Names, not `id()`: CPython reuses object ids the moment
+    a task is collected, which makes `id()` actively misleading here.)
+    """
+    task = asyncio.current_task()
+    return task.get_name() if task is not None else "no-task"
 
 
 class PeerSession:
@@ -42,23 +58,58 @@ class PeerSession:
         return self._session is not None
 
     async def open(self) -> Any:
-        """The live session, opened once and kept."""
+        """The live session, opened once and kept.
+
+        A failure here reaches the caller as `RuntimeError` whatever caused it:
+        fastmcp wraps every connect-level fault that way, so "nothing is
+        listening", "DNS did not resolve" and "TLS handshake failed" are one
+        exception type with three different messages. The failure is evented
+        before it propagates, because the alternative — which we lived through —
+        is ten identical `RuntimeError` lines and no way to tell which.
+        """
         if self._session is None:
             session = Client(self.url)
-            await session.__aenter__()
+            try:
+                await session.__aenter__()
+            except Exception as error:
+                self._emit({
+                    "event": "client.session_failed",
+                    "url": self.url,
+                    "task": _task_name(),
+                    "error": type(error).__name__,
+                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                })
+                raise
             self._session = session
-            self._emit({"event": "client.session_opened", "url": self.url})
+            self._emit({
+                "event": "client.session_opened", "url": self.url, "task": _task_name()
+            })
         return self._session
 
     async def drop(self) -> None:
-        """Close and forget the session, tolerating an already-dead socket."""
+        """Close and forget the session, tolerating an already-dead socket.
+
+        The failure is reported and *then* swallowed, rather than swallowed
+        blind. We discard the session either way — a peer that has already gone
+        makes an orderly teardown fail by definition — but a teardown that
+        silently fails is also how a leaked connection would look, and
+        `contextlib.suppress` made that impossible to rule out without a
+        purpose-built experiment. It costs one event to never run that
+        experiment again.
+        """
         session, self._session = self._session, None
         if session is None:
             return
-        # Suppressed deliberately: we are discarding it either way, and a peer
-        # that has already gone makes an orderly teardown fail by definition.
-        with contextlib.suppress(Exception):
+        try:
             await session.__aexit__(None, None, None)
+        except Exception as error:  # noqa: BLE001 - reported, then discarded
+            self._emit({
+                "event": "client.drop_failed",
+                "url": self.url,
+                "task": _task_name(),
+                "error": type(error).__name__,
+                "detail": f"{error}"[:MAX_ERROR_DETAIL],
+            })
 
     async def call(self, tool: str, arguments: dict[str, Any]) -> Any:
         """Invoke a tool, reconnecting once if the held session has died.
@@ -71,9 +122,16 @@ class PeerSession:
             try:
                 session = await self.open()
                 return await session.call_tool(tool, arguments)
-            except Exception:  # noqa: BLE001 - one reconnect, then let it propagate
+            except Exception as error:  # noqa: BLE001 - one reconnect, then propagate
                 await self.drop()
                 self.reconnects += 1
-                self._emit({"event": "client.reconnecting", "url": self.url, "tool": tool})
+                self._emit({
+                    "event": "client.reconnecting",
+                    "url": self.url,
+                    "tool": tool,
+                    "task": _task_name(),
+                    "error": type(error).__name__,
+                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                })
                 session = await self.open()
                 return await session.call_tool(tool, arguments)

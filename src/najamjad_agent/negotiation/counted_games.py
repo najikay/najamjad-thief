@@ -19,6 +19,24 @@ from ..protocol.canonical import canonical_json
 
 MAX_COUNTED_MATCHES = 10
 MIN_TO_PASS = 2
+#: Where the count lives. Under `workspace/` rather than `config/` because it is
+#: state we accumulate, not a setting anyone edits — and editing it by hand is
+#: precisely the thing rules 37-38 disqualify a team for.
+DEFAULT_PATH = "workspace/counted_games.json"
+
+
+def tracker_for(manager: Any = None) -> "CountedGames":
+    """The tracker at its configured home, loaded and ready to declare from.
+
+    One accessor so every caller reads the same file. The count is required to
+    be honest at every handshake (rules 37-38), and two callers disagreeing
+    about where it is stored would be the quietest possible way to get it
+    wrong.
+    """
+    location = DEFAULT_PATH
+    if manager is not None:
+        location = str(manager.get("paths.counted_games", DEFAULT_PATH) or DEFAULT_PATH)
+    return CountedGames.load(Path(location))
 
 
 class CountedGameError(Exception):

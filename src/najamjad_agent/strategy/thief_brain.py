@@ -24,9 +24,16 @@ from typing import Any
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
+from ..shared.strength import plays_full_strength
+from . import solver, thief_safety
 from .base import apply, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
 
+#: How many times the uniform share the peak must hold before we call the
+#: belief a localisation. Four is comfortably below what a real scent fix
+#: produces (the freshest deposit clamps at the ceiling while the rest decay)
+#: and comfortably above a flat prior, which is what step 1 looks like.
+CONFIDENT_SHARE = 4.0
 DISTANCE_WEIGHT = 1.0
 ROOM_WEIGHT = 0.9
 SCENT_WEIGHT = 0.6
@@ -41,6 +48,12 @@ class ThiefBrain:
     """Deterministic evasion policy for the thief role."""
 
     board_supplier: Any = None
+    #: How hard to play. At anything but full strength the safety invariant and
+    #: the exact solve are both skipped, leaving the weighted-sum policy that
+    #: actually lost three games to uoh-sqak — credible weakness, because it was
+    #: genuinely ours. See `shared/strength.py` for why this exists and why it
+    #: is named rather than hidden.
+    strength: str = "full"
     horizon: int = 3
     #: How many steps from the survival horizon the policy switches to stalling.
     #: Surviving to step 35 and surviving to step 100 score the same, so the last
@@ -67,14 +80,29 @@ class ThiefBrain:
         return self.steps_remaining(facts) <= self.stall_trigger
 
     def pick_move(self, facts: Any) -> Move:
-        """Choose the move that best preserves survival, not just distance."""
+        """Choose the move that best preserves survival, not just distance.
+
+        The safety rule owns this decision whenever we know where the cop is,
+        which — given the pheromone field's freshest deposit is always its
+        unique maximum — is every turn against an opponent who transmits one.
+        The old weighted sum survives only as the fallback for a peer who sends
+        nothing, and it is a fallback because it lost three games as a policy.
+        """
         board: Board = self._board(facts)
         legal = tuple(getattr(facts, "legal", ()) or ())
         if not legal:
             return Move.STAY
         belief = dict(getattr(facts, "belief", {}) or {})
-        scent = dict(getattr(facts, "scent", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
+        cop = self._cop_cell(belief) if plays_full_strength(self.strength) else None
+        if cop is not None:
+            # No `barriers_left` argument: `facts.barriers_left` is *our* quota,
+            # and a thief's is always zero, so passing it disabled the cut-cell
+            # guard for the only role that needs it. The board carries the
+            # cop's true remaining count.
+            tied = thief_safety.choose(board, origin, cop, legal)
+            return self._break_tie(self._provably_safe(board, origin, cop, tied) or tied, facts)
+        scent = dict(getattr(facts, "scent", {}) or {})
         endgame = self.is_endgame(facts)
         return max(
             legal,
@@ -83,6 +111,79 @@ class ThiefBrain:
                 move.value,
             ),
         )
+
+    def _provably_safe(
+        self, board: Board, origin: Position, cop: Position, tied: tuple[Move, ...]
+    ) -> tuple[Move, ...]:
+        """Narrow a shortlist to the moves the exact solve says cannot lose.
+
+        This is the difference between playing well and playing correctly. The
+        heuristics above rank moves; `solver` *computes* which positions the cop
+        can force a capture from, by backward induction over all 4802
+        perfect-information states, and a thief that never enters one cannot be
+        caught by pursuit at all.
+
+        Applied as a filter over the heuristic shortlist rather than instead of
+        it, because the two answer different questions and both are needed. The
+        solve models a cop that only *moves*, so it is exact against pursuit and
+        silent about walls — it is re-run whenever a barrier lands, but it
+        cannot anticipate the next one. The heuristics are what keep us out of
+        the pockets a barrier would seal. Filter first, rank within.
+
+        Empty means every shortlisted move loses to perfect play, which on an
+        intact grid cannot happen; the caller then keeps the heuristic order,
+        since a lost position is exactly where an imperfect opponent might
+        still err.
+        """
+        safe = set(solver.safe_landings(board, cop, origin))
+        return tuple(move for move in tied if apply(board, origin, move) in safe)
+
+    def _cop_cell(self, belief: dict[Position, float]) -> Position | None:
+        """The cop's cell when the belief actually names one, else None.
+
+        The confidence check is the point. Taking `max()` of a *flat*
+        distribution returns an arbitrary cell and reports it as certain, which
+        is the confidently-wrong failure the whole safety rule exists to avoid —
+        and it is not hypothetical. On step 1 no scent has arrived yet, the
+        belief is uniform, and a re-baseline caught this thief striding
+        confidently into a cop two cells away and being taken on the first move.
+
+        A real localisation is sharply peaked: our scent field clamps the
+        freshest deposit at the ceiling while everything older decays, so the
+        true cell carries far more mass than an even share. Requiring several
+        times the uniform share separates "I know" from "I have no idea",
+        and when we have no idea the diffuse-belief policy below is the honest
+        answer.
+        """
+        if not belief:
+            return None
+        total = sum(belief.values())
+        if total <= 0:
+            return None
+        peak = max(belief, key=lambda cell: belief[cell])
+        # Capped at a half: `CONFIDENT_SHARE / len(belief)` alone demands more
+        # than all the mass when the belief names only a cell or two, so a
+        # *certain* localisation was being rejected as unreliable — the first
+        # version of this check broke the replay harness, which supplies exactly
+        # that shape.
+        floor = min(CONFIDENT_SHARE / len(belief), 0.5)
+        return peak if belief[peak] / total >= floor else None
+
+    def _break_tie(self, tied: tuple[Move, ...], facts: Any) -> Move:
+        """Pick among equally safe moves, unpredictably but never unsafely.
+
+        Randomising *only* within the tied set is the whole discipline. A
+        scripted opponent solved our previous thief by replaying one line
+        against it three times, so playing the same game twice is a real cost —
+        but so is trading a safe move for a varied one, and this trades none.
+
+        Seeded from the sub-game so a match stays reproducible for the audit:
+        the same game replays identically, different games do not.
+        """
+        if len(tied) == 1:
+            return tied[0]
+        seed = (int(getattr(facts, "sub_game", 1)), int(getattr(facts, "step", 0)))
+        return sorted(tied, key=lambda move: move.value)[hash(seed) % len(tied)]
 
     def pick_barrier(self, facts: Any) -> Position | None:
         """Thieves never place barriers (cop-only power, book Ch. 3)."""

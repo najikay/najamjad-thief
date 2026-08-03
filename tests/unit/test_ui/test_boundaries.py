@@ -133,3 +133,32 @@ def test_every_panel_the_client_paints_exists_in_the_page(panel):
     page = (STATIC / "index.html").read_text(encoding="utf-8")
 
     assert f'id="{panel}"' in page
+
+
+def test_the_board_frame_carries_the_role_the_renderer_draws_from() -> None:
+    """`board.js` picks our piece from `role`, so the frame must always carry it.
+
+    The board draws a disc for the cop and a diamond for the thief, and which
+    one is *ours* flips every mini-game. A frame without `role` would render us
+    as the opponent — worse than the bare "U" it replaced, because it would look
+    authoritative while being wrong.
+    """
+    from najamjad_agent.constants import Role
+    from najamjad_agent.sdk.queries import board_view
+    from tests.fakes.orchestration import build_state
+
+    for role in (Role.COP, Role.THIEF):
+        assert board_view(build_state(role))["role"] == role.value
+
+
+def test_the_board_renderer_never_reads_the_opponent_s_true_cell() -> None:
+    """Local truth (FR-UI-1): the dashed piece is our belief peak, nothing more.
+
+    Asserted against the source because the rule is about what the renderer is
+    *able* to draw, not about what one frame happened to contain.
+    """
+    source = (STATIC / "board.js").read_text(encoding="utf-8")
+
+    assert "belief_peak" in source
+    for forbidden in ("opponent_position", "their_position", "true_position"):
+        assert forbidden not in source

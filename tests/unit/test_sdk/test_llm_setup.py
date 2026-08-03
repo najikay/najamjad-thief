@@ -146,29 +146,23 @@ def test_tokens_recorded_by_the_router_reach_the_meter(keys):
 
 
 def test_the_match_record_reports_what_the_sub_game_cost():
-    """`MatchRunner._tokens_for` is what puts a real number in the report.
+    """`match_resolution.tokens_for` is what puts a real number in the report.
 
     The field was read by the report builder and never written by the match, so
     every token figure we emailed was 0 — true only while play was
     template-only, and silently false the moment a vendor is wired.
     """
-    from najamjad_agent.domain.match import MatchRunner
+    from najamjad_agent.domain.match_resolution import tokens_for
 
     class Meter:
         per_sub_game = {1: 640}
 
-    runner = MatchRunner.__new__(MatchRunner)
-    runner._meter = Meter()
-
-    assert runner._tokens_for(1) == 640
-    assert runner._tokens_for(9) == 0, "a game with no spend is zero, not an error"
+    assert tokens_for(Meter(), 1) == 640
+    assert tokens_for(Meter(), 9) == 0, "a game with no spend is zero, not an error"
 
 
 def test_no_meter_is_zero_rather_than_a_crash():
     """A config-only run has no meter and must not explode building a record."""
-    from najamjad_agent.domain.match import MatchRunner
+    from najamjad_agent.domain.match_resolution import tokens_for
 
-    runner = MatchRunner.__new__(MatchRunner)
-    runner._meter = None
-
-    assert runner._tokens_for(1) == 0
+    assert tokens_for(None, 1) == 0

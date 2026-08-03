@@ -1,0 +1,9 @@
+# ay26-cop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://b5c7-2a06-c701-71bd-ef00-b444-fd90-9522-6733.ngrok-free.app/mcp"
+group_id = "ay26"
+name     = "ay26-cop"
+notes    = "AY26 cop half — dial with OUR thief. ngrok free tier: URL changes on restart."

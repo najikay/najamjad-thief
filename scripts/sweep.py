@@ -37,16 +37,22 @@ from tests.fakes.orchestration import build_state  # noqa: E402
 
 # The E14/E15 tunables, with the shipped value first in each list.
 #
-# `opponent` matters as much as the values. Swept against the greedy baseline,
-# the cop captures 100 % and the thief survives 100 % at *every* setting of the
-# two secondary knobs — a saturated result measures the opponent, not the knob.
-# Those two are therefore swept against our own counterpart brain, which is the
-# only opponent in reach that is strong enough to leave room to move.
+# `opponent` matters as much as the values, and getting it wrong produced a
+# number we believed for a week. Swept against the greedy baseline the cop
+# captured 100 % at *every* setting — which was never a statement about the cop.
+# One cop provably cannot force a capture on an open grid (the cop number of a
+# product of two trees is 2), so a saturated capture rate can only mean the
+# opponent is conceding. It was measuring the baseline's weakness.
+#
+# Every cop knob is therefore swept against **our own thief**, which now plays
+# the distance-2 invariant and is the only opponent in reach hard enough to
+# leave room to move. `--opponent greedy` still reproduces the old numbers for
+# comparison; they are a floor, not a score.
 SWEEPS = {
     "cop.barrier_threshold": {
         "values": [0.15, 0.05, 0.10, 0.25, 0.40, 0.60],
         "role": "cop",
-        "opponent": "greedy",
+        "opponent": "ours",
         "why": "How confident the cop must be before spending one of 14 barriers.",
     },
     "cop.lookahead": {

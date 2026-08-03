@@ -188,3 +188,5 @@ def test_zero_probability_cells_are_skipped_when_scoring_freedom() -> None:
     state = build_state(Role.COP)
     facts = Facts(state.board, (3, 3), {(3, 4): 0.0, (6, 3): 1.0})
     assert CopBrain().pick_move(facts) is Move.SOUTH
+
+

@@ -24,6 +24,8 @@ class BlockingLink:
         self.peer: BlockingLink | None = None
         self.sent_turns = 0
         self.resets = 0
+        self.boundaries = 0
+        self.in_play = False
         self.rejected_stale = 0
         self._last_step = -1
 
@@ -93,6 +95,7 @@ class BlockingLink:
         game's leftovers are dropped.
         """
         self.resets += 1
+        self.in_play = True  # the real transport shuts the handshake gate here
         kept = []
         while not self.turns.empty():
             message = self.turns.get_nowait()
@@ -103,6 +106,16 @@ class BlockingLink:
         for message in kept:
             self.turns.put(message)
         self._last_step = 1 if kept else -1
+
+    def finish_sub_game(self) -> None:
+        """Reopen the handshake gate, as the real transport does.
+
+        Modelled rather than stubbed: a gate left shut would make the agent
+        refuse every subsequent opponent while still looking healthy, and a
+        fake that always answered "open" could not fail that way.
+        """
+        self.in_play = False
+        self.boundaries += 1
 
 
 def linked_pair() -> tuple[BlockingLink, BlockingLink]:

@@ -80,6 +80,15 @@ class PeerTransport:
         dropped = self._inboxes.begin_sub_game()
         self._emit({"event": "transport.reset", "dropped": dropped})
 
+    def finish_sub_game(self) -> None:
+        """Reopen the handshake gate now the mini-game has resolved.
+
+        Called from a `finally`, so a mini-game that raised still leaves us
+        challengeable — a gate stuck shut would make the agent look healthy
+        while refusing every opponent for the rest of the series.
+        """
+        self._inboxes.gate.end_sub_game()
+
     @staticmethod
     def _as_dict(message: Any) -> dict[str, Any] | None:
         """Hand the domain plain dicts, never pydantic models."""

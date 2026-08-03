@@ -140,7 +140,28 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
   never crashes (A6 pain #2: interop robustness).
 - **FR-NET-8 (S)** Preflight command: one CLI verb verifying tunnel reachability (self-call via
   public URL), config signature, Gmail token validity, LLM provider health, clock sanity —
-  green/red checklist before any match.
+  green/red checklist before any match. The checklist must return the *same verdict* from the
+  CLI and from the dashboard: `/api/cockpit` is an async route, so any probe that assumed no
+  running event loop failed there while passing in the terminal (T-2453).
+- **FR-NET-9 (M)** **One match at a time.** A handshake is accepted only at a mini-game
+  boundary; mid-game it is refused **retriably**, never fatally, because the opponent's retry
+  at the boundary is what resynchronises two drifted clocks. Added after a peer retrying on a
+  loop opened 58 concurrent negotiations over one game state and voided a whole series
+  (ADR-015).
+- **FR-NET-10 (S)** The opponent's *playable surface* is verified before a match, not just its
+  reachability: a tunnel edge answers while the agent behind it is dead, and an agent answers
+  while exposing tools we cannot call. Preflight lists their tools and insists on all four
+  mandated ones (T-2444).
+- **FR-NET-12 (S)** **Fair-play monitoring.** Every declared opponent turn is checked
+  against the rules they agreed to — barrier law, budget, reach, step order, move
+  legality, hint cap — and breaches are recorded with evidence. Observational only: a
+  finding never alters our play and never forfeits their game, because deciding a match
+  on our own accusation is the contradiction rules 33-35 void both teams for. Every
+  played record carries the result, clean or not.
+- **FR-NET-11 (S)** Every failed external call records the exception's **message**, not only
+  its type, and the asyncio task it ran in. Transport libraries collapse unrelated faults into
+  one exception type, so a type name alone cannot tell an operator which machine to fix
+  (ADR-018).
 
 ### 3.3 Negotiation & match contract (`FR-NEG`)
 
@@ -251,6 +272,20 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
 - **FR-REP-6 (S)** Result reconciliation: before sending, exchange result summaries with the
   opponent and diff them; discrepancy → operator alert with both versions (rule 35 protection:
   contradictory reports void the match for both).
+- **FR-REP-7 (M)** **No single artifact may suppress the others.** Each write is independent;
+  a failure is recorded as `artifact.skipped` and the remaining artifacts still go out, with
+  the gaps named in `artifacts.incomplete`. Rule 35 scores a missing report as not having
+  played, so a partial report that names its own gaps beats a clean failure — one schema
+  refusal on one mini-game's log previously filed zero artifacts for a six-game series
+  (ADR-016).
+- **FR-REP-8 (M)** **A mini-game that played and then died is reported as played**, with the
+  steps it actually reached and `end_reason: timeout` — the verdict the opponent's watchdog
+  reaches when we go silent. Reporting it as never-played while the opponent holds our sealed
+  turns is a rules 33-35 contradiction that voids the match for both teams (ADR-017).
+- **FR-REP-9 (S)** A match's artifacts are archived under `matches/<team>-<stamp>/` before a
+  rerun. `game_id` is derived from the two group ids and the terms, so the same pair on the
+  same terms produces identical filenames and a warm-up silently overwrites the counted match
+  that follows it (T-2318).
 
 ### 3.9 Configuration (`FR-CFG`)
 

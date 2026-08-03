@@ -57,6 +57,14 @@ def played_record(
         "their_claim": report.their_claim,
         "their_records": list(report.their_records),
         "disputed": report.disputed,
+        # What the fair-play monitor saw. Carried on every played record, clean
+        # or not, because "we checked and found nothing" is the sentence that
+        # makes the finding credible on the one occasion there is something.
+        "fair_play": (
+            state.fair_play.summary()
+            if state.fair_play is not None
+            else {"clean": True, "violations": [], "rules_broken": []}
+        ),
     }
 
 
@@ -81,4 +89,47 @@ def unplayed_record(sub_game: int, started_at: str, outcome: SubGameOutcome) -> 
         "their_claim": None,
         "their_records": [],
         "disputed": False,
+        "fair_play": {"clean": True, "violations": [], "rules_broken": []},
+    }
+
+
+def abandoned_record(
+    sub_game: int, started_at: str, outcome: SubGameOutcome, steps: int
+) -> dict[str, Any]:
+    """A mini-game that agreed, played, and then died mid-flight.
+
+    Distinct from `unplayed_record`, and the distinction is a scoring one. A
+    hung game used to be filed through the unplayed path with `steps: 0`, so
+    our report said "handshake failed - never played" about games in which we
+    had sent a dozen sealed turns. uoh-sqak caught it with their own logs:
+    27 inbound turns in g01, 11 in g03, 11 in g05, each carrying our commit
+    hashes.
+
+    That mislabel is worse than embarrassing. Their ledger reads a mid-game
+    silence as a technical loss, which is what the book says; ours claimed the
+    game never happened. Rules 33-35 void *both* teams' reports when they
+    contradict, so shipping this would have turned every hung game into a
+    dispute that costs us more than the loss did.
+
+    No `records`: the game never reached an audit, so the nonces were never
+    released and rule 18 keeps them sealed. `disputed` is False because the
+    opponent did not contradict us — we went quiet, which is our fault.
+    """
+    return {
+        "sub_game": sub_game,
+        "started_at": started_at,
+        "ended_at": now_iso(),
+        "role": outcome.role.value,
+        "end_reason": outcome.end_reason.value,
+        "steps": steps,
+        "audit": "AUDIT SKIPPED",
+        "records": [],
+        "tokens": 0,
+        "their_claim": "",
+        "their_records": [],
+        "disputed": False,
+        # A game that never reached a clean close still had turns to watch, but
+        # the monitor lives on the state a crash may not have left us, so the
+        # honest default is "nothing observed" rather than "nothing happened".
+        "fair_play": {"clean": True, "violations": [], "rules_broken": []},
     }

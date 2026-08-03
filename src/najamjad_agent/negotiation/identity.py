@@ -25,8 +25,19 @@ def identity_from_config(manager: Any) -> dict[str, Any]:
 
     Per *group*, not per role: roles alternate across mini-games, so an identity
     tied to a role would change halfway through a series.
+
+    Carries the counted-match declaration, which rules 37-38 make mandatory and
+    binding: each team states how many counted matches it has already played,
+    the diversity weighting is computed from the two declarations, and a false
+    one found at project review disqualifies the declaring team. It is read from
+    the tracker rather than from config so that it cannot be typed — the figure
+    changes after every counted match, and a hand-maintained counter across ten
+    matches under time pressure is how an honest team declares a wrong number.
     """
+    from .counted_games import tracker_for
+
     return {
+        **tracker_for(manager).declaration(),
         "group_id": str(manager.get("game.group_id", "najamjad")),
         "group_name": str(manager.get("game.group_name", "NajAmjad")),
         "members": list(manager.get("game.members", []) or []),
