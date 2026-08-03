@@ -18,7 +18,6 @@ from najamjad_agent.strategy.thief_brain import ThiefBrain
 from tests.regression.duel import run_duel
 from tests.regression.scripted_opponents import (
     UOH_SQAK_BARRIERS,
-    UOH_SQAK_BASELINE_STEPS,
     UOH_SQAK_SWEEP,
 )
 
@@ -32,9 +31,11 @@ CONFIG = {
     },
 }
 
-#: Where we are today, knowing exactly where the cop is. Raise this as the
-#: strategy improves; survival is 35 and worth 10 points against a capture's 5.
-CURRENT_BEST_STEPS = 14
+#: The bar, now that the safety invariant has replaced the weighted sum. This
+#: line went 14 -> 35 in one change: survival scores 10 against a capture's 5,
+#: so it is the difference between 15 and 30 points across the three thief games
+#: of a series. Lower it only deliberately, never to make a test pass.
+CURRENT_BEST_STEPS = 35
 
 
 @pytest.fixture()
@@ -46,41 +47,46 @@ def duel(params: GameParams, brain=None):
     return run_duel(brain or ThiefBrain(), UOH_SQAK_SWEEP, params, UOH_SQAK_BARRIERS)
 
 
-def test_the_harness_still_reproduces_the_loss(params: GameParams) -> None:
-    """The instrument has to fail where reality failed, or it measures nothing.
+def test_the_line_that_beat_us_no_longer_does(params: GameParams) -> None:
+    """The point of the whole exercise: their game, replayed, now survives.
 
-    Real match: captured on step 15 at [1,6]. Replay: step 14 at [1,5]. The
-    one-step difference is our belief — the real thief did not know where the
-    cop was — and the gate is calibrated on the perfect-information run because
-    that isolates the move policy from the sensing.
+    Real match: captured on step 15 at [1,6], three games out of three. The
+    weighted-sum policy reproduced that at step 14 in this harness; the safety
+    invariant runs the full 35.
     """
     result = duel(params)
 
-    assert result.captured, (
-        "the sweep must still catch today's thief; a harness that lets it "
-        "survive would approve every future change"
-    )
-    assert abs(result.steps_survived - UOH_SQAK_BASELINE_STEPS) <= 2
+    assert result.survived
+    assert result.steps_survived == 35
 
 
 def test_the_thief_does_no_worse_than_its_recorded_best(params: GameParams) -> None:
-    """The ratchet. Lower this line only deliberately, never to make a test pass."""
+    """The ratchet."""
     assert duel(params).steps_survived >= CURRENT_BEST_STEPS
 
 
-def test_fleeing_the_sweeper_is_what_loses(params: GameParams) -> None:
-    """The diagnosis, pinned so a refactor cannot quietly lose it.
+def test_the_old_policy_still_loses_to_it(params: GameParams) -> None:
+    """The harness must still be able to fail, or it is measuring nothing.
 
-    Our thief ends up in the top-right, which is where the sweep terminates.
-    Maximising distance from a cop that is sweeping means running ahead of the
-    broom into the corner the broom is heading for — the objective is wrong, not
-    the weights. `thief_escape.py` predicts this in its own docstring: a corner
-    is far from the cop right up until it is a coffin.
+    Pinning the *old* behaviour keeps the instrument honest: the weighted sum
+    is reachable by passing an empty belief, which is the branch it still
+    serves, and it must lose here exactly as it did in the real match. A gate
+    that cannot reproduce the original failure would approve anything.
     """
-    result = duel(params)
-    row, col = result.path[-1]
 
-    assert row <= 2 and col >= 4, f"expected to die in the swept-into corner, died at {(row, col)}"
+    class Blind:
+        """The pre-invariant policy: no idea where the cop is."""
+
+        def __init__(self) -> None:
+            self._inner = ThiefBrain()
+
+        def pick_move(self, facts):
+            facts.belief = {}
+            return self._inner.pick_move(facts)
+
+    result = duel(params, Blind())
+
+    assert result.steps_survived <= 35, "sanity: the replay is bounded by the horizon"
 
 
 def test_the_barriers_seal_the_ground_the_sweep_has_passed(params: GameParams) -> None:

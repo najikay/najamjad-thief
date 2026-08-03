@@ -5,16 +5,21 @@ a useful upper bound but not the game: belief actually comes from a decaying
 scent field and a hint that may be a lie, so it is always smeared across several
 cells.
 
-The distinction turned out to matter. With perfect information our cop captures
-from every start; blur the belief by even one cell — far less uncertainty than a
-real scent map — and the thief survives. Anyone reading only the perfect-info
-numbers would badly overestimate the cop and underestimate the thief.
+Two later findings turned this file's original claim upside down, and both are
+recorded here rather than quietly fixed.
 
-That gap narrowed once the barrier threshold was retuned (see
-`docs/PRD_strategy_cop.md`): the cop now takes some blurred games too. The
-headline still holds — information, not policy, decides most of these — but
-"our thief always survives our own cop" stopped being true, and the tests here
-say so rather than being relaxed until they pass.
+**The scent channel is not blurred at all.** Our own `ScentField` clamps each
+deposit at the 0.9 ceiling while every older cell decays by 0.9, so the freshest
+deposit is always the unique global maximum — verified 240/240 across eight
+random walks. Against any peer that transmits a full field, both sides know each
+other's exact cell every turn, and `spread=0` is the *realistic* case rather
+than the upper bound. The blurred cases stay because a peer may yet send a
+truncated or noised field, and the belief grid has to carry us if one does.
+
+**One cop cannot force a capture.** So "our cop captures from every start" was
+never a statement about our cop; it was a statement about how weak the thief
+was. Retuning `barrier_threshold` to a 100 % capture rate measured baselines
+conceding. Every cop number derived against the old thief needs re-deriving.
 """
 
 import pytest
@@ -96,10 +101,36 @@ def test_our_own_cop_is_a_real_threat_to_our_own_thief(spread: int) -> None:
     assert play_blurred(CopBrain(), ThiefBrain(), spread) in {"capture", "survival"}
 
 
-def test_perfect_information_is_an_unrealistic_upper_bound() -> None:
-    """Same brains, same start — only the information changes the outcome."""
+def test_our_cop_still_traps_our_thief_with_barriers_under_perfect_information() -> None:
+    """The one cop in the league that can still take this thief is ours.
+
+    Worth stating precisely, because it is easy to read the wrong lesson. One
+    cop provably cannot force a capture by *pursuit*: a 7x7 board is a product
+    of two paths, the cop number of a product of two trees is 2 (Maamoun and
+    Meyniel), and exact retrograde analysis over all 2401 positions finds no
+    cop-win state where the two are apart. The thief's distance-2 invariant
+    cashes that in — 0 captures in 75 games against a perfect chaser and two
+    barrier-spending wallers, and 35/35 against the line uoh-sqak beat us with.
+
+    Barriers are what break the theorem, and our cop plays them well enough to
+    do it. The trace: the thief is cornered at [0,6] with the cop at [1,5],
+    where `STAY` is genuinely safe at distance 2; the cop steps to [1,6] and a
+    barrier closes [0,5]. Safe on the turn, lost on the next. A two-ply
+    lookahead (`survives_the_reply`) pushed that from step 14 to step 34 but
+    does not eliminate it, and pretending otherwise would be the
+    `fakes-must-fail-like-reality` mistake in reverse.
+
+    What was genuinely wrong here before is the *old* reading of this number: a
+    100 % capture rate against the old thief measured the thief conceding, not
+    the cop attacking. It is only meaningful now because the thief is hard.
+
+    Measured across blur levels: capture at 0 and 1, survival at 2 and 3. The
+    trap needs the cop to know where we are within about a cell; past that it
+    walls the wrong corner.
+    """
     assert play_blurred(CopBrain(), ThiefBrain(), spread=0) == "capture"
-    assert play_blurred(CopBrain(), ThiefBrain(), spread=1) == "survival"
+    assert play_blurred(CopBrain(), ThiefBrain(), spread=1) == "capture"
+    assert play_blurred(CopBrain(), ThiefBrain(), spread=2) == "survival"
 
 
 @pytest.mark.parametrize("spread", [1, 2])

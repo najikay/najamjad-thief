@@ -15,17 +15,54 @@ turn loop knowing.
 
 The thief has no barrier quota; `pick_barrier` always returns `None`.
 
-## Survival horizon, not distance
+## The safety invariant (2026-08-03, supersedes the weighted sum)
 
-The obvious thief maximises distance from the believed cop. That is a trap: the
-move that maximises distance frequently walks into a corner that is one barrier
-from a capture. Orthogonal moves also tie on Manhattan distance far more often
-than intuition suggests, so "maximise distance" underdetermines the choice.
+**One cop cannot catch a careful thief on an open grid.** A 7×7 board is P₇ □ P₇,
+the Cartesian product of two paths, and the cop number of a product of two trees
+is 2 (Maamoun & Meyniel). Exact retrograde analysis over all 2401 positions
+agrees: the only states the cop wins are those where it already shares our cell.
+Survival is therefore not a heuristic target, it is achievable by discipline.
 
-We instead search a horizon for cells that keep **escape routes** open, scoring a
-candidate by the freedom still available from it rather than by how far it is
-now. Against a greedy cop this survives 96-100 % of games; the greedy thief
-survives only 32-44 % against ours.
+The policy is three rules, in order:
+
+1. **Never end a turn within one step of the cop.** At graph-distance 2 the cop
+   cannot reach us next turn, so we are safe by construction. Corners are
+   survivable — cornered at `[0,6]` against a cop at `[0,5]`, step to `[1,6]`; it
+   follows, step back. The oscillation never loses.
+2. **Among safe cells, take the most room** — measured at *two* scales.
+   Component size separates a sealed pocket from the open board; escape routes
+   discriminate inside one room. Component size alone is constant across an
+   intact board, which silently collapses the ranking back to distance-only —
+   the original bug wearing a different hat, and two existing tests caught it.
+3. **Never stand beyond a cut cell** while the cop can still spend barriers,
+   because that is exactly the one wall that seals us in. Once the budget is
+   spent, a cul-de-sac is just a room.
+
+Ties are broken by a seed derived from `(sub_game, step)`: unpredictable across
+games, reproducible within one for the audit, and **only ever among moves that
+already satisfy rule 1** — unpredictability is never bought with safety.
+
+Measured: 35/35 against uoh-sqak's recorded line (was: captured at step 14),
+0 captures in 90 games against a perfect chaser, a barrier-spending waller and a
+random cop, and 47/49 starting cells survive a perfect chaser. The two that fail
+are the cells adjacent to the cop's start, where it moves first and takes us
+before we move — unavoidable, and not reachable under the agreed terms.
+
+Cost: ~10 ms per turn against a 30-second budget.
+
+### What this replaced, and why
+
+The previous policy scored a weighted sum of distance, room, risk and scent. It
+was not mistuned; it optimised the wrong thing. Maximising distance from a
+*sweeping* cop means running ahead of the broom into the corner the broom is
+heading for, and our thief did exactly that against uoh-sqak — caught at `[1,6]`
+on step 15, three games out of three, by a scripted opponent with no LLM.
+
+The sum survives as the fallback for a peer that transmits no scent at all.
+
+> Historic note: the earlier claim that this brain "survives 96-100 % of games
+> against a greedy cop" was measured against our own baselines. Given no cop can
+> force a capture, such rates describe the baseline, not the brain.
 
 ## The scent problem
 

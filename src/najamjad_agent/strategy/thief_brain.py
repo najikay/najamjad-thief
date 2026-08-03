@@ -24,6 +24,7 @@ from typing import Any
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
+from . import thief_safety
 from .base import apply, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
 
@@ -67,14 +68,28 @@ class ThiefBrain:
         return self.steps_remaining(facts) <= self.stall_trigger
 
     def pick_move(self, facts: Any) -> Move:
-        """Choose the move that best preserves survival, not just distance."""
+        """Choose the move that best preserves survival, not just distance.
+
+        The safety rule owns this decision whenever we know where the cop is,
+        which — given the pheromone field's freshest deposit is always its
+        unique maximum — is every turn against an opponent who transmits one.
+        The old weighted sum survives only as the fallback for a peer who sends
+        nothing, and it is a fallback because it lost three games as a policy.
+        """
         board: Board = self._board(facts)
         legal = tuple(getattr(facts, "legal", ()) or ())
         if not legal:
             return Move.STAY
         belief = dict(getattr(facts, "belief", {}) or {})
-        scent = dict(getattr(facts, "scent", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
+        cop = self._cop_cell(belief)
+        if cop is not None:
+            # No `barriers_left` argument: `facts.barriers_left` is *our* quota,
+            # and a thief's is always zero, so passing it disabled the cut-cell
+            # guard for the only role that needs it. The board carries the
+            # cop's true remaining count.
+            return self._break_tie(thief_safety.choose(board, origin, cop, legal), facts)
+        scent = dict(getattr(facts, "scent", {}) or {})
         endgame = self.is_endgame(facts)
         return max(
             legal,
@@ -83,6 +98,28 @@ class ThiefBrain:
                 move.value,
             ),
         )
+
+    def _cop_cell(self, belief: dict[Position, float]) -> Position | None:
+        """The cop's cell when the belief names one, else None."""
+        if not belief:
+            return None
+        return max(belief, key=lambda cell: belief[cell])
+
+    def _break_tie(self, tied: tuple[Move, ...], facts: Any) -> Move:
+        """Pick among equally safe moves, unpredictably but never unsafely.
+
+        Randomising *only* within the tied set is the whole discipline. A
+        scripted opponent solved our previous thief by replaying one line
+        against it three times, so playing the same game twice is a real cost —
+        but so is trading a safe move for a varied one, and this trades none.
+
+        Seeded from the sub-game so a match stays reproducible for the audit:
+        the same game replays identically, different games do not.
+        """
+        if len(tied) == 1:
+            return tied[0]
+        seed = (int(getattr(facts, "sub_game", 1)), int(getattr(facts, "step", 0)))
+        return sorted(tied, key=lambda move: move.value)[hash(seed) % len(tied)]
 
     def pick_barrier(self, facts: Any) -> Position | None:
         """Thieves never place barriers (cop-only power, book Ch. 3)."""

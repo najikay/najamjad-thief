@@ -77,6 +77,10 @@ addopts = "--cov=src/najamjad_agent --cov-report=term-missing"
 [tool.coverage.run]
 source = ["src"]
 omit = ["*/tests/*", "src/najamjad_agent/ui/static/*"]
+# Guidelines page 16 asks for statement, branch and path coverage. Statement
+# coverage alone calls a half-tested `if` fully covered, which is how an
+# unexercised else-branch reads as green.
+branch = true
 
 [tool.coverage.report]
 fail_under = 85
