@@ -69,6 +69,10 @@ class GameState:
     # Defaulted rather than required so every existing construction keeps the
     # behaviour it had: full scent, hints spoken.
     emission: EmissionPolicy = field(default_factory=EmissionPolicy)
+    # Consecutive opponent turns carrying neither scent nor a hint. Feeds
+    # `EmissionPolicy.mirroring`, so we only ever go quiet after watching
+    # them do it first — reciprocity has to be reciprocal to be worth the name.
+    peer_silent_turns: int = 0
     # An ending we have detected but not yet told the opponent about. Both peers
     # must record the same reason or rules 33-35 void the game, and they cannot
     # detect every ending at the same moment: the turn order means one side sees

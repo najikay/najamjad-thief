@@ -151,3 +151,9 @@ level = "full"
 [emission]
 scent = "full"
 hint = true
+
+# Mirror a peer who tells us nothing. Off by default: going quiet is a choice to
+# make deliberately, not one that should happen to us because an opponent's
+# tunnel was slow for three turns. When on, we go exactly as quiet as they are
+# and only after watching them do it for `SILENCE_GRACE_TURNS` turns first.
+reciprocal = false

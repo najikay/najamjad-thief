@@ -194,3 +194,44 @@ us lying discounts everything afterwards, so a lie spent early is expensive.
 | Claim lands | Honest `caught: true` before the game closes | `test_turn_ingress.py` |
 | Claim misses | Honest `caught: false`, not silence | `test_turn_ingress.py` |
 | Versus the baseline | Survives the greedy cop | `test_self_play_harness.py` |
+
+## Breeding strategies, and what it found (2026-08-04)
+
+`scripts/evolve.py` implements the selection rule literally: everyone plays, the
+winner survives untouched, a loser mutates, and a lineage past two consecutive
+losses is redrawn rather than nudged again. `strategy/genome.py` is the
+parameterisation; `strategy/tournament.py` is the selection.
+
+**In-process and deterministic rather than a swarm of LLM agents.** A duel is
+milliseconds, so this plays thousands of games in the time a handful of agents
+would take to play a dozen, and every run replays exactly from its seed. Rule 49
+means a grader can re-run it, and a tuning result nobody can reproduce is an
+opinion with a number attached.
+
+**A genome may not switch the safety invariant off.** The distance-2 rule and
+the exact solve are theorems, not preferences. A search allowed to discard them
+would spend its budget rediscovering that being captured is bad. Evolution tunes
+the heuristics that choose *among* provably safe moves, and nothing else.
+
+### The result: saturated, and that is the honest answer
+
+    arenas=3 ceiling=105
+    shipped   : 105/105
+    best found: 105/105
+
+The shipped configuration already survives every arena in full — uoh-sqak's
+recorded sweep, the same sweep against a silent peer, and a direct chaser — so
+**there is no gradient to climb**. Ten rounds of eight lineages found nothing
+better because nothing better is measurable here.
+
+That is consistent with the theorem rather than a defect in the search: one cop
+provably cannot catch a careful thief on a 7×7, so a sound thief policy scores
+the ceiling against any single pursuer and the fitness landscape is flat by
+construction. `test_a_gradient_is_actually_climbed` keeps the instrument honest
+by giving it a landscape that *does* have a slope and asserting it climbs it.
+
+**What this means for effort.** The thief is done; further tuning of it cannot
+be justified by measurement. The cop is where the points are — it is worth its
+5-point survival floor and both of its dials measured 0/24 at every value
+against a correct thief. Any future search should be pointed there, and needs
+arenas that are not already saturated to be worth running at all.

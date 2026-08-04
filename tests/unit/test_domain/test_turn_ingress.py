@@ -207,3 +207,32 @@ def test_a_malformed_claimed_cell_is_ignored(state: GameState, cell) -> None:
     _, record = _events()
     absorb_turn(state, _turn(capture_claim=True, claimed_cell=cell), record)
     assert state.claimed_cell is None
+
+
+def test_a_peer_that_says_nothing_is_counted_as_silent(state: GameState) -> None:
+    """Feeds reciprocal emission: we mirror only after watching them do it."""
+    _, record = _events()
+
+    for step in range(1, 4):
+        absorb_turn(state, {"step": step, "commit": f"{step:064x}"}, record)
+
+    assert state.peer_silent_turns == 3
+
+
+def test_scent_or_a_hint_resets_the_silence_count(state: GameState) -> None:
+    """One quiet turn is not a policy, and must not be read as one."""
+    _, record = _events()
+
+    absorb_turn(state, {"step": 1, "commit": "a" * 64}, record)
+    absorb_turn(state, {"step": 2, "commit": "b" * 64, "hint": "north"}, record)
+
+    assert state.peer_silent_turns == 0
+
+
+def test_an_empty_hint_does_not_count_as_speaking(state: GameState) -> None:
+    """A blank string is silence wearing a field name."""
+    _, record = _events()
+
+    absorb_turn(state, {"step": 1, "commit": "a" * 64, "hint": "   ", "smell_grid": {}}, record)
+
+    assert state.peer_silent_turns == 1

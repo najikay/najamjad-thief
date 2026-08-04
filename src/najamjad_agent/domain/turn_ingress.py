@@ -60,12 +60,26 @@ def absorb_turn(
 
     _watch_fair_play(state, step, message, event)
     state.last_opponent_hint = str(message.get("hint", "") or "")
+    _watch_silence(state, message)
     problems = state.opponent_scent.absorb(message.get("smell_grid") or {})
     for problem in problems:
         event("scent.rejected", reason=problem)
     _absorb_barrier(state, message, event)
     _absorb_capture_claim(state, message, event)
     return None
+
+
+def _watch_silence(state: GameState, message: dict[str, Any]) -> None:
+    """Count consecutive turns on which the peer told us nothing at all.
+
+    Counted rather than latched: a peer whose scent arrives late, or who skips a
+    hint on one turn, has not gone silent, and treating a single quiet turn as a
+    policy would have us mirror an opponent who is still talking.
+    """
+    said_something = bool(message.get("smell_grid")) or bool(
+        str(message.get("hint", "") or "").strip()
+    )
+    state.peer_silent_turns = 0 if said_something else state.peer_silent_turns + 1
 
 
 def _watch_fair_play(

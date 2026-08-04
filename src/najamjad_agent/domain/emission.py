@@ -75,6 +75,29 @@ class EmissionPolicy:
     scent_mode: ScentEmission = ScentEmission.FULL
     hints: bool = True
     grid_size: int = DEFAULT_GRID_SIZE
+    #: Mirror a peer who tells us nothing. Off by default, because going quiet
+    #: is a choice worth making deliberately rather than one that happens to us.
+    reciprocal: bool = False
+
+    def mirroring(self, peer_silent: bool) -> EmissionPolicy:
+        """This policy, or its silent form when the peer emits nothing.
+
+        Input: whether the opponent has gone a full grace period without
+        sending scent or a hint.
+        Output: the policy to use this turn.
+        Setup: `emission.reciprocal = true`.
+
+        Symmetry is the whole justification, so it has to be *actual* symmetry:
+        we go as quiet as they are and no quieter, and we do it only after
+        watching them do it first. Anything else is a unilateral choice wearing
+        a reciprocal label, and rule 49 means this file gets read.
+
+        Returns `self` unchanged when reciprocity is off or the peer is talking,
+        so the common path allocates nothing.
+        """
+        if not self.reciprocal or not peer_silent:
+            return self
+        return EmissionPolicy(ScentEmission.NONE, False, self.grid_size, True)
 
     @classmethod
     def from_config(cls, section: dict | None, grid_size: int = DEFAULT_GRID_SIZE) -> EmissionPolicy:
@@ -91,7 +114,12 @@ class EmissionPolicy:
         except ValueError as error:
             allowed = [each.value for each in ScentEmission]
             raise EmissionError(f"emission.scent {raw!r} is not one of {allowed}") from error
-        return cls(mode, bool(values.get("hint", True)), int(grid_size))
+        return cls(
+            mode,
+            bool(values.get("hint", True)),
+            int(grid_size),
+            bool(values.get("reciprocal", False)),
+        )
 
     def scent(self, snapshot: dict[str, float], centre: Position) -> dict[str, float]:
         """The pheromone map to put on the wire, given the full field.

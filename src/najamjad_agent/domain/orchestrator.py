@@ -25,6 +25,10 @@ from .turn_egress import build_turn_message, outgoing_extras
 from .turn_ingress import absorb_turn, decay_after_full_turn
 
 THIEF_MOVES_FIRST = True
+#: Consecutive silent opponent turns before reciprocal emission mirrors them.
+#: Three, so a peer whose first turns are quiet while they warm up is not
+#: mistaken for one who has chosen to say nothing.
+SILENCE_GRACE_TURNS = 3
 
 
 class Orchestrator:
@@ -76,7 +80,10 @@ class Orchestrator:
         # leave our own commit describing a turn we did not send, which the audit
         # cannot tell apart from tampering.
         hint, intent = self._speaker.compose(facts)
-        hint = self.state.emission.hint(hint)
+        emission = self.state.emission.mirroring(
+            self.state.peer_silent_turns >= SILENCE_GRACE_TURNS
+        )
+        hint = emission.hint(hint)
         self._apply_own_action(move, barrier)
         claim_survival_if_outlasted(self.state)
         payload = step_payload(
@@ -88,7 +95,9 @@ class Orchestrator:
             intent=intent,
             hint=hint,
             state=self.state.state_string(),
-            extra=outgoing_extras(self.state, barrier, self._capture_claim(barrier)),
+            extra=outgoing_extras(
+                self.state, barrier, self._capture_claim(barrier), emission
+            ),
         )
         self._commit_and_send(payload)
         announced = self.state.pending_end

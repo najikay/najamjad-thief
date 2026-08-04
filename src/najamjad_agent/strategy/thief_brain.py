@@ -18,6 +18,7 @@ A two-ply lookahead asks what the cop can do next, so we avoid moves that look
 safe now and are lost a turn later.
 """
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -179,11 +180,26 @@ class ThiefBrain:
 
         Seeded from the sub-game so a match stays reproducible for the audit:
         the same game replays identically, different games do not.
+
+        **`hash()` was the wrong function.** On a tuple of two small integers
+        CPython's hash is very nearly linear, so consecutive sub-games mapped to
+        the same residue again and again: across six sub-games and four tied
+        moves it produced three distinct choices at step 1 and *two* at steps 2
+        and 3. The archive shows the consequence — our g04 and g06 lines came out
+        byte-identical, which is precisely the property a scripted opponent
+        solved us for. A digest costs a microsecond and spreads properly.
+
+        Still fully deterministic: BLAKE2b of the same seed is the same byte on
+        every machine and every replay, which `hash()` guarantees for ints but
+        not for anything else we might key on later.
         """
         if len(tied) == 1:
             return tied[0]
-        seed = (int(getattr(facts, "sub_game", 1)), int(getattr(facts, "step", 0)))
-        return sorted(tied, key=lambda move: move.value)[hash(seed) % len(tied)]
+        sub_game = int(getattr(facts, "sub_game", 1))
+        step = int(getattr(facts, "step", 0))
+        seed = hashlib.blake2b(f"{sub_game}:{step}".encode(), digest_size=8).digest()
+        index = int.from_bytes(seed, "big") % len(tied)
+        return sorted(tied, key=lambda move: move.value)[index]
 
     def pick_barrier(self, facts: Any) -> Position | None:
         """Thieves never place barriers (cop-only power, book Ch. 3)."""

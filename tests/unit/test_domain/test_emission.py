@@ -109,3 +109,43 @@ def test_the_declaration_names_what_we_are_doing() -> None:
     declared = EmissionPolicy(ScentEmission.NONE, hints=False).as_declaration()
 
     assert declared == {"scent": "none", "hint": "silent"}
+
+
+def test_reciprocity_is_off_by_default() -> None:
+    """Going quiet is a choice to make deliberately, not one that happens to us."""
+    assert EmissionPolicy().reciprocal is False
+    assert EmissionPolicy.from_config({}).reciprocal is False
+
+
+def test_a_talking_peer_is_answered_normally() -> None:
+    policy = EmissionPolicy(reciprocal=True)
+
+    assert policy.mirroring(peer_silent=False) is policy
+
+
+def test_a_silent_peer_is_mirrored_exactly() -> None:
+    """As quiet as they are and no quieter — that is what makes it reciprocal."""
+    mirrored = EmissionPolicy(reciprocal=True).mirroring(peer_silent=True)
+
+    assert mirrored.scent_mode is ScentEmission.NONE
+    assert mirrored.hints is False
+    assert mirrored.scent(FIELD, (5, 5)) == {}
+    assert mirrored.hint("Times Square") == ""
+
+
+def test_silence_is_not_mirrored_unless_reciprocity_is_enabled() -> None:
+    """Off means off, however quiet they are."""
+    policy = EmissionPolicy(reciprocal=False)
+
+    assert policy.mirroring(peer_silent=True) is policy
+
+
+def test_the_negotiated_grid_size_survives_mirroring() -> None:
+    """Mirroring changes what we send, never the agreed physics behind it."""
+    mirrored = EmissionPolicy(reciprocal=True, grid_size=7).mirroring(peer_silent=True)
+
+    assert mirrored.grid_size == 7
+
+
+def test_config_reads_the_reciprocal_flag() -> None:
+    assert EmissionPolicy.from_config({"reciprocal": True}).reciprocal is True

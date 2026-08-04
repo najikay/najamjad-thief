@@ -65,12 +65,20 @@ def test_no_module_compares_a_commit_with_plain_equality() -> None:
 def test_nonces_come_from_the_secrets_module_only() -> None:
     """`random` is predictable; a guessable nonce would break every commitment.
 
-    One exception, and it is deliberate: the template bank uses seeded `random`
-    to vary hint wording, because reproducible dialogue makes a lost game
-    debuggable and a replay faithful. It never touches cryptographic material —
-    `test_the_template_bank_never_produces_cryptographic_material` proves that.
+    Two exceptions, both deliberate, both offline, both proved harmless below.
+
+    The template bank uses seeded `random` to vary hint wording, because
+    reproducible dialogue makes a lost game debuggable and a replay faithful.
+
+    `strategy/tournament.py` breeds strategy parameters, and there `secrets`
+    would be actively *wrong*: it cannot be seeded, and an unreproducible tuning
+    run is an opinion with a number attached. Rule 49 means a grader can re-run
+    it, which requires the same seed to give the same answer.
+
+    Neither touches cryptographic material, and the two tests below prove it
+    rather than asserting it.
     """
-    allowed = {"template_provider.py"}
+    allowed = {"template_provider.py", "tournament.py"}
     for path in SOURCES:
         if path.name in allowed:
             continue
@@ -140,3 +148,14 @@ def test_secrets_are_never_formatted_into_log_calls(secret: str) -> None:
             stripped = line.strip()
             if stripped.startswith(("logger.", "log.", "print(")):
                 assert secret not in stripped, f"{path.name}: {stripped[:60]}"
+
+
+def test_the_strategy_search_never_produces_cryptographic_material() -> None:
+    """The second module allowed weak randomness must not reach the crypto layer.
+
+    Same discipline as the template bank: the exception is only defensible while
+    the module provably cannot influence a nonce or a commitment.
+    """
+    source = _read(SRC / "strategy/tournament.py")
+    for forbidden in ("nonce", "token_hex", "commit", "seal(", "hashlib"):
+        assert forbidden not in source, f"tournament.py touches {forbidden!r}"

@@ -166,3 +166,39 @@ def test_a_barrier_narrows_the_cop_to_its_reach_without_naming_one_cell(
     assert sighting is not None
     assert not sighting.exact
     assert set(sighting.cells) == {(2, 3), (4, 3), (3, 2), (3, 4)}
+
+
+def test_the_six_sub_games_of_a_series_do_not_play_one_line(params: GameParams) -> None:
+    """A scripted opponent solved our last thief by replaying one line at it.
+
+    `hash()` on a tuple of two small ints is nearly linear, so consecutive
+    sub-games mapped to the same residue: three distinct choices at step 1 and
+    two at steps 2-3, out of four tied moves. The archive shows the cost — g04
+    and g06 came out byte-identical. A digest spreads properly.
+    """
+    from najamjad_agent.constants import Move
+
+    class Facts:
+        def __init__(self, sub_game: int, step: int) -> None:
+            self.sub_game, self.step = sub_game, step
+
+    brain = ThiefBrain()
+    tied = (Move.NORTH, Move.SOUTH, Move.EAST, Move.WEST)
+
+    for step in range(1, 6):
+        picks = {brain._break_tie(tied, Facts(sub, step)) for sub in range(1, 7)}  # noqa: SLF001
+        assert len(picks) >= 3, f"step {step} varied over only {len(picks)} of 4 moves"
+
+
+def test_tie_breaking_stays_reproducible_for_the_audit(params: GameParams) -> None:
+    """Variation across games, never within a replay of one."""
+    from najamjad_agent.constants import Move
+
+    class Facts:
+        def __init__(self, sub_game: int, step: int) -> None:
+            self.sub_game, self.step = sub_game, step
+
+    brain = ThiefBrain()
+    tied = (Move.NORTH, Move.SOUTH, Move.EAST, Move.WEST)
+
+    assert brain._break_tie(tied, Facts(3, 7)) == brain._break_tie(tied, Facts(3, 7))  # noqa: SLF001

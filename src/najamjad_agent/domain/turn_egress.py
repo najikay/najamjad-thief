@@ -24,7 +24,9 @@ from typing import Any
 from .game_state import GameState
 
 
-def outgoing_extras(state: GameState, barrier: Any, claim: Any = None) -> dict[str, Any]:
+def outgoing_extras(
+    state: GameState, barrier: Any, claim: Any = None, emission: Any = None
+) -> dict[str, Any]:
     """Optional sealed fields carried alongside our move.
 
     The scent snapshot is what the opponent absorbs; it deliberately contains
@@ -39,8 +41,9 @@ def outgoing_extras(state: GameState, barrier: Any, claim: Any = None) -> dict[s
     what we sent, which the audit reads as tampering (rules 18-22) — a
     forfeit-shaped way to save a few bytes.
     """
+    policy = emission if emission is not None else state.emission
     extras: dict[str, Any] = {
-        "smell_grid": state.emission.scent(state.own_scent.snapshot(), state.own_position)
+        "smell_grid": policy.scent(state.own_scent.snapshot(), state.own_position)
     }
     if barrier:
         extras["barrier_placed"] = [barrier[0], barrier[1]]
