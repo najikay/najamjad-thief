@@ -93,6 +93,12 @@ class PeerSession:
     async def drop(self) -> None:
         """Close and forget the session, tolerating an already-dead socket.
 
+        Takes the lock before claiming the session. `retarget` and `close`
+        both drop from outside the request path, and without the lock either can
+        `__aexit__` a session out from under a call that is still using it —
+        which surfaces as a connect failure against the *old* URL, on a peer we
+        had just been told had moved.
+
         The failure is reported and *then* swallowed, rather than swallowed
         blind. We discard the session either way — a peer that has already gone
         makes an orderly teardown fail by definition — but a teardown that
@@ -101,7 +107,8 @@ class PeerSession:
         purpose-built experiment. It costs one event to never run that
         experiment again.
         """
-        session, self._session = self._session, None
+        async with self._lock:
+            session, self._session = self._session, None
         if session is None:
             return
         try:

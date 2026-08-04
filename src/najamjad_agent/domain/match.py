@@ -27,6 +27,7 @@ from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
 from .settle import settle
 from .turn_loop import run_turn_loop
+from .who_failed import who_failed
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
@@ -123,6 +124,7 @@ class MatchRunner:
         `TIMEOUT`, the verdict their watchdog reaches, so both sides describe
         the game the same way. `match_resolution` holds both shapes.
         """
+        abandoned = False
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
             role = role_for(sub_game, self.first_role)
@@ -137,7 +139,7 @@ class MatchRunner:
                 self.play_sub_game(sub_game, role)
             except Exception as error:  # noqa: BLE001 - scored, never fatal to the series
                 steps = getattr(self._live_state, "step", 0)
-                fault = self._who_failed(error)
+                fault = who_failed(self._urls, self._transport, error, self._emit)
                 self._emit({
                     "event": "subgame.abandoned", "sub_game": sub_game, "steps": steps,
                     "role": role.value, "error": f"{type(error).__name__}: {error}",
@@ -146,13 +148,20 @@ class MatchRunner:
                 self.games.append(
                     resolve_abandoned(self.tracker, sub_game, role, steps, fault)
                 )
-                settle(
-                    self._watchdog_seconds, True, self._sleep, self._emit, sub_game
-                )
+                abandoned = True
             finally:
                 # Whatever happened, we are between mini-games now, so the
                 # opponent's next handshake must be welcome again.
                 self._transport.finish_sub_game()
+                # AFTER reopening the gate, never before. `finish_sub_game`
+                # is what makes an inbound negotiate welcome again, so
+                # settling first meant refusing every handshake the peer
+                # sent during the wait — turning the one-dead-game problem
+                # this exists to prevent into the very thing it caused.
+                settle(
+                    self._watchdog_seconds, abandoned, self._sleep, self._emit, sub_game
+                )
+                abandoned = False
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})
         return result
@@ -207,31 +216,6 @@ class MatchRunner:
             })
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
-
-    def _who_failed(self, error: Exception) -> dict[str, Any]:
-        """Establish which side of the wire failed, while it is still failing.
-
-        Recording `end_reason: timeout` and nothing else reads as *we went
-        silent*, which quietly accepts blame for an outage on their side. The
-        book scores a technical loss 0/0 both ways, so the team that stayed up
-        gets nothing for having stayed up — and the record should at least say
-        who did.
-
-        Probed now rather than reconstructed later, because a tunnel that
-        dropped for fifty seconds is answering again by the time anyone reads
-        the report. Never raises: this runs inside a failure and must not become
-        a second one.
-        """
-        if self._urls is None:
-            return {}
-        try:
-            from ..net.fault_attribution import attribute
-
-            ours, theirs = self._urls
-            return {"fault": attribute(ours, theirs, f"{error}").as_dict()}
-        except Exception as probe_error:  # noqa: BLE001 - diagnosis is best-effort
-            self._emit({"event": "fault.probe_failed", "error": type(probe_error).__name__})
-            return {}
 
     def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
         """One conductor per mini-game, with a brain chosen for the role."""

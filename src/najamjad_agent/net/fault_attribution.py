@@ -35,6 +35,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from . import http_probe
+from .readiness import resolves
 
 OPPONENT = "opponent-unreachable"
 OURS = "our-network"
@@ -67,19 +68,6 @@ def _endpoint(url: str) -> tuple[str, int] | None:
     if not parsed.hostname:
         return None
     return parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
-
-
-def resolves(url: str, timeout: float = PROBE_TIMEOUT) -> bool:
-    """Whether the host in `url` resolves in DNS right now."""
-    target = _endpoint(url)
-    if target is None:
-        return False
-    socket.setdefaulttimeout(timeout)
-    try:
-        socket.getaddrinfo(target[0], target[1], proto=socket.IPPROTO_TCP)
-    except OSError:
-        return False
-    return True
 
 
 def accepts_tcp(url: str, timeout: float = PROBE_TIMEOUT) -> bool:

@@ -153,7 +153,13 @@ def _record_sighting(state: GameState, sighting: Any, event: Callable[..., None]
     """
     if sighting is None:
         return
-    checked = cop_sighting.plausible(sighting, state.last_sighting)
+    # `elapsed` matters and defaulting it to 1 quietly broke the case this
+    # module was built for: `last_sighting` deliberately outlives the turn,
+    # so against a peer who declares rarely the gap can be ten turns, and a
+    # one-step budget then rules their next honest claim implausible.
+    previous = state.last_sighting
+    elapsed = max(1, state.step - previous.step) if previous is not None else 1
+    checked = cop_sighting.plausible(sighting, previous, elapsed)
     held = state.cop_sighting
     if held is not None and held.exact and not checked.exact:
         return
@@ -194,14 +200,22 @@ def _absorb_capture_claim(
         cell=list(state.claimed_cell or ()),
         lands=state.pending_capture_claim,
     )
-    # The claim is the cop's own cell, and the cop said so. `evaluate_capture`
-    # scores a capture only when the cop *occupies* the cell it claims, so a
-    # truthful claim is an exact position fix — and an untruthful one is provable
-    # at the audit, which is what makes it safe to believe. This is the strongest
-    # evidence a silent opponent hands us, and it was going straight into a
-    # capture check and nowhere else.
-    if claimed is not None:
-        _record_sighting(state, cop_sighting.from_claim(claimed, state.step), event)
+    # A capture claim is NOT a cop-position fix, and reading it as one was a
+    # regression. `capture.answer_capture_claim(true_thief_cell, claimed_cell)`
+    # settles the semantics from our own code: the claim names the cell where the
+    # cop asserts *the thief* is. That equals the cop's own cell only for a claim
+    # that lands, and a cop is free to claim speculatively — uoh-sqak happened to
+    # claim only their own cell, which is the sole reason the mistake looked
+    # right against their recorded line.
+    #
+    # Measured cost of believing it: against a cop that claims one row off, the
+    # thief went from surviving 35/35 to captured at step 13, and against one
+    # claiming our own cell it was blinded outright — 0.99 of the mass landed on
+    # our square and the very next `exclude()` deleted it, leaving a flat belief
+    # every single turn. Both were *worse* than ignoring claims entirely.
+    #
+    # Barrier declarations remain sound and are still read: the Barrier Law
+    # genuinely constrains the cop to the walled cell or one step from it.
 
 
 def decay_after_full_turn(state: GameState) -> None:

@@ -52,8 +52,21 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         # was typed into `network.opponent_url` before the match — which is
         # correct until the first opponent whose tunnel re-mints its hostname,
         # and then it is a series of sends into an address nobody is behind.
+        # `identity` is declared `dict | str` and the schema's own docstring
+        # says a bare group name is terser, not hostile. `dict("uoh-sqak")`
+        # raises — and it would raise *after* the terms were agreed and
+        # `handshake.locked` emitted, so `agree_on_terms` would retry an
+        # exchange the peer considers finished, burn the full timeout three
+        # times, and resolve every mini-game OPPONENT_QUIT. A whole series
+        # lost to a peer doing nothing wrong.
+        declared = peer.get("identity")
         if role:
-            retarget(transport.client, dict(peer.get("identity") or {}), role, bus.publish)
+            retarget(
+                transport.client,
+                declared if isinstance(declared, dict) else {},
+                role,
+                bus.publish,
+            )
         return peer
 
     return run

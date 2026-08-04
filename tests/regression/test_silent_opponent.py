@@ -74,17 +74,50 @@ def test_survival_against_silence_does_not_regress(params: GameParams) -> None:
     assert result.steps_survived >= SILENT_BEST_STEPS
 
 
-def test_a_capture_claim_localises_the_cop_exactly(params: GameParams) -> None:
-    """A claim names the cop's own cell, so the belief should peak on it.
+def test_a_capture_claim_is_not_treated_as_a_cop_position_fix(params: GameParams) -> None:
+    """The regression that reading it as one caused, pinned so it cannot return.
 
-    `evaluate_capture` scores a capture only when the cop occupies the cell it
-    claims, which is what makes a claim an exact fix rather than a hint.
+    `capture.answer_capture_claim(true_thief_cell, claimed_cell)` settles the
+    semantics from our own code: a claim names the cell where the cop asserts
+    *the thief* is. That equals the cop's own cell only for a claim that lands.
+    uoh-sqak happened to claim only their own cell, which is the sole reason
+    believing it looked correct against their recorded line.
+
+    Measured before this was removed: against a cop claiming one row off the
+    thief went from 35/35 to captured at step 13; against one claiming our own
+    cell it was blinded every turn, because 0.99 of the mass landed on our
+    square and the very next `exclude()` deleted it. Both were worse than
+    ignoring claims outright.
     """
     belief = SilentPeerBelief(params, UOH_SQAK_SWEEP, barriers=())
 
-    for step, cop in enumerate(UOH_SQAK_SWEEP[:6], start=1):
+    for step, cop in enumerate(UOH_SQAK_SWEEP[:4], start=1):
+        distribution = belief(cop, step, (3, 3))
+
+    assert ThiefBrain()._cop_cell(distribution) is None, (  # noqa: SLF001
+        "claims alone must not produce a confident cop cell"
+    )
+
+
+def test_a_claim_on_our_own_cell_cannot_blind_us(params: GameParams) -> None:
+    """The free attack: claim where we stand, every turn, and watch us go flat.
+
+    Believing the claim put near-certainty on our own square; `exclude()` then
+    zeroed it, `normalise` spread the residue, and the belief was uniform again
+    on every single turn. The opponent needs no information to do this — our own
+    scent field hands them our exact cell for free.
+    """
+    belief = SilentPeerBelief(params, UOH_SQAK_SWEEP, UOH_SQAK_BARRIERS)
+    belief._message = lambda cop, step: {  # noqa: SLF001
+        "step": step,
+        "commit": f"{step:064x}",
+        "capture_claim": [3, 3],
+    }
+
+    for step, cop in enumerate(UOH_SQAK_SWEEP[:5], start=1):
         belief(cop, step, (3, 3))
-        assert belief.peak == cop, f"step {step}: belief peaked at {belief.peak}, cop at {cop}"
+
+    assert belief.peak != (3, 3), "a claim on our own cell must not become the belief peak"
 
 
 def test_the_evidence_path_actually_runs(params: GameParams) -> None:

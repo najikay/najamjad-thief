@@ -18,7 +18,9 @@ refused` against exactly that window.
 from __future__ import annotations
 
 import socket
+import threading
 import time
+from urllib.parse import urlparse
 
 #: How long to wait for a server to come up before calling it a failure.
 READY_TIMEOUT_SECONDS = 10.0
@@ -73,3 +75,49 @@ def wait_until_accepting(
             return True
         time.sleep(READY_POLL_SECONDS)
     return False
+
+
+def resolves(url: str, timeout: float = PROBE_TIMEOUT_SECONDS) -> bool:
+    """Whether the host in `url` resolves in DNS right now.
+
+    Bounded by running the lookup on its own thread and refusing to wait past
+    `timeout`, because the obvious approach does not work and we shipped it:
+    `socket.setdefaulttimeout` is **process-global and was never restored**, so
+    every socket created anywhere in the agent afterwards inherited a 3-second
+    timeout for the rest of the match — and `getaddrinfo` does not honour it
+    anyway, since the resolver keeps its own. The docstring on `attribute`
+    promised every probe was bounded; on the one failure this module exists for,
+    a hostname that has stopped resolving, it could block for the resolver's
+    full retry budget inside an already-failing turn.
+
+    A daemon thread left behind by a timeout costs one thread until the resolver
+    gives up, which is bounded and harmless; blocking the turn is not.
+    """
+    target = _host_and_port(url)
+    if target is None:
+        return False
+    found: list[bool] = []
+
+    def _lookup() -> None:
+        try:
+            socket.getaddrinfo(target[0], target[1], proto=socket.IPPROTO_TCP)
+        except OSError:
+            found.append(False)
+        else:
+            found.append(True)
+
+    worker = threading.Thread(target=_lookup, name="dns-probe", daemon=True)
+    worker.start()
+    worker.join(timeout)
+    return bool(found and found[0])
+
+
+def _host_and_port(url: str) -> tuple[str, int] | None:
+    """Host and port from a URL, or None when it is not one."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return None
+    if not parsed.hostname:
+        return None
+    return parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)

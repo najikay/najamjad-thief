@@ -25,6 +25,7 @@ traffic by sending a string would be a much worse problem than a stale URL.
 
 from __future__ import annotations
 
+import ipaddress
 from typing import Any
 from urllib.parse import urlparse
 
@@ -33,6 +34,32 @@ OPPOSITE_ROLE = {"police": "thief", "cop": "thief", "thief": "police"}
 #: Keys their declaration may use for the police endpoint, in preference order.
 POLICE_KEYS = ("police", "cop")
 THIEF_KEYS = ("thief",)
+
+
+def _is_local(hostname: str) -> bool:
+    """Whether a hostname names this machine or a private network.
+
+    A peer choosing where our traffic goes is a peer who can choose *us*. Told
+    to dial `http://127.0.0.1:8802/mcp` we would send our turns into our own
+    inbox and read them back as theirs; pointed at an RFC1918 address we would
+    spray the operator's LAN. Neither is a plausible place for an opponent's
+    agent to be, so neither is worth accepting to be accommodating.
+
+    Note this is a check on the *address they name*, not a resolution — a
+    hostname that resolves to loopback still gets through, and stopping that
+    would need a resolve on a path that must stay fast. It raises the bar from
+    "any URL at all" to "an address that is at least plausibly theirs".
+    """
+    lowered = hostname.lower()
+    if lowered in ("localhost", "ip6-localhost") or lowered.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(lowered)
+    except ValueError:
+        return False
+    return bool(
+        address.is_loopback or address.is_private or address.is_link_local or address.is_reserved
+    )
 
 
 def _usable(url: Any) -> str:
@@ -45,6 +72,8 @@ def _usable(url: Any) -> str:
     except ValueError:
         return ""
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return ""
+    if _is_local(parsed.hostname):
         return ""
     return text
 

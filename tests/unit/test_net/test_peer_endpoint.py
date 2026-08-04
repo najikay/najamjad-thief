@@ -116,3 +116,38 @@ def test_an_unchanged_endpoint_does_not_disturb_a_healthy_session() -> None:
 
     assert client.retargets == []
     assert events == []
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:8802/mcp",
+        "http://localhost:8802/mcp",
+        "https://192.168.1.10/mcp",
+        "http://10.0.0.5/mcp",
+        "http://169.254.1.1/mcp",
+        "http://[::1]:8802/mcp",
+    ],
+)
+def test_a_peer_cannot_point_us_at_ourselves_or_the_local_network(url: str) -> None:
+    """A peer choosing where our traffic goes is a peer who can choose *us*.
+
+    Told to dial our own MCP port we would send turns into our own inbox and
+    read them back as the opponent's; pointed at an RFC1918 address we would
+    spray the operator's LAN. Our post-game audit payload goes down this same
+    pipe, so the answer has to be no.
+    """
+    client = FakeClient()
+
+    retarget(client, {"mcp_servers": {"thief": url}}, "police")
+
+    assert client.retargets == [], f"accepted {url}"
+
+
+def test_an_ordinary_public_endpoint_is_still_accepted() -> None:
+    """The guard must not be so tight that a real opponent cannot move."""
+    client = FakeClient()
+
+    retarget(client, {"mcp_servers": {"thief": "https://abc123.ngrok-free.app/mcp"}}, "police")
+
+    assert client.retargets == ["https://abc123.ngrok-free.app/mcp"]

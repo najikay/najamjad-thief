@@ -74,6 +74,27 @@ def shared_config_for(role_dir: Path) -> Path:
     return beside if beside.exists() else CONFIG_ROOT / "game.json"
 
 
+def _guard_counted_strength(manager: ConfigManager) -> None:
+    """Refuse to build an agent for a counted match at less than full strength.
+
+    `shared/strength.guard_counted` was written, documented, tested and then
+    **never called from anywhere**, so the refusal it exists to perform did not
+    happen. Meanwhile `scripts/match_day.py warmup` writes `level =
+    "sandbagged"` into a file nothing reads — the agent played full strength
+    regardless, and the guard that was supposed to catch the reverse mistake,
+    arming a warm-up and forgetting to re-arm before the counted series, never
+    ran once.
+
+    Here rather than in the CLI because this is where the config is loaded, so
+    every entry point that builds an agent is covered rather than the one
+    command someone remembered to edit. A counted match cannot be replayed.
+    """
+    from ..shared.practice import current
+    from ..shared.strength import guard_counted
+
+    guard_counted(manager.get("strength.level", "full"), counted=not current().enabled)
+
+
 def build_sdk(
     config: Path | None = None,
     role: str = "",
@@ -97,6 +118,7 @@ def build_sdk(
         workspace=workspace or Path(setting(setup, "paths.workspace", "workspace")),
     )
     manager = ConfigManager.load(role_dir, shared_config=shared_config_for(role_dir))
+    _guard_counted_strength(manager)
     if group_id:
         # A practice-only identity, applied at runtime so it never touches the
         # committed config. Two agents from one team both declaring "najamjad"
