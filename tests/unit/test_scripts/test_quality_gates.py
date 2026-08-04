@@ -64,7 +64,8 @@ def test_a_move_is_computed_well_inside_the_step_budget():
     from najamjad_agent.constants import Role
     from najamjad_agent.domain.movement import legal_moves
     from najamjad_agent.domain.params import GameParams
-    from najamjad_agent.sdk.match_setup import build_brain, build_state
+    from najamjad_agent.sdk.match_setup import build_brain
+    from najamjad_agent.sdk.state_setup import build_state
 
     params = GameParams.from_config({
         "board_and_agents": {"grid_size": 15, "thief_start": [7, 7], "cop_start": [0, 0]},

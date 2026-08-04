@@ -23,7 +23,10 @@ from najamjad_agent.domain.board import Board
 from najamjad_agent.domain.capture import is_immobilised
 from najamjad_agent.domain.params import GameParams, Position
 
-BeliefFor = Callable[[Position, int], dict[Position, float]]
+#: `(cop cell, step, thief cell) -> belief`. The thief cell is passed because a
+#: real belief excludes our own square, and a model that cannot see where we
+#: stand cannot reproduce what the orchestrator actually computes.
+BeliefFor = Callable[[Position, int, Position], dict[Position, float]]
 
 
 @dataclass(frozen=True)
@@ -98,7 +101,7 @@ def run_duel(
     thief: Position = params.thief_start
     path: list[Position] = [thief]
     horizon = min(params.survival_threshold, params.max_moves)
-    belief = belief_for or (lambda cell, _step: _certain(cell))
+    belief = belief_for or (lambda cell, _step, _thief: _certain(cell))
 
     for step in range(1, horizon + 1):
         cop = tuple(cop_line[min(step - 1, len(cop_line) - 1)])
@@ -112,7 +115,7 @@ def run_duel(
         if is_immobilised(board, thief):
             return DuelResult(step - 1, True, tuple(path), "immobilised")
 
-        facts = Facts(board, thief, belief(cop, step), step, horizon - step)
+        facts = Facts(board, thief, belief(cop, step, thief), step, horizon - step)
         move = brain.pick_move(facts)
         row, col = board.delta_for(move)
         landing = (thief[0] + row, thief[1] + col)

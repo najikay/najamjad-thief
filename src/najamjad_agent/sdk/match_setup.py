@@ -13,14 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from ..constants import Role
-from ..domain.belief import BeliefGrid
-from ..domain.board import Board
-from ..domain.fair_play import FairPlayMonitor
 from ..domain.game_state import GameState
-from ..domain.ledger import CommitLedger
 from ..domain.match import MatchRunner
 from ..domain.params import GameParams
-from ..domain.scent import ScentField
 from ..domain.scoring import ScoreTable
 from ..domain.series import SeriesTracker
 from ..llm.speaker import Speaker
@@ -33,27 +28,7 @@ from ..shared.rate_limits import for_service, load_rate_limits
 from ..strategy.cop_brain import CopBrain
 from ..strategy.thief_brain import ThiefBrain
 from .plugins import resolve
-
-
-def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
-    """A fresh mini-game state; nothing may leak between sub-games."""
-    board = Board(params)
-    start = params.cop_start if role is Role.COP else params.thief_start
-    return GameState(
-        board=board,
-        role=role,
-        sub_game=sub_game,
-        own_position=start,
-        belief=BeliefGrid(board),
-        own_scent=ScentField(board_size=board.size),
-        opponent_scent=ScentField(board_size=board.size),
-        ledger=CommitLedger(sub_game=sub_game),
-        # One monitor per mini-game, because the barrier budget and the step
-        # numbering both reset with it. Watching the opponent is not optional
-        # equipment: commit-reveal proves they did not rewrite what they did,
-        # and this is the only thing that asks whether they were allowed to.
-        fair_play=FairPlayMonitor(max_barriers=params.max_barriers),
-    )
+from .state_setup import state_factory
 
 
 def brain_factory(manager: Any = None) -> Any:
@@ -190,7 +165,7 @@ def build_match(
         params=params,
         tracker=tracker,
         transport=transport,
-        build_state=build_state,
+        build_state=state_factory(manager),
         build_brain=brain_factory(manager),
         speaker=speaker,
         clock=time.monotonic,

@@ -11,6 +11,7 @@ from typing import Any
 from ..constants import EndReason, Move, Role
 from .belief import BeliefGrid
 from .board import Board
+from .emission import EmissionPolicy
 from .ledger import CommitLedger
 from .params import Position
 from .scent import ScentField
@@ -54,6 +55,20 @@ class GameState:
     opponent_estimate: Position | None = None
     pending_capture_claim: bool | None = None
     claimed_cell: Position | None = None
+    # Position evidence read out of the opponent's *mandatory* declarations — a
+    # capture claim or a barrier (see `domain/cop_sighting.py`). Held here rather
+    # than applied at absorb time because it has to be fused in the right order:
+    # after the diffusion step that models their move, alongside the scent, or a
+    # point observation gets blurred across five cells before anything reads it.
+    #
+    # `last_sighting` outlives it, because plausibility is judged against the
+    # previous sighting and a peer that stops declaring must not reset that.
+    cop_sighting: Any = None
+    last_sighting: Any = None
+    # How much of our own evidence we disclose each turn (`domain/emission.py`).
+    # Defaulted rather than required so every existing construction keeps the
+    # behaviour it had: full scent, hints spoken.
+    emission: EmissionPolicy = field(default_factory=EmissionPolicy)
     # An ending we have detected but not yet told the opponent about. Both peers
     # must record the same reason or rules 33-35 void the game, and they cannot
     # detect every ending at the same moment: the turn order means one side sees

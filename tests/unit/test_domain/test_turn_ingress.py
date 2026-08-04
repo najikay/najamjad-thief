@@ -9,7 +9,8 @@ import pytest
 
 from najamjad_agent.constants import Role
 from najamjad_agent.domain.game_state import GameState
-from najamjad_agent.domain.turn_ingress import absorb_turn, outgoing_extras
+from najamjad_agent.domain.turn_egress import outgoing_extras
+from najamjad_agent.domain.turn_ingress import absorb_turn
 from tests.fakes.orchestration import build_state
 
 

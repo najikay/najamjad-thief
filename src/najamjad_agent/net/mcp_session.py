@@ -16,9 +16,8 @@ from typing import Any
 
 from fastmcp import Client
 
+from ..shared.error_detail import describe
 from ..shared.events import Emit
-
-MAX_ERROR_DETAIL = 200
 
 
 def _task_name() -> str:
@@ -66,6 +65,12 @@ class PeerSession:
         exception type with three different messages. The failure is evented
         before it propagates, because the alternative — which we lived through —
         is ten identical `RuntimeError` lines and no way to tell which.
+
+        And three *different* messages was the optimistic reading. In the real
+        series the wrapper's message was `Client failed to connect: ` with
+        nothing after the colon 152 times out of 154, because the exception it
+        wrapped stringified to the empty string. `describe` is what makes the
+        difference: it follows the wrapper down to whatever actually failed.
         """
         if self._session is None:
             session = Client(self.url)
@@ -76,8 +81,7 @@ class PeerSession:
                     "event": "client.session_failed",
                     "url": self.url,
                     "task": _task_name(),
-                    "error": type(error).__name__,
-                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                    **describe(error),
                 })
                 raise
             self._session = session
@@ -107,8 +111,7 @@ class PeerSession:
                 "event": "client.drop_failed",
                 "url": self.url,
                 "task": _task_name(),
-                "error": type(error).__name__,
-                "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                **describe(error),
             })
 
     async def call(self, tool: str, arguments: dict[str, Any]) -> Any:
@@ -130,8 +133,7 @@ class PeerSession:
                     "url": self.url,
                     "tool": tool,
                     "task": _task_name(),
-                    "error": type(error).__name__,
-                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                    **describe(error),
                 })
                 session = await self.open()
                 return await session.call_tool(tool, arguments)

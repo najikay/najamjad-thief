@@ -21,12 +21,8 @@ from .game_state import GameState, TurnFacts
 from .movement import apply_move, legal_moves, place_barrier
 from .params import Position
 from .ports import Brain, Clock, Speaker, Transport
-from .turn_ingress import (
-    absorb_turn,
-    build_turn_message,
-    decay_after_full_turn,
-    outgoing_extras,
-)
+from .turn_egress import build_turn_message, outgoing_extras
+from .turn_ingress import absorb_turn, decay_after_full_turn
 
 THIEF_MOVES_FIRST = True
 
@@ -75,7 +71,12 @@ class Orchestrator:
         facts = self.state.facts(legal)
         barrier = self._barrier_choice(facts)
         move = Move.STAY if barrier else self._legal_move(facts, legal)
+        # Suppressed here, before `step_payload` seals it, so the commitment and
+        # the wire carry the same string. Stripping the hint afterwards would
+        # leave our own commit describing a turn we did not send, which the audit
+        # cannot tell apart from tampering.
         hint, intent = self._speaker.compose(facts)
+        hint = self.state.emission.hint(hint)
         self._apply_own_action(move, barrier)
         claim_survival_if_outlasted(self.state)
         payload = step_payload(

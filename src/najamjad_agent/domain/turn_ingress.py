@@ -19,9 +19,9 @@ hidden information now, verifiable honesty later.
 """
 
 from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import Any
 
+from . import cop_sighting
 from .game_state import GameState
 from .ledger import ProtocolOrderError
 
@@ -116,11 +116,35 @@ def _absorb_barrier(
     message: dict[str, Any],
     event: Callable[..., None],
 ) -> None:
-    """Honour a truthfully declared barrier placement (book rules 15-16)."""
+    """Honour a truthfully declared barrier placement (book rules 15-16).
+
+    The wall goes onto the board, and — new — the *declaration* goes into the
+    belief. The Barrier Law is in lieu of moving, on the cop's own cell or one
+    orthogonal step from it, so a barrier is a five-cell fix on the cop. We
+    banked the wall and threw the fix away, 143 times in one series.
+    """
     cell = _parse_cell(message.get("barrier_placed"))
     if cell is not None and state.board.in_bounds(cell):
         state.board = state.board.with_barrier(cell)
         event("barrier.observed", cell=list(cell))
+        _record_sighting(state, cop_sighting.from_barrier(state.board, cell, state.step), event)
+
+
+def _record_sighting(state: GameState, sighting: Any, event: Callable[..., None]) -> None:
+    """Hold a sighting for the belief step, after checking it against the last one.
+
+    A claim exactly overrides a barrier seen on the same turn: both can arrive
+    together, and the claim is the sharper of the two, so the weaker evidence
+    must not be the one that survives.
+    """
+    if sighting is None:
+        return
+    checked = cop_sighting.plausible(sighting, state.last_sighting)
+    held = state.cop_sighting
+    if held is not None and held.exact and not checked.exact:
+        return
+    state.cop_sighting = checked
+    event("cop.sighted", **checked.as_event())
 
 
 def _absorb_capture_claim(
@@ -156,102 +180,14 @@ def _absorb_capture_claim(
         cell=list(state.claimed_cell or ()),
         lands=state.pending_capture_claim,
     )
-
-
-def outgoing_extras(state: GameState, barrier: Any, claim: Any = None) -> dict[str, Any]:
-    """Optional sealed fields carried alongside our move.
-
-    The scent snapshot is what the opponent absorbs; it deliberately contains
-    intensities only, never a coordinate, so publishing it leaks evidence but
-    not our position.
-    """
-    extras: dict[str, Any] = {"smell_grid": state.own_scent.snapshot()}
-    if barrier:
-        extras["barrier_placed"] = [barrier[0], barrier[1]]
-    if state.role.value == "police":
-        if claim is not None:
-            # The cell, not a boolean. The reference does `tuple(capture_claim)`
-            # to compare it against the thief's true position, so a bare `true`
-            # raises in its process — and a claim it cannot read is a capture it
-            # can never confirm. We send nothing at all when we are not
-            # claiming, rather than a falsy value.
-            extras["capture_claim"] = [claim[0], claim[1]]
-    elif state.pending_capture_claim is not None:
-        # Rules 21-22: a claim must be answered, and answered honestly. Without
-        # this the cop never learns whether its claim landed — it waits out the
-        # deadline and records a timeout for a game the thief has recorded as a
-        # capture, and two contradictory reports void the game for both (rules
-        # 33-35). The answer is sealed like everything else, so a lie here is
-        # provable at the audit.
-        #
-        # `is not None`, not truthiness: an honest "no" is False, and a falsy
-        # check would silently swallow exactly the answers we are obliged to give.
-        # The reference's shape: the cell claimed, and whether it landed. Richer
-        # than a bare boolean, and it lets the cop check the answer refers to
-        # the claim it actually made.
-        extras["claim_response"] = {
-            "claim": list(state.claimed_cell or ()),
-            "caught": bool(state.pending_capture_claim),
-        }
-        state.pending_capture_claim = None
-    if state.pending_end is not None and not _admitting_capture(extras):
-        # An ending only we can see — survival, or an immobilised thief. Declare
-        # it so the opponent closes on the same reason instead of timing out.
-        #
-        # This used to be suppressed whenever a `claim_response` was present at
-        # all, which looked cautious and was wrong. The reference's police
-        # attaches a `capture_claim` to *every* move it makes, so our thief
-        # almost always owes it an answer — and the two fields together meant we
-        # never once declared survival on the wire. It reached the horizon,
-        # recorded survival privately, and its opponent timed the game out.
-        #
-        # The fields are independent in the reference's handler, and a capture
-        # already outranks a survival there, so the only answer that must
-        # silence the declaration is one admitting we were caught.
-        extras["win_claim"] = {"type": state.pending_end.value}
-    return extras
-
-
-def _admitting_capture(extras: dict[str, Any]) -> bool:
-    """Whether this turn concedes a capture, which outranks any win we claim."""
-    answer = extras.get("claim_response")
-    return bool(answer and answer.get("caught"))
-
-
-def build_turn_message(
-    state: GameState, commit: str, payload: dict[str, Any]
-) -> dict[str, Any]:
-    """What a peer is entitled to see: the commitment and public evidence.
-
-    Deliberately the mirror image of `absorb_turn`. Position, move and intent
-    stay sealed until the audit; everything included here is either unfakeable
-    (scent), free-language (the hint), or mandatory to declare (a barrier, a
-    capture claim naming the cell it asserts).
-    """
-    message: dict[str, Any] = {
-        "step": state.step,
-        "sender": state.role.value,
-        "commit": commit,
-        "hint": payload.get("hint", ""),
-        "smell_grid": payload.get("smell_grid", {}),
-        # Mandatory per move (book), and a *required* field in the reference's
-        # parser — omitting it made every one of our turns unreadable to it.
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
-    if "barrier_placed" in payload:
-        message["barrier_placed"] = payload["barrier_placed"]
-    if payload.get("capture_claim"):
-        # The claim IS the cell — that is the reference's shape, and it is the
-        # better one: a bare `true` plus a separate `claimed_cell` field made
-        # the message unparseable by a reference peer, whose parser rejects any
-        # field it does not declare. Claiming still discloses where we stand,
-        # which is what stops a cop claiming speculatively every turn.
-        message["capture_claim"] = list(payload["capture_claim"])
-    if payload.get("claim_response") is not None:
-        message["claim_response"] = payload["claim_response"]
-    if payload.get("win_claim"):
-        message["win_claim"] = payload["win_claim"]
-    return message
+    # The claim is the cop's own cell, and the cop said so. `evaluate_capture`
+    # scores a capture only when the cop *occupies* the cell it claims, so a
+    # truthful claim is an exact position fix — and an untruthful one is provable
+    # at the audit, which is what makes it safe to believe. This is the strongest
+    # evidence a silent opponent hands us, and it was going straight into a
+    # capture check and nowhere else.
+    if claimed is not None:
+        _record_sighting(state, cop_sighting.from_claim(claimed, state.step), event)
 
 
 def decay_after_full_turn(state: GameState) -> None:
@@ -266,6 +202,31 @@ def decay_after_full_turn(state: GameState) -> None:
     state.belief.diffuse()
     observed = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}
     state.belief.update_scent(observed)
+    _fuse_sighting(state)
     state.belief.exclude((state.own_position,))
     # With no transmitted position, our estimate of them IS our belief peak.
     state.opponent_estimate = state.belief.peak()
+
+
+def _fuse_sighting(state: GameState) -> None:
+    """Apply this turn's declared-position evidence, after diffusion and scent.
+
+    The ordering is the whole point and it is the same ordering scent already
+    uses. `diffuse` models the move the opponent just made, which necessarily
+    smears a point observation across five cells; the observation is then fused
+    *on top* to say where that move landed. Fusing before the diffusion instead
+    would leave the belief peaked on a neighbour of the true cell — and a thief
+    keeping its distance-2 invariant from a cell one step off the cop is a thief
+    standing next to the cop, which is a capture.
+
+    Applied after `update_scent` for the same reason it is applied at all: a
+    declaration is a direct statement of position, and the scent likelihood is an
+    inference from a decaying field. When both are present the direct statement
+    should win, and against a silent opponent it is the only one there is.
+    """
+    sighting = state.cop_sighting
+    state.cop_sighting = None
+    if sighting is None:
+        return
+    state.belief.observe_reach(sighting.cells, sighting.confidence)
+    state.last_sighting = sighting

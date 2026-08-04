@@ -124,3 +124,30 @@ stall_trigger = 3
 
 [strength]
 level = "full"
+
+# How much of our own evidence we hand the opponent each turn.
+#
+# We broadcast the whole cumulative pheromone field; uoh-sqak broadcast nothing
+# and beat us 15-60. This is the dial that closes that asymmetry, and each mode
+# was checked against the agreed terms before it was built — see the module
+# docstring in src/najamjad_agent/domain/emission.py for the full working.
+#
+#   scent = "full"    every scented cell (what we have always sent, 25-29 cells
+#                     per turn in the sealed uoh-sqak log, rising as we roam)
+#   scent = "window"  only the agreed pheromone_grid_size window around us. A
+#                     defensible reading of the same term, not a new one.
+#   scent = "none"    an empty map. Legal — the book forbids faking a trail, not
+#                     withholding one — but it is the mode to DECLARE in
+#                     negotiation rather than spring on an opponent (rule 49
+#                     means these repos get read).
+#
+# Note what "window" does not buy: the centre of a deposit is 0.9 and is the
+# unique maximum, so an opponent taking the argmax still reads our exact cell.
+# Only "none" hides the current position.
+#
+# hint = false seals and sends an empty hint. Rule 12 caps hints at 15 words and
+# sets no floor, so this breaks no term. Suppression happens before the commit
+# is computed, so the sealed record and the wire always agree.
+[emission]
+scent = "full"
+hint = true
