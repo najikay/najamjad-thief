@@ -24,24 +24,7 @@ from typing import Any
 from ..shared.events import Emit
 from ..shared.gatekeeper import ApiGatekeeper
 from .mcp_session import PeerSession
-
-TOOL_FOR_KIND = {
-    "negotiate": "negotiate",
-    "turn": "receive_turn",
-    "audit": "submit_audit",
-    "control": "receive_control",
-}
-# The argument name each tool expects. This is not ours to choose: the reference
-# implementation declares `message` on three tools and `payload` on
-# `submit_audit`, and most of the class builds on it. Sending `payload`
-# everywhere — as we did — meant a reference-derived opponent rejected every
-# turn and every proposal we sent. Verified against the real simulator.
-ARGUMENT_FOR_TOOL = {
-    "negotiate": "message",
-    "receive_turn": "message",
-    "receive_control": "message",
-    "submit_audit": "payload",
-}
+from .tool_names import ARGUMENT_FOR_TOOL, TOOL_FOR_KIND
 
 
 class PeerClient:
@@ -153,6 +136,28 @@ class PeerClient:
             return
         with contextlib.suppress(Exception):
             asyncio.run_coroutine_threadsafe(self._session.drop(), loop).result(timeout=5)
+
+    def retarget(self, opponent_url: str) -> None:
+        """Move to a new opponent address, dropping the session held on the old one.
+
+        Input: the URL the peer declared in its handshake.
+        Output: none; subsequent calls go to the new address.
+        Setup: none. Safe before the loop has started.
+
+        The old session must be released rather than abandoned. It is an open
+        socket to a host we are done with, and on a peer whose tunnel re-mints
+        every session — which is the case this exists for — that host is usually
+        already gone, so keeping it costs a file descriptor and an event loop
+        callback for the rest of the series.
+
+        The loop itself is *not* restarted. It is address-agnostic and restarting
+        it would throw away the one long-lived thing this class exists to keep.
+        """
+        if not opponent_url or opponent_url == self.opponent_url:
+            return
+        self._release_session()
+        self.opponent_url = opponent_url
+        self._session = PeerSession(opponent_url, emit=self._emit)
 
     @property
     def reconnects(self) -> int:

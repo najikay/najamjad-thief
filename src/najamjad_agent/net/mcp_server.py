@@ -10,7 +10,6 @@ inside our decision-making, and any logic here would be logic the orchestrator
 does not control.
 """
 
-import socket
 import threading
 from typing import Any
 
@@ -18,19 +17,14 @@ from fastmcp import FastMCP
 
 from ..shared.events import Emit
 from .inbox import Inboxes
+from .readiness import (
+    READY_TIMEOUT_SECONDS,
+    port_is_accepting,
+    port_is_free,
+    wait_until_accepting,
+)
 
 SERVER_NAME = "najamjad_peer"
-
-
-def port_is_free(host: str, port: int) -> bool:
-    """True when nothing is already listening on `host:port`."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            probe.bind((host, port))
-        except OSError:
-            return False
-    return True
 
 
 def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
@@ -109,8 +103,35 @@ class PeerServer:
 
     @property
     def running(self) -> bool:
-        """True while the server thread is alive."""
-        return self._thread is not None and self._thread.is_alive()
+        """True while the server is actually accepting connections.
+
+        This used to mean "the thread is alive", which is not the same thing and
+        the difference cost us mini-games. `threading.Thread.start()` returns as
+        soon as the thread is *scheduled*; uvicorn then imports, builds the app
+        and binds — 314 ms on a cold start here. For that whole window the thread
+        was alive, `running` said True, `server.started` had been emitted, the
+        tunnel had been told to go, and `agent.online` had announced a URL that
+        answered **connection refused**.
+
+        That is not a theoretical window. Our own `cloudflared` log fills with
+        `dial tcp 127.0.0.1:8802: connect: connection refused` against exactly
+        this address, and an opponent who launches on time and sends their first
+        turn into it gets refused by us while we are telling them we are ready.
+        """
+        return (
+            self._thread is not None
+            and self._thread.is_alive()
+            and port_is_accepting(self.host, self.port)
+        )
+
+    def wait_until_ready(self, timeout: float = READY_TIMEOUT_SECONDS) -> bool:
+        """Block until the socket accepts, the thread dies, or `timeout` passes."""
+        return wait_until_accepting(
+            self.host,
+            self.port,
+            timeout,
+            alive=lambda: self._thread is None or self._thread.is_alive(),
+        )
 
     def preflight(self) -> None:
         """Fail early and actionably if the port is already taken."""
@@ -121,7 +142,18 @@ class PeerServer:
             )
 
     def start(self) -> None:
-        """Run the server on a daemon thread after preflight (idempotent)."""
+        """Serve on a daemon thread and **wait until the socket accepts**.
+
+        The wait is the point. `server.started` is now emitted only once a real
+        TCP connection succeeds, so every downstream consequence of that
+        event — the tunnel starting, `agent.online`, telling an opponent we are
+        ready — happens after we can actually answer.
+
+        A start that never becomes ready raises rather than returning quietly.
+        An agent that believes it is serving and is not will wait out the whole
+        match on turns that were refused at the door, which is a far more
+        expensive failure than refusing to start.
+        """
         if self.running:
             return
         self.preflight()
@@ -132,4 +164,11 @@ class PeerServer:
 
         self._thread = threading.Thread(target=_serve, name="mcp-server", daemon=True)
         self._thread.start()
+        if not self.wait_until_ready():
+            self._emit({"event": "server.never_ready", "url": self.url})
+            raise OSError(
+                f"MCP server did not accept connections on {self.host}:{self.port} "
+                f"within {READY_TIMEOUT_SECONDS:.0f}s — the tunnel would have "
+                "published an address that answers connection refused"
+            )
         self._emit({"event": "server.started", "url": self.url})

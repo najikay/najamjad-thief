@@ -23,8 +23,15 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
     from ..negotiation.identity import identity_from_config
     from ..negotiation.terms import terms_from_config
 
-    def run():
-        """Sign, swap and verify the terms before any move is played."""
+    def run(role: str = ""):
+        """Sign, swap and verify the terms, then dial where they say they are.
+
+        `role` is the one we hold this mini-game. It decides which of the
+        opponent's declared endpoints is theirs to answer on, since they are
+        always playing the other side.
+        """
+        from ..net.peer_endpoint import retarget
+
         terms = terms_from_config(manager)
         session["terms"] = terms
         session["identity"] = identity_from_config(manager)
@@ -40,6 +47,13 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
             emit=bus.publish,
         )
         session["peer"] = peer
+        # Adopt the address they just declared. Their handshake has always
+        # carried it and we have always ignored it, dialling instead whatever
+        # was typed into `network.opponent_url` before the match — which is
+        # correct until the first opponent whose tunnel re-mints its hostname,
+        # and then it is a series of sends into an address nobody is behind.
+        if role:
+            retarget(transport.client, dict(peer.get("identity") or {}), role, bus.publish)
         return peer
 
     return run

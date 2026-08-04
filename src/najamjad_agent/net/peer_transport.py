@@ -33,6 +33,17 @@ class PeerTransport:
         self._deadlines = deadlines
         self._emit = emit or (lambda _event: None)
 
+    @property
+    def client(self) -> PeerClient:
+        """The live peer client, so the handshake can re-point it.
+
+        Exposed deliberately and narrowly. The opponent's declared endpoint
+        arrives in the handshake, and the handshake is the only thing entitled
+        to move us — everything else on this class talks about messages, not
+        addresses.
+        """
+        return self._client
+
     def send_turn(self, message: dict[str, Any]) -> None:
         """Send one commit or reveal to the opponent."""
         self._client.send("turn", message)

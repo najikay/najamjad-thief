@@ -117,7 +117,7 @@ class MatchRunner:
             sub_game = self.tracker.next_sub_game
             role = role_for(sub_game, self.first_role)
             if not agree_on_terms(
-                self._handshake, sub_game, self._handshake_retries, self._emit
+                self._handshake, sub_game, self._handshake_retries, self._emit, role.value
             ):
                 self.games.append(
                     resolve_unplayed(self.tracker, sub_game, role, EndReason.OPPONENT_QUIT)
