@@ -59,6 +59,25 @@ class EndReason(str, Enum):
     STOPPED = "stopped"
 
 
+#: Endings where the game was never decided on the board. The book scores them
+#: 0/0 for both sides, which makes the two scores *equal* — and equal scores are
+#: how a tie is detected, so without this list every abandoned game was reported
+#: as a **draw**. Our own result artifact said `"ties": 3` about a series in
+#: which three games never finished, which is not a tie, is not what happened,
+#: and is exactly the kind of self-misdescription rules 33-35 void a report for.
+TECHNICAL_ENDINGS = frozenset({
+    EndReason.TIMEOUT.value,
+    EndReason.TAMPER_FORFEIT.value,
+    EndReason.OPPONENT_QUIT.value,
+    EndReason.STOPPED.value,
+})
+
+
+def is_technical(end_reason: object) -> bool:
+    """Whether a mini-game ended off the board rather than being played out."""
+    return str(end_reason or "") in TECHNICAL_ENDINGS
+
+
 # Row/column deltas per move; (0,0) origin at the configured corner, rows grow
 # toward the opposite side (axis conventions themselves come from the signed
 # shared config, not from code — book Table 13).

@@ -37,6 +37,33 @@ MODELS: dict[str, Any] = {
 }
 
 
+#: Fields that mean "not applicable" when null and should simply not appear.
+#: Deliberately a *named list* rather than a blanket `exclude_none`: some nulls
+#: carry meaning and must survive. `winner_group: null` is the report's own way
+#: of saying a mini-game was drawn, and dropping it would turn a stated draw
+#: into a missing field the opponent's report contradicts.
+OMIT_WHEN_NULL = frozenset({"tie_award", "step_budget", "opponent_group_id"})
+
+
+def _without_absent(payload: Any) -> Any:
+    """Drop `OMIT_WHEN_NULL` keys whose value is null, at any depth.
+
+    `"tie_award": null` was appearing in every emitted result, including the
+    ones that were not ties, because the schema default is None and dumping the
+    *model* (which we do deliberately, so `schema_version` and friends survive)
+    re-adds every default the builder had omitted.
+    """
+    if isinstance(payload, dict):
+        return {
+            key: _without_absent(value)
+            for key, value in payload.items()
+            if not (value is None and key in OMIT_WHEN_NULL)
+        }
+    if isinstance(payload, list):
+        return [_without_absent(item) for item in payload]
+    return payload
+
+
 class ArtifactWriter:
     """Builds, validates and persists one match's artifacts."""
 
@@ -64,7 +91,9 @@ class ArtifactWriter:
         # supplies by default — `schema_version`, `report_type`, `timezone` —
         # exist only on the model, so writing the payload silently dropped every
         # one of them from the file we email. The grader reads the file.
-        path.write_text(canonical_json(parsed.model_dump(mode="json")), encoding="utf-8")
+        path.write_text(
+            canonical_json(_without_absent(parsed.model_dump(mode="json"))), encoding="utf-8"
+        )
         return path
 
     def _identity(self) -> dict[str, Any]:
@@ -122,9 +151,19 @@ class ArtifactWriter:
         confirmed: bool,
         **extra: Any,
     ) -> Path:
-        """`result_<game_id>.json` — the file that is emailed and scored."""
+        """`result_<game_id>.json` — the file that is emailed and scored.
+
+        The `links` block inherited from `_identity` names `..._g01.json` for the
+        config and the log, because it defaults to sub-game 1. On a six-game
+        series that is a graded file pointing a grader at one sixth of the
+        evidence. `all_logs` / `all_configs` name every one; `links` keeps its
+        original shape so an opponent's parser sees exactly what it always did.
+        """
+        numbers = [int(game.get("sub_game_number", index)) for index, game in enumerate(sub_games, 1)]
         payload = {
             **self._identity(),
+            "all_configs": [config_filename(self.game_id, number) for number in numbers],
+            "all_logs": [log_filename(self.game_id, number) for number in numbers],
             "groups": sorted(self.groups),
             "num_sub_games": len(sub_games),
             "sub_games": sub_games,

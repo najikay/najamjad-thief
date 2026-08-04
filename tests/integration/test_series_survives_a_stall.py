@@ -183,3 +183,39 @@ def test_the_gate_can_still_fail() -> None:
         thread.join(timeout=120)
 
     assert len(ours.games) == ours.tracker.total_games
+
+
+def test_the_settle_wait_is_spent_only_on_the_abandoned_game() -> None:
+    """The peer needs its watchdog to fire before it will answer the next handshake.
+
+    Asserted through the runner rather than on `settle` alone, because the thing
+    worth guarding is the *wiring*: an unreferenced component is this repo's most
+    common defect, and a settle nobody calls settles nothing.
+    """
+    left, right = linked_pair()
+    storming = StormingLink(left, DEAD_SUB_GAME)
+    slept: list[float] = []
+    ours = build_runner(storming, "najamjad", "opponent", Role.COP)
+    ours._watchdog_seconds = 30.0  # noqa: SLF001
+    ours._sleep = slept.append  # noqa: SLF001
+    theirs = build_runner(right, "opponent", "najamjad", Role.THIEF)
+
+    play_pair(ours, theirs)
+
+    assert slept, "the settle wait was never spent after an abandonment"
+    assert all(each == 30.0 for each in slept)
+    assert len(slept) <= 2, "settling should follow abandonments, not every game"
+
+
+def test_a_clean_series_never_settles() -> None:
+    """Five of six games end cleanly; a delay on those costs minutes per series."""
+    left, right = linked_pair()
+    slept: list[float] = []
+    ours = build_runner(left, "najamjad", "opponent", Role.COP)
+    ours._watchdog_seconds = 30.0  # noqa: SLF001
+    ours._sleep = slept.append  # noqa: SLF001
+    theirs = build_runner(right, "opponent", "najamjad", Role.THIEF)
+
+    play_pair(ours, theirs)
+
+    assert slept == []

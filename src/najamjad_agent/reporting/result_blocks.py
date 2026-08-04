@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..constants import is_technical
 from ..protocol.schemas_report import log_filename
 from ..shared.sysinfo import git_commit
 
@@ -39,7 +40,11 @@ def sub_game_rows(
             "roles": {ours: role, theirs: _opposite(role)},
             "result": str(game.get("end_reason", "")),
             "winner_group": _winner(outcome, groups),
-            "tie": outcome.our_score == outcome.their_score,
+            # Equal scores are how a tie is detected, and a technical ending
+            # scores 0/0 for both — so every abandoned game used to be filed
+            # as a draw. It is not one: nobody drew, the game never finished.
+            "tie": outcome.our_score == outcome.their_score
+            and not is_technical(game.get("end_reason")),
             "score": {ours: outcome.our_score, theirs: outcome.their_score},
             "tokens": {ours: int(game.get("tokens", 0)), theirs: 0},
             "github_commit": {ours: commit, theirs: str(game.get("their_commit", "unknown"))},
@@ -113,6 +118,10 @@ def final_result_block(
         "total_score": relabel(result.total_score),
         "sub_games_won": relabel(result.sub_games_won),
         "ties": int(result.ties),
+        # Stated rather than folded into `ties`. A reader comparing our
+        # report against the opponent's needs to see that three mini-games
+        # ended off the board, not that three of them were drawn.
+        "technical_endings": int(getattr(result, "technical", 0)),
         "winner_group": result.winner_group,
         "series_tie": bool(result.series_tie),
         "tokens_total_series": dict(tokens or {}),

@@ -10,6 +10,7 @@ order applies, and when the series is over; captures, survival and scoring are
 all decided elsewhere and merely recorded here.
 """
 
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -24,6 +25,7 @@ from .match_resolution import resolve_abandoned, resolve_unplayed, tokens_for
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .series import SeriesResult, SeriesTracker, role_for
+from .settle import settle
 from .turn_loop import run_turn_loop
 
 StateFactory = Callable[[GameParams, Role, int], GameState]
@@ -57,6 +59,8 @@ class MatchRunner:
         meter: Any = None,
         observer: Any = None,
         urls: tuple[str, str] | None = None,
+        watchdog_seconds: float = 0.0,
+        sleep: Any = None,
     ) -> None:
         """Wire the runner; everything it needs is injected, nothing imported.
 
@@ -78,6 +82,12 @@ class MatchRunner:
         self._audit_timeout = audit_timeout
         self._handshake = handshake
         self._handshake_retries = handshake_retries
+        # Only ever spent after a mini-game we abandoned: the peer is still
+        # waiting on a turn from us and will not answer the next handshake
+        # until its own watchdog closes the game we walked away from.
+        # Zero disables it, which is what every existing caller gets.
+        self._watchdog_seconds = float(watchdog_seconds)
+        self._sleep = sleep or time.sleep
         self._meter = meter
         self._observer = observer
         # (ours, theirs) public endpoints, for attributing a connection failure
@@ -135,6 +145,9 @@ class MatchRunner:
                 })
                 self.games.append(
                     resolve_abandoned(self.tracker, sub_game, role, steps, fault)
+                )
+                settle(
+                    self._watchdog_seconds, True, self._sleep, self._emit, sub_game
                 )
             finally:
                 # Whatever happened, we are between mini-games now, so the

@@ -187,4 +187,7 @@ def build_match(
         observer=observer,
         response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
         max_retries=int(manager.get("network.max_retries", 3)),
+        # Spent only after a mini-game we abandoned, so the peer has closed its
+        # side before we offer it the next handshake (docs: domain/settle.py).
+        watchdog_seconds=float(manager.get("network.watchdog_threshold_seconds", 60)),
     )
