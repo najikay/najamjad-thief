@@ -67,9 +67,56 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 role,
                 bus.publish,
             )
+        _bind_session(inboxes, session, declared, bus.publish)
         return peer
 
     return run
+
+
+def _bind_session(inboxes, session: dict, declared: Any, emit) -> None:
+    """Admit only the peer we just signed with, for the rest of this game.
+
+    Input: the inboxes owning the guard, the session dict (terms and our own
+    identity), and whatever the peer declared as its identity.
+    Output: none; the guard is bound as a side effect.
+    Setup: call *after* a successful `exchange_agreement` and never before —
+    binding on an unverified identity would let whoever spoke first lock us to
+    themselves and shut the real opponent out.
+
+    `SessionGuard` was written, documented and tested, and `bind` had no caller
+    outside its own test file — the eighth finished-but-unreferenced component
+    found in this repo. Until now `check()` returned early on `not self.bound`
+    for every inbound message, so the identity half of that module has never
+    run in a real match, while our MCP URL sits published in a public repo.
+
+    **This cannot refuse an honest peer.** `check` compares senders only when
+    the message actually carries one (`if sender and sender != expected`), and
+    reference-implementation peers do not set the field; the session token is
+    likewise enforced only when the peer sends one. So the change costs a
+    conforming opponent nothing and costs a stranger the ability to move for
+    them. That asymmetry is the whole reason it is safe to land days before a
+    counted match.
+
+    Both identifiers are derived, never transmitted: `contract_hash` over the
+    terms we agreed and `derive_game_ids` over those terms plus the two group
+    names. Both peers hold byte-identical terms, so both compute the same
+    token without it ever crossing the wire.
+    """
+    from ..negotiation.contract import contract_hash, derive_game_ids
+
+    identity = session.get("identity") or {}
+    terms = session.get("terms") or {}
+    their_group = str((declared or {}).get("group_id", "") if isinstance(declared, dict) else "")
+    if not their_group:
+        # A peer may legitimately send a bare group name, or nothing we can
+        # read. Refusing to play over that would cost the match to protect it,
+        # so we stay unbound and say so rather than binding to the empty string
+        # — which would reject every message the opponent sends.
+        emit({"event": "session.unbound", "reason": "peer declared no group id"})
+        return
+    our_group = str(identity.get("group_id", ""))
+    _, game_uid = derive_game_ids(dict(terms), our_group, their_group)
+    inboxes.guard.bind(their_group, contract_hash(dict(terms)), game_uid)
 
 
 def _inbound_ceiling(manager: ConfigManager) -> int:
