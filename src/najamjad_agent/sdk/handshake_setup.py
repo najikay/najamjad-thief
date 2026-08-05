@@ -67,13 +67,13 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 role,
                 bus.publish,
             )
-        _bind_session(inboxes, session, declared, bus.publish)
+        _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
 
     return run
 
 
-def _bind_session(inboxes, session: dict, declared: Any, emit) -> None:
+def _bind_session(inboxes, session: dict, declared: Any, emit, our_role: str = "") -> None:
     """Admit only the peer we just signed with, for the rest of this game.
 
     Input: the inboxes owning the guard, the session dict (terms and our own
@@ -89,13 +89,27 @@ def _bind_session(inboxes, session: dict, declared: Any, emit) -> None:
     for every inbound message, so the identity half of that module has never
     run in a real match, while our MCP URL sits published in a public repo.
 
-    **This cannot refuse an honest peer.** `check` compares senders only when
-    the message actually carries one (`if sender and sender != expected`), and
-    reference-implementation peers do not set the field; the session token is
-    likewise enforced only when the peer sends one. So the change costs a
-    conforming opponent nothing and costs a stranger the ability to move for
-    them. That asymmetry is the whole reason it is safe to land days before a
-    counted match.
+    **`sender` is a role, not a group — and getting that wrong cost every game.**
+    The first version of this bound `expected_sender` to the opponent's group id
+    and was defended in this docstring with "reference-implementation peers do
+    not set the field". They do: `docs/research/simulator-repo-digest.md` records
+    `"sender": "thief" | "police"` on the turn, audit and control messages, and
+    our own `turn_egress` sends `state.role.value`. So the guard compared
+    `"police"` against `"uoh-sqak"`, refused every inbound turn and every audit
+    reveal from the first handshake onward, and would have lost the series
+    without a single message reaching the game loop. A review caught it before a
+    match did.
+
+    What that means for the design: the wire has no per-message group id, so a
+    group id is not something this guard can check. The **token** is the real
+    identity proof — derived from a contract only the two of us hold, and
+    unforgeable by a stranger. `expected_sender` is set to the role the opponent
+    holds this mini-game, which is what their messages actually carry.
+
+    **This cannot refuse an honest peer.** The role is the one we compute from
+    ours, so a conforming opponent always matches; `check` compares only when
+    the message carries a sender, and the token is enforced only when the peer
+    sends one — the reference does not, and is admitted with an event.
 
     Both identifiers are derived, never transmitted: `contract_hash` over the
     terms we agreed and `derive_game_ids` over those terms plus the two group
@@ -116,7 +130,18 @@ def _bind_session(inboxes, session: dict, declared: Any, emit) -> None:
         return
     our_group = str(identity.get("group_id", ""))
     _, game_uid = derive_game_ids(dict(terms), our_group, their_group)
-    inboxes.guard.bind(their_group, contract_hash(dict(terms)), game_uid)
+    # Their role is the other one: roles alternate per mini-game and the
+    # handshake runs per mini-game, so this is re-bound each time.
+    from ..net.peer_endpoint import OPPOSITE_ROLE
+
+    theirs = OPPOSITE_ROLE.get(str(our_role).lower(), "")
+    if not theirs:
+        # Without a role we cannot name what their `sender` should say, and
+        # guessing would refuse an honest peer. The token still binds.
+        emit({"event": "session.unbound", "reason": "our role is unknown"})
+        return
+    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid)
+    emit({"event": "session.peer_group", "group_id": their_group})
 
 
 def _inbound_ceiling(manager: ConfigManager) -> int:

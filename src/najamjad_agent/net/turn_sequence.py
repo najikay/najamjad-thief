@@ -37,7 +37,6 @@ class TurnSequence:
 
     def _check_turn(self, step: int) -> str | None:
         """Reject replayed or stale turns before they reach the game state.
-Reject replayed or stale turns before they reach the game state.
 
         Step 1 is the exception, and it has to be: every mini-game restarts
         numbering at 1, so after a game ending at step 11 the next game's
@@ -72,42 +71,42 @@ Reject replayed or stale turns before they reach the game state.
         return None
 
     def _check_answer(self, step: int) -> str | None:
-        """Admit a capture-claim answer for a live step, exactly once.
-Admit a capture-claim answer for a live step, exactly once.
+        """Admit a capture-claim answer, without exempting it from the sequence.
 
-        The answer to a capture claim is allowed to arrive *at* the step it
-        answers. The reference sends its concession as a final message without
-        advancing its counter, so a strict monotonic guard rejects the one
-        message we are waiting for and the game stalls at the moment we
-        captured — which is exactly what it did, and why the exemption exists.
+        The exemption exists because the reference concedes a capture with a
+        final message **at the step it answers**, without advancing its counter,
+        and a strict monotonic guard rejected the one message we were waiting
+        for — stalling the game at the exact moment we had won it.
 
-        **The exemption used to be unconditional, and that was the hole.** Any
-        message carrying a `claim_response` skipped the sequence check
-        completely, at any step number, any number of times. The comment that
-        stood here argued it was safe because "an answer is idempotent and the
-        game ends on the first one" — true of an answer to a claim we actually
-        made, and not true of the field, which a sender sets. Our endpoint is
-        public (rule 10), so anything reachable could replay a step or inject
-        one at an arbitrary number by attaching that key, and it would land in
-        the turn queue for the game loop to consume.
+        It used to be unconditional: any message carrying `claim_response`
+        skipped the sequence check completely, at any step, any number of times.
+        Our endpoint is public (rule 10), so that was a one-key bypass of the
+        whole guard.
 
-        Two narrow conditions restore it to what the argument assumed: the step
-        must be one the current turn could plausibly be about, and each step's
-        answer is taken once. Deliberately a window rather than an equality —
-        our own step counter may have moved on by one between our claim and
-        their reply, and refusing over that would resurrect the stall this
-        exemption was written to cure.
+        **The first narrowing was wrong in the other direction.** It admitted
+        only `last_step ± 1` and never advanced `last_step`, on the assumption
+        that an answer is always a final concession. It is not: the reference
+        attaches `capture_claim` to *every* police move, so the thief answers on
+        ordinary, move-carrying turns, many of them consecutively. Replaying our
+        own archived matches through that version refused 10 of 35 turns in one
+        mini-game and 14 of 35 in another — each refusal a dropped turn, a
+        timed-out poll, and the peer's watchdog scoring it against us. It
+        reintroduced the very stall it inherited.
+
+        So the rule is now the ordinary one plus a *single* exception: an answer
+        arriving at the step we last accepted is taken once. Anything ahead of
+        that is a normal turn and advances the counter like any other; anything
+        behind it is stale and refused, which is what closes the bypass.
         """
         with self._lock:
-            if not self._last_step - 1 <= step <= self._last_step + 1:
-                return (
-                    f"claim answer for step {step} answers no live turn "
-                    f"(last accepted was {self._last_step})"
-                )
-            if step in self._answered:
-                return f"claim answer for step {step} was already accepted"
-            self._answered.add(step)
-        return None
+            if step == self._last_step:
+                if step in self._answered:
+                    return f"claim answer for step {step} was already accepted"
+                self._answered.add(step)
+                return None
+        # Not the same-step concession, so it is an ordinary turn that happens
+        # to carry an answer. Outside the lock: `_check_turn` takes it too.
+        return self._check_turn(step)
 
     def begin_sub_game(self, held_opening: bool) -> None:
         """Reset for the next mini-game, keeping an opening turn already in hand."""

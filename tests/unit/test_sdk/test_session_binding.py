@@ -34,21 +34,29 @@ def _session() -> dict[str, Any]:
     return {"terms": dict(TERMS), "identity": dict(OURS)}
 
 
-def test_a_completed_handshake_locks_us_to_that_opponent() -> None:
-    """The whole point: after signing, a stranger can no longer move for them."""
+def test_a_completed_handshake_binds_to_the_role_the_wire_carries() -> None:
+    """`sender` is a role, and binding it to a group id refused every message.
+
+    The first version bound `expected_sender` to `"uoh-sqak"` and compared it
+    against a `sender` field that carries `"police"` or `"thief"` — so from the
+    first handshake onward every opponent turn and every audit reveal was
+    dropped at ingress. The wire has no per-message group id; the token is what
+    proves identity, and the role is what `sender` can actually be checked
+    against.
+    """
     inboxes = Inboxes()
 
-    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _event: None)
+    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _e: None, "police")
 
     assert inboxes.guard.bound
-    assert inboxes.guard.expected_sender == "uoh-sqak"
+    assert inboxes.guard.expected_sender == "thief", "we are police, so they are thief"
 
 
 def test_the_token_is_derived_from_the_signed_terms() -> None:
     """Both peers compute it from identical terms; it never crosses the wire."""
     inboxes = Inboxes()
 
-    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _event: None)
+    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _e: None, "police")
 
     _, game_uid = derive_game_ids(dict(TERMS), "najamjad", "uoh-sqak")
     assert inboxes.guard.expected_token == session_token(contract_hash(dict(TERMS)), game_uid)
@@ -78,7 +86,7 @@ def test_a_peer_that_declares_no_group_leaves_us_unbound() -> None:
     inboxes = Inboxes()
 
     for declared in ({}, None, "uoh-sqak", {"group_name": "no id here"}):
-        _bind_session(inboxes, _session(), declared, events.append)
+        _bind_session(inboxes, _session(), declared, events.append, "police")
 
     assert not inboxes.guard.bound
     assert [event["event"] for event in events] == ["session.unbound"] * 4
@@ -97,9 +105,29 @@ def test_binding_cannot_refuse_a_peer_that_omits_the_sender() -> None:
         session_token = ""
 
     inboxes = Inboxes()
-    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _event: None)
+    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _e: None, "police")
 
     assert inboxes.guard.check(Silent()) is None
+
+
+def test_a_reference_shaped_message_is_admitted() -> None:
+    """The case the old test could not exhibit, using the real wire shape.
+
+    `docs/research/simulator-repo-digest.md` records `"sender": "thief" |
+    "police"` on the turn, audit and control messages, and our own
+    `turn_egress` sends `state.role.value`. The previous safety test used
+    `sender = ""` — the one input that could not fail — so the guard was never
+    shown a message shaped like the ones a real opponent sends.
+    """
+
+    class RealTurn:
+        sender = "thief"
+        session_token = ""
+
+    inboxes = Inboxes()
+    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _e: None, "police")
+
+    assert inboxes.guard.check(RealTurn()) is None
 
 
 def test_a_stranger_is_refused_once_we_are_bound() -> None:
@@ -110,7 +138,7 @@ def test_a_stranger_is_refused_once_we_are_bound() -> None:
         session_token = ""
 
     inboxes = Inboxes()
-    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _event: None)
+    _bind_session(inboxes, _session(), {"group_id": "uoh-sqak"}, lambda _e: None, "police")
 
     refusal = inboxes.guard.check(Interloper())
 
@@ -157,7 +185,7 @@ def test_the_handshake_itself_reaches_the_binding() -> None:
     session: dict[str, Any] = {}
     inboxes.poll = lambda _kind, timeout: peer_message  # noqa: ARG005
     run = _handshake(manager, Bus(), inboxes, Transport(), session)
-    run()
+    run("police")
 
     assert inboxes.guard.bound, "a completed handshake left the guard unbound"
-    assert inboxes.guard.expected_sender == "uoh-sqak"
+    assert inboxes.guard.expected_sender == "thief"

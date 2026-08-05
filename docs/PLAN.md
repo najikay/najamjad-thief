@@ -88,7 +88,7 @@ graph TB
 
     subgraph strategy["strategy/ — the policy"]
         COP["cop_brain.py<br/>cop_barriers.py"]
-        THF["thief_brain.py<br/>thief_escape.py"]
+        THF["thief_brain.py · thief_escape.py<br/>thief_safety.py · solver.py · blind.py"]
         HNT["hint_policy.py<br/>opponent_model.py"]
     end
 
@@ -121,148 +121,175 @@ each module is its current code-line count, and the summary is the first line of
 own docstring. Regenerating it from the source is deliberate: the previous version of
 this tree was a plan written before the code, and sixty-six modules had appeared under
 it without ever being listed, including three that a match-day failure was later traced
-through.
+through. It drifted again: twenty-five modules were missing before the 2026-08-05 sweep,
+so it is now produced by a script rather than by hand, and the line counts are the same
+numbers `scripts/check_file_sizes.py` enforces.
 
 ```
 src/najamjad_agent/
-├── cli.py                     # The command line: argument parsing, one SDK call, an exit  129
-├── constants.py               # Project-wide immutable enumerations and physical constants  38
+├── cli.py                     # The command line: argument parsing, one SDK call, an exit co  129
+├── constants.py               # Project-wide immutable enumerations and physical constants.   46
 ├── analysis/
-│   ├── charts.py                  # Figures for the analysis notebook (T-2215, T-2216, T-2219,  95
-│   ├── costs.py                   # The token-cost table and the savings analysis (T-2220, T-2  78
-│   ├── datasets.py                # Typed readers for the measurement files the notebook plots  69
+│   ├── charts.py                  # Figures for the analysis notebook (T-2215, T-2216, T-221  95
+│   ├── connection_forensics.py    # What the event log says about connection failures, per e  75
+│   ├── costs.py                   # The token-cost table and the savings analysis (T-2220, T  78
+│   ├── datasets.py                # Typed readers for the measurement files the notebook plo  69
 ├── domain/
-│   ├── audit.py                   # End-of-game mutual audit                                    67
-│   ├── belief.py                  # Bayesian belief over the opponent's position                79
-│   ├── board.py                   # The playing grid: bounds, neighbours, distance, and barrie  43
-│   ├── capture.py                 # Capture rules and the thief's cryptographically-enforced t  35
-│   ├── crypto.py                  # Commit-reveal sealing over SHA-256                          57
-│   ├── endings.py                 # Deciding when a mini-game is over                           57
-│   ├── fsm.py                     # The game state machine                                      73
-│   ├── game_state.py              # Mutable per-mini-game state, owned exclusively by the orch  74
-│   ├── handshake_retry.py         # Agreeing terms before a mini-game, retrying the same one o  21
-│   ├── hint_evidence.py           # Turning an opponent's words into evidence                   80
-│   ├── ledger.py                  # The per-mini-game commit ledger enforcing the four-step re  61
-│   ├── match.py                   # Driving a whole match: six mini-games, alternating roles,  123
-│   ├── match_audit.py             # The end-of-game reveal exchange (book rules 18-20)          49
-│   ├── match_record.py            # What one mini-game leaves behind                            61
-│   ├── match_resolution.py        # Scoring a mini-game that never produced a played result     16
-│   ├── movement.py                # Move application, legality filtering, the Barrier Law, and  66
-│   ├── nonce_vault.py             # Custody of nonces until the audit phase opens               50
-│   ├── orchestrator.py            # The Orchestrator                                           143
-│   ├── params.py                  # Immutable value object holding the negotiated, signed game  60
-│   ├── ports.py                   # The interfaces the orchestrator conducts                    35
-│   ├── scent.py                   # Scent field state: what one peer knows about the opponent'  82
-│   ├── scent_models.py            # Pheromone emission and decay math, as a *negotiated* model  63
-│   ├── scoring.py                 # Scoring: the fixed Appendix F table, plus series aggregati  53
-│   ├── series.py                  # Series bookkeeping: 6 mini-games against one opponent, wit  63
-│   ├── turn_ingress.py            # Absorbing the opponent's turn                              122
-│   ├── turn_loop.py               # Alternating with the peer until someone's move ends the mi  15
+│   ├── audit.py                   # End-of-game mutual audit — cryptography decides, not hum  67
+│   ├── belief.py                  # Bayesian belief over the opponent's position — the core   98
+│   ├── board.py                   # The playing grid: bounds, neighbours, distance, and barr  43
+│   ├── capture.py                 # Capture rules and the thief's cryptographically-enforced  35
+│   ├── cop_sighting.py            # Reading the opponent's position out of the things the ru  44
+│   ├── crypto.py                  # Commit-reveal sealing over SHA-256 — the game's integrit  57
+│   ├── emission.py                # How much of our own evidence we put on the wire, as one   57
+│   ├── endings.py                 # Deciding when a mini-game is over.                        59
+│   ├── fair_play.py               # Watching the opponent for rule violations, across a whol  101
+│   ├── freeze_guard.py            # Arming rule 7 freeze detection for one mini-game.         27
+│   ├── fsm.py                     # The game state machine — illegal transitions raise rathe  73
+│   ├── game_state.py              # Mutable per-mini-game state, owned exclusively by the or  82
+│   ├── handshake_retry.py         # Agreeing terms before a mini-game, retrying the same one  28
+│   ├── hint_evidence.py           # Turning an opponent's words into evidence — and catching  80
+│   ├── ledger.py                  # The per-mini-game commit ledger enforcing the four-step   61
+│   ├── match.py                   # Driving a whole match: six mini-games, alternating roles  144
+│   ├── match_audit.py             # The end-of-game reveal exchange (book rules 18-20).       49
+│   ├── match_record.py            # What one mini-game leaves behind — the record every repo  68
+│   ├── match_resolution.py        # Scoring a mini-game that never produced a played result.  18
+│   ├── movement.py                # Move application, legality filtering, the Barrier Law, a  66
+│   ├── nonce_vault.py             # Custody of nonces until the audit phase opens.            50
+│   ├── orchestrator.py            # The Orchestrator — single gateway conducting one mini-ga  146
+│   ├── params.py                  # Immutable value object holding the negotiated, signed ga  60
+│   ├── ports.py                   # The interfaces the orchestrator conducts — its only view  35
+│   ├── scent.py                   # Scent field state: what one peer knows about the opponen  82
+│   ├── scent_models.py            # Pheromone emission and decay math, as a *negotiated* mod  63
+│   ├── scoring.py                 # Scoring: the fixed Appendix F table, plus series aggrega  58
+│   ├── series.py                  # Series bookkeeping: 6 mini-games against one opponent, w  67
+│   ├── settle.py                  # Letting a peer finish burying a mini-game before we offe  22
+│   ├── turn_egress.py             # Composing our own turn — the half of the protocol we are  47
+│   ├── turn_ingress.py            # Absorbing the opponent's turn — the untrusted half of th  124
+│   ├── turn_loop.py               # Alternating with the peer until someone's move ends the   19
+│   ├── who_failed.py              # Which side of the wire failed, established while it is s  18
 ├── llm/
-│   ├── anthropic_provider.py      # Anthropic backend                                           73
-│   ├── base.py                    # The provider contract every LLM backend satisfies           48
-│   ├── deepseek_provider.py       # DeepSeek backend                                            85
-│   ├── hint_guard.py              # The last check before a hint leaves us                      52
-│   ├── hint_parser.py             # Decoding what the opponent said                             77
-│   ├── injection_guard.py         # Treating the opponent's words as hostile input, because th  50
-│   ├── prompts.py                 # Prompt builders                                             68
-│   ├── router.py                  # The provider chain: Anthropic → DeepSeek → template (ADR-0 115
-│   ├── speaker.py                 # The Speaker                                                 68
-│   ├── template_provider.py       # The offline sentence bank                                   70
-│   ├── token_meter.py             # Token metering                                             103
-│   ├── warm_up.py                 # Pay the vendor's cold-start cost before the series, not du  17
+│   ├── anthropic_provider.py      # Anthropic backend — our primary voice for hints and nego  73
+│   ├── base.py                    # The provider contract every LLM backend satisfies.        48
+│   ├── deepseek_provider.py       # DeepSeek backend — the fallback tier, and our workhorse   85
+│   ├── hint_guard.py              # The last check before a hint leaves us.                   52
+│   ├── hint_parser.py             # Decoding what the opponent said — deterministically firs  77
+│   ├── injection_guard.py         # Treating the opponent's words as hostile input, because   50
+│   ├── prompts.py                 # Prompt builders — every instruction the model ever recei  68
+│   ├── router.py                  # The provider chain: Anthropic → DeepSeek → template (ADR  115
+│   ├── speaker.py                 # The Speaker — the only path from a decision to words on   68
+│   ├── template_provider.py       # The offline sentence bank — the end of the chain, and a   70
+│   ├── token_meter.py             # Token metering — primarily a reporting obligation, not a  103
+│   ├── warm_up.py                 # Pay the vendor's cold-start cost before the series, not   17
 ├── negotiation/
-│   ├── adapters.py                # Per-opponent quirk profiles                                 45
-│   ├── contract.py                # The signed contract                                         73
-│   ├── counted_games.py           # The counted-match tracker                                   69
-│   ├── flow.py                    # The negotiation state machine                               89
-│   ├── handshake.py               # The pre-game agreement exchange (T-2307)                    40
-│   ├── identity.py                # Our group identity, in the shape the opponent's declaratio  22
-│   ├── playbook.py                # Our negotiating position: what we open with, want, and wil  75
-│   ├── terms.py                   # The signed terms, in the shape every other team will send   54
+│   ├── adapters.py                # Per-opponent quirk profiles — interop as data, never as   45
+│   ├── contract.py                # The signed contract — terms both peers hold byte-identic  73
+│   ├── counted_games.py           # The counted-match tracker — the number we are required t  75
+│   ├── flow.py                    # The negotiation state machine — and the record of what w  89
+│   ├── handshake.py               # The pre-game agreement exchange (T-2307).                 40
+│   ├── identity.py                # Our group identity, in the shape the opponent's declarat  24
+│   ├── playbook.py                # Our negotiating position: what we open with, want, and w  75
+│   ├── terms.py                   # The signed terms, in the shape every other team will sen  54
 ├── net/
-│   ├── deadline.py                # Deadline tracking                                           67
-│   ├── inbox.py                   # Thread-safe inboxes between the MCP server thread and the  115
-│   ├── liveness.py                # Is anyone actually reachable?                               35
-│   ├── match_gate.py              # One match at a time                                         24
-│   ├── mcp_client.py              # Persistent MCP client for calling the opponent's tools      91
-│   ├── mcp_probe.py               # Is the opponent's MCP server actually up?                   43
-│   ├── mcp_server.py              # Our FastMCP server                                          76
-│   ├── mcp_session.py             # Holding one MCP session open to the opponent                69
-│   ├── opponent_wait.py           # Waiting for the opponent to come up before we start playin  60
-│   ├── peer_transport.py          # The production Transport: our inboxes in, the opponent's s  50
-│   ├── preflight.py               # Preflight                                                   67
-│   ├── preflight_checks.py        # The standard match-day checklist                            78
-│   ├── preflight_opponent.py      # Does the opponent expose a surface we can actually play ag  21
-│   ├── session_guard.py           # Who is allowed to move in our game                          60
-│   ├── sub_game_boundary.py       # Clearing the inbox between mini-games, without losing the   25
-│   ├── tunnel.py                  # Public exposure via a tunnel with a **permanent** hostname  95
-│   ├── watchdog.py                # Watchdog                                                    70
+│   ├── best_effort.py             # Sending something whose failure must not end the game.    10
+│   ├── deadline.py                # Deadline tracking — a missed deadline is a failure, neve  67
+│   ├── dns_cache.py               # Resolve the opponent once, then stop asking — DNS was lo  52
+│   ├── fault_attribution.py       # Which side of the wire failed — established at the momen  77
+│   ├── http_probe.py              # Asking the far end an HTTP question, because TCP does no  52
+│   ├── inbox.py                   # Thread-safe inboxes between the MCP server thread and th  102
+│   ├── liveness.py                # Is anyone actually reachable? — the pre-match question,   35
+│   ├── match_gate.py              # One match at a time — refusing a handshake that would re  24
+│   ├── mcp_client.py              # Persistent MCP client for calling the opponent's tools.   85
+│   ├── mcp_probe.py               # Is the opponent's MCP server actually up? — asked before  42
+│   ├── mcp_server.py              # Our FastMCP server — the four tools every league peer ca  91
+│   ├── mcp_session.py             # Holding one MCP session open to the opponent.             67
+│   ├── opponent_wait.py           # Waiting for the opponent to come up before we start play  60
+│   ├── peer_endpoint.py           # Where to dial the opponent — from what they just told us  53
+│   ├── peer_transport.py          # The production Transport: our inboxes in, the opponent's  53
+│   ├── preflight.py               # Preflight — prove the agent is match-ready before anythi  67
+│   ├── preflight_checks.py        # The standard match-day checklist.                         78
+│   ├── preflight_opponent.py      # Does the opponent expose a surface we can actually play   21
+│   ├── readiness.py               # Asking whether a socket is actually there, which is not   60
+│   ├── session_guard.py           # Who is allowed to move in our game — and how often.       60
+│   ├── sub_game_boundary.py       # Clearing the inbox between mini-games, without losing th  25
+│   ├── tool_names.py              # The opponent's tool names and argument names — protocol   13
+│   ├── tunnel.py                  # Public exposure via a tunnel with a **permanent** hostna  95
+│   ├── turn_sequence.py           # Deciding whether an inbound turn belongs in this game, a  41
+│   ├── watchdog.py                # Watchdog — rescue state when the main loop stops breathi  70
 ├── protocol/
-│   ├── canonical.py               # Canonical JSON                                               7
-│   ├── egress.py                  # The egress gate                                             52
-│   ├── ingress.py                 # Parsing untrusted peer messages into a verdict              31
-│   ├── schemas_artifacts.py       # Schemas for the four lifecycle artifacts the lecturer rece  74
-│   ├── schemas_report.py          # The result artifact                                         58
-│   ├── schemas_wire.py            # Wire schemas for MCP messages                               56
+│   ├── canonical.py               # Canonical JSON — the one byte-format both peers must agr  7
+│   ├── egress.py                  # The egress gate — nothing invalid leaves this process.    52
+│   ├── ingress.py                 # Parsing untrusted peer messages into a verdict — never i  31
+│   ├── schemas_artifacts.py       # Schemas for the four lifecycle artifacts the lecturer re  74
+│   ├── schemas_report.py          # The result artifact — the one file that decides our leag  61
+│   ├── schemas_wire.py            # Wire schemas for MCP messages — tolerant inbound, strict  56
 ├── replay/
-│   ├── __main__.py                # Open the replay viewer on a log file                        41
-│   ├── app.py                     # The replay viewer as a second page on the FastAPI stack (A  36
-│   ├── loader.py                  # Loading logs                                                55
-│   ├── rebuild.py                 # Rebuilding the board at each step from the revealed record  71
-│   ├── session.py                 # The loaded log a viewer is currently looking at             40
-│   ├── verifier.py                # Re-verification of a log, step by step (book rule 20)       56
+│   ├── __main__.py                # Open the replay viewer on a log file.                     41
+│   ├── app.py                     # The replay viewer as a second page on the FastAPI stack   36
+│   ├── loader.py                  # Loading logs — ours, the reference simulator's, and othe  55
+│   ├── rebuild.py                 # Rebuilding the board at each step from the revealed reco  71
+│   ├── session.py                 # The loaded log a viewer is currently looking at.          40
+│   ├── verifier.py                # Re-verification of a log, step by step (book rule 20).    56
 ├── reporting/
-│   ├── agreement.py               # The mutual-agreement hash                                   53
-│   ├── archive.py                 # Bundle a finished match into one file worth keeping         54
-│   ├── artifacts.py               # Writing the four lifecycle artifacts the lecturer receives 103
-│   ├── filing.py                  # Turning a finished match into the four artifacts and the e 119
-│   ├── gmail_auth.py              # Loading Gmail credentials, non-interactively or not at all  36
-│   ├── gmail_sender.py            # Sending the result report                                   87
-│   ├── mail_message.py            # Building the report email                                   25
-│   ├── reconcile.py               # Agreeing the result with the opponent *before* anybody ema  82
-│   ├── resilient_filing.py        # Writing what we can, when one artifact cannot be written    26
-│   ├── result_blocks.py           # What the result report *says*                              109
-│   ├── step_zero.py               # Step-0: the signed declaration that opens every mini-game   43
+│   ├── agreement.py               # The mutual-agreement hash — the field that must match on  53
+│   ├── archive.py                 # Bundle a finished match into one file worth keeping.      54
+│   ├── artifacts.py               # Writing the four lifecycle artifacts the lecturer receiv  119
+│   ├── filing.py                  # Turning a finished match into the four artifacts and the  119
+│   ├── gmail_auth.py              # Loading Gmail credentials, non-interactively or not at a  36
+│   ├── gmail_sender.py            # Sending the result report — the last thing that has to w  87
+│   ├── mail_message.py            # Building the report email — construction, separate from   25
+│   ├── reconcile.py               # Agreeing the result with the opponent *before* anybody e  82
+│   ├── resilient_filing.py        # Writing what we can, when one artifact cannot be written  26
+│   ├── result_blocks.py           # What the result report *says* — the blocks, separate fro  112
+│   ├── step_zero.py               # Step-0: the signed declaration that opens every mini-gam  43
 ├── sdk/
-│   ├── actions.py                 # Everything a consumer can ask the agent to *do*            117
-│   ├── app_paths.py               # Where the dashboard looks for past matches                  18
-│   ├── bootstrap.py               # The composition root: build a wired SDK from configuration 125
-│   ├── handshake_setup.py         # Building the pre-game agreement exchange                    38
-│   ├── llm_setup.py               # Building the hint writer: which models speak, and what the  71
-│   ├── match_filing.py            # Turning a finished series into its artifacts, wired to rea  68
-│   ├── match_history.py           # Past matches, read back from the artifacts they produced    69
-│   ├── match_setup.py             # Assembling a playable match from configuration             118
-│   ├── plugins.py                 # Loading a replacement component named in configuration (T-  23
-│   ├── queries.py                 # Read models for the dashboard                               90
-│   ├── sdk.py                     # The SDK                                                    143
+│   ├── actions.py                 # Everything a consumer can ask the agent to *do*.          117
+│   ├── app_paths.py               # Where the dashboard looks for past matches.               18
+│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  130
+│   ├── handshake_setup.py         # Building the pre-game agreement exchange.                 59
+│   ├── llm_setup.py               # Building the hint writer: which models speak, and what t  71
+│   ├── match_filing.py            # Turning a finished series into its artifacts, wired to r  92
+│   ├── match_history.py           # Past matches, read back from the artifacts they produced  69
+│   ├── match_setup.py             # Assembling a playable match from configuration.           111
+│   ├── plugins.py                 # Loading a replacement component named in configuration (  23
+│   ├── queries.py                 # Read models for the dashboard — and the boundary that ke  90
+│   ├── sdk.py                     # The SDK — the single entry point to everything this agen  143
+│   ├── state_setup.py             # Building one mini-game's state from the terms both sides  47
 ├── shared/
-│   ├── app_config.py              # App-level settings                                          24
-│   ├── config.py                  # Configuration: private TOML underneath, signed JSON on top  70
-│   ├── environment.py             # Loading `.env`, so a key written there is a key the agent   13
-│   ├── events.py                  # The event bus                                               85
-│   ├── gatekeeper.py              # The API gatekeeper                                         101
-│   ├── logging_setup.py           # Applying `config/logging_config.json` at startup (guidelin  27
-│   ├── opponents.py               # One file per opponent                                       31
-│   ├── practice.py                # Practice mode                                               71
-│   ├── rate_limits.py             # Rate-limit configuration, loaded from file                  46
-│   ├── sysinfo.py                 # Machine specification for the Step-0 computational-fairnes  94
-│   ├── version.py                 # Central code-version marker and config compatibility contr   2
-│   ├── workspace.py               # Per-opponent match folders                                  26
+│   ├── app_config.py              # App-level settings — where files go and which subsystems  24
+│   ├── config.py                  # Configuration: private TOML underneath, signed JSON on t  70
+│   ├── environment.py             # Loading `.env`, so a key written there is a key the agen  13
+│   ├── error_detail.py            # Naming the fault when the exception refuses to name itse  34
+│   ├── events.py                  # The event bus — one append-only stream feeding logs, UI   87
+│   ├── gatekeeper.py              # The API gatekeeper — every external call passes through   117
+│   ├── logging_setup.py           # Applying `config/logging_config.json` at startup (guidel  27
+│   ├── opponents.py               # One file per opponent — the details you must agree befor  31
+│   ├── practice.py                # Practice mode — a run that cannot reach the lecturer.     71
+│   ├── rate_limits.py             # Rate-limit configuration, loaded from file — never hardc  53
+│   ├── strength.py                # How hard we play, as one named setting.                   22
+│   ├── sysinfo.py                 # Machine specification for the Step-0 computational-fairn  94
+│   ├── version.py                 # Central code-version marker and config compatibility con  2
+│   ├── workspace.py               # Per-opponent match folders — one place per match, nothin  26
 ├── strategy/
-│   ├── base.py                    # Shared strategy scaffolding for both brains                 57
-│   ├── cop_barriers.py            # Barrier planning                                            54
-│   ├── cop_brain.py               # The cop's move policy                                       96
-│   ├── hint_policy.py             # When to lie                                                 67
-│   ├── opponent_model.py          # What we learn about one opponent                            68
-│   ├── thief_brain.py             # The thief's move policy                                     82
-│   ├── thief_escape.py            # Measuring how trapped a cell is                             37
+│   ├── base.py                    # Shared strategy scaffolding for both brains.              57
+│   ├── blind.py                   # What the thief can still prove when the opponent transmi  53
+│   ├── cop_barriers.py            # Barrier planning — the cop's real weapon.                 54
+│   ├── cop_brain.py               # The cop's move policy — pursuit that accounts for what t  96
+│   ├── genome.py                  # A thief strategy as a set of numbers, so strategies can   54
+│   ├── hint_policy.py             # When to lie — the only deception channel in the game.     67
+│   ├── opponent_model.py          # What we learn about one opponent — genuine online learni  68
+│   ├── solver.py                  # Solving the chase exactly, by backward induction over ev  43
+│   ├── territory.py               # Who owns which ground — graph distance, components, and   43
+│   ├── thief_brain.py             # The thief's move policy — survive 35 steps, don't merely  125
+│   ├── thief_escape.py            # Measuring how trapped a cell is — the thief's core spati  37
+│   ├── thief_safety.py            # The thief's survival rule: stay two steps away, and keep  87
+│   ├── tournament.py              # Breeding thief strategies against the opponents that act  71
 ├── ui/
-│   ├── app.py                     # The dashboard server                                        61
-│   ├── controls.py                # The few actions a dashboard is allowed to take (T-1820, T-  61
-│   ├── frames.py                  # The WebSocket frame contract                                60
-│   ├── server.py                  # Serving the dashboard alongside a live match                31
-│   ├── views.py                   # Route handlers                                              86
+│   ├── app.py                     # The dashboard server — push, not poll.                    61
+│   ├── controls.py                # The few actions a dashboard is allowed to take (T-1820,   61
+│   ├── frames.py                  # The WebSocket frame contract.                             60
+│   ├── server.py                  # Serving the dashboard alongside a live match.             31
+│   ├── views.py                   # Route handlers — every one of them a delegation to the S  86
 ```
 
 Same tree in both repos; the packages differ in: brain modules included, default configs

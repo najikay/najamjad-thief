@@ -132,16 +132,48 @@ def _absorb_barrier(
 ) -> None:
     """Honour a truthfully declared barrier placement (book rules 15-16).
 
-    The wall goes onto the board, and — new — the *declaration* goes into the
-    belief. The Barrier Law is in lieu of moving, on the cop's own cell or one
+    The wall goes onto the board, and the *declaration* goes into the belief.
+    The Barrier Law is in lieu of moving, on the cop's own cell or one
     orthogonal step from it, so a barrier is a five-cell fix on the cop. We
     banked the wall and threw the fix away, 143 times in one series.
+
+    **The budget is enforced here, and this is the one place it can be.**
+    `movement.place_barrier` refuses our own placement past `max_barriers`, but
+    nothing checked theirs, so we banked every wall a peer cared to declare —
+    a bare board accepted 46. Only the cop places barriers, so in any mini-game
+    every wall came from one side and the board total is the right comparison.
+
+    **No opponent has actually done this.** Counting `barrier.observed` per
+    mini-game across the archive gives a maximum of exactly 14, in none of 31
+    recorded games above it; the 48 sometimes quoted is a *series* total across
+    six games and is not a violation. So this is a guard against a peer we have
+    not met, sitting exactly on the boundary real peers reach — which is why it
+    refuses only the 15th and why the event carries both counts.
+
+    Refusing the excess is self-defence, not an accusation, and the difference
+    matters because everything else in this module is deliberately
+    observational. An over-budget wall is not merely noise: honoured, it lets a
+    peer seal us into immobilisation, which rule 47 scores as a capture.
+
+    It is not free either, and the trade is worth stating. A refused wall makes
+    our board diverge from theirs, after which a move we compute as legal may be
+    illegal on their board — a rules 33-35 dispute. We take that trade because
+    the alternative is losing the mini-game outright to a peer who can simply
+    keep declaring, and because the divergence only begins after they have
+    already broken the agreed quota. `fair_play` still sees the declaration, and
+    the event carries the evidence.
     """
     cell = _parse_cell(message.get("barrier_placed"))
-    if cell is not None and state.board.in_bounds(cell):
-        state.board = state.board.with_barrier(cell)
-        event("barrier.observed", cell=list(cell))
-        _record_sighting(state, cop_sighting.from_barrier(state.board, cell, state.step), event)
+    if cell is None or not state.board.in_bounds(cell):
+        return
+    agreed = state.board.params.max_barriers
+    if state.board.barrier_count >= agreed:
+        event("barrier.over_budget", cell=list(cell), agreed=agreed,
+              standing=state.board.barrier_count)
+        return
+    state.board = state.board.with_barrier(cell)
+    event("barrier.observed", cell=list(cell))
+    _record_sighting(state, cop_sighting.from_barrier(state.board, cell, state.step), event)
 
 
 def _record_sighting(state: GameState, sighting: Any, event: Callable[..., None]) -> None:

@@ -176,6 +176,7 @@ class ApiGatekeeper:
         """Run `api_call` under the limiter, retrying transient failures."""
         last_error: Exception | None = None
         started = self.clock()
+        attempt = 0
         for attempt in range(1, self.config.max_retries + 1):
             self._admit()
             try:
@@ -211,8 +212,12 @@ class ApiGatekeeper:
                 self._release()
         self._event(
             "gatekeeper.failed",
-            attempts=self.config.max_retries,
+            # What we actually ran, not the ceiling. The deadline can stop us
+            # early, and `analysis/connection_forensics.py` reads this field —
+            # reporting ten attempts when nine ran turns the forensics into
+            # fiction in exactly the situation they exist to explain.
+            attempts=attempt,
             spent=round(self.clock() - started, 3),
             **(describe(last_error) if last_error else {"error": "", "detail": "", "cause": ""}),
         )
-        raise RuntimeError(f"{self.service}: failed after {self.config.max_retries} attempts") from last_error
+        raise RuntimeError(f"{self.service}: failed after {attempt} attempts") from last_error

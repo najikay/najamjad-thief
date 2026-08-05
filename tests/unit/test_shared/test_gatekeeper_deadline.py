@@ -173,3 +173,20 @@ def test_the_shipped_config_bounds_the_peer_below_the_watchdog() -> None:
 
     assert peer.deadline_seconds == 45
     assert peer.deadline_seconds < 60, "the agreed watchdog_timeout_sec"
+
+
+def test_a_deadlined_failure_reports_the_attempts_it_actually_ran() -> None:
+    """`analysis/connection_forensics.py` reads this field.
+
+    It used to report `max_retries` unconditionally, so a run the deadline cut
+    short at nine attempts was filed as ten — turning the forensics into fiction
+    in precisely the situation they exist to explain.
+    """
+    clock, events = Clock(), []
+    keeper = _gatekeeper(clock, events, deadline_seconds=45)
+
+    with pytest.raises(RuntimeError, match="failed after 9 attempts"):
+        keeper.execute(_always_fails(clock, cost=0.0))
+
+    failed = next(event for event in events if event["event"] == "gatekeeper.failed")
+    assert failed["attempts"] == 9

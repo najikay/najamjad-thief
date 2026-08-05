@@ -10,7 +10,7 @@ end-of-game special cases.
 from typing import Any
 
 from ..constants import EndReason, Role
-from .capture import evaluate_barrier_capture, resolve_survival
+from .capture import evaluate_barrier_capture, is_immobilised, resolve_survival
 from .game_state import GameState
 from .params import Position
 
@@ -64,7 +64,16 @@ def opponent_end_reason(state: GameState, message: dict[str, Any]) -> EndReason 
         # landed on me" — because that is the one shape every implementation
         # reads as a police capture. A `win_claim` would not do: in the
         # reference's protocol a win claim from the thief means the *thief* won.
-        state.claimed_cell = tuple(message["barrier_placed"])
+        #
+        # The cell we name has to be the one that is *true*. For rule 46 the
+        # barrier landed on us, so the barrier cell and ours are the same and
+        # either would do. For a rule 47 immobilisation they are different —
+        # the wall took our last exit without touching us — and naming the
+        # barrier cell would be conceding to a capture that did not happen, at
+        # a cell we do not occupy. Rules 18-22 require the answer to be honest,
+        # and the sealed record would show it was not. Conceding our own cell
+        # costs nothing: the mini-game is over either way.
+        state.claimed_cell = state.own_position
         state.pending_capture_claim = True
         state.pending_end = EndReason.CAPTURE
     if state.role is Role.THIEF and message.get("capture_claim"):
@@ -123,11 +132,32 @@ def _win_type(claim: Any) -> str:
 
 
 def _barrier_traps_us(state: GameState, message: dict[str, Any]) -> bool:
-    """Did the barrier they just declared capture us where we actually stand?"""
+    """Did the barrier they just declared end the game for us?
+
+    Two ways it can, and only the first was ever checked:
+
+    * **rule 46** — the wall lands on the cell we occupy;
+    * **rule 47** — the wall takes our last exit, leaving no move but STAY.
+
+    The second is why `capture.evaluate_capture` existed with no caller: rule 47
+    was implemented, unit-tested, used by the duel harness, and never evaluated
+    in a live game. A thief sealed into a pocket played on as though nothing had
+    happened, while the cop scored a capture — and two peers filing different
+    outcomes for one mini-game is what rules 33-35 void for both.
+
+    Asked of `own_position` and the freshly-absorbed board, which is the only
+    version of this we may ask. The cop deliberately no longer concludes an
+    immobilisation from `opponent_estimate`, because that is a belief the thief
+    never confirmed; the thief knows its own cell truthfully, so the thief is
+    the side that can answer honestly. `mobile_only` is the whole point — STAY
+    is never blocked, so an ordinary legal-move check can never see this.
+    """
     cell = message.get("barrier_placed")
     if not (isinstance(cell, list | tuple) and len(cell) == 2):
         return False
-    return evaluate_barrier_capture(tuple(cell), state.own_position).captured
+    if evaluate_barrier_capture(tuple(cell), state.own_position).captured:
+        return True
+    return is_immobilised(state.board, state.own_position)
 
 
 def claim_survival_if_outlasted(state: GameState) -> None:

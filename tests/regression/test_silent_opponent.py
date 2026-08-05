@@ -157,13 +157,25 @@ def test_the_belief_stays_flat_when_the_declarations_are_ignored(params: GamePar
 
 
 class Blind:
-    """Our thief with the belief forced flat — the silent-peer case, exactly."""
+    """Our thief against a peer that transmits nothing — a **flat** belief.
+
+    Flat, not empty, and the distinction is the whole test. The archive shows a
+    uniform distribution over all 49 open cells, which is what `diffuse` and
+    `normalise` produce when no evidence ever arrives. An empty dict is a
+    different input on a different code path: `_value` short-circuits its
+    distance terms on `if belief`, so the phantom cop that caused the freeze
+    never appears and the test passes with the fix fully reverted. Measured —
+    with `blind.uninformative` forced to `False`, the empty-belief version held
+    one cell for 3 turns and looked healthy, while the flat-belief version held
+    one cell for **27**.
+    """
 
     def __init__(self) -> None:
         self._inner = ThiefBrain()
 
     def pick_move(self, facts):
-        facts.belief = {}
+        cells = [cell for cell in facts.board.cells() if facts.board.is_open(cell)]
+        facts.belief = dict.fromkeys(cells, 1.0 / len(cells))
         return self._inner.pick_move(facts)
 
 
@@ -184,7 +196,7 @@ def test_the_blind_thief_does_not_stand_still(params: GameParams) -> None:
     """
     result = run_duel(Blind(), UOH_SQAK_SWEEP, params, UOH_SQAK_BARRIERS)
 
-    assert len(set(result.path[:12])) >= 6, (
+    assert len(set(result.path[:12])) >= 7, (
         "the blind policy used to visit four cells in eleven steps; "
         f"this replay visited only {len(set(result.path[:12]))}"
     )
@@ -204,6 +216,7 @@ def test_the_blind_thief_never_parks_on_one_cell(params: GameParams) -> None:
         held = held + 1 if earlier == later else 1
         longest = max(longest, held)
 
+    # Four, against the 27 the unfixed policy holds under a flat belief.
     assert longest <= 4, f"the thief held one cell for {longest} consecutive turns"
 
 

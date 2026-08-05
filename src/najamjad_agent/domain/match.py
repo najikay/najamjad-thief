@@ -84,10 +84,10 @@ class MatchRunner:
         self._audit_timeout = audit_timeout
         self._handshake = handshake
         self._handshake_retries = handshake_retries
-        # Only ever spent after a mini-game we abandoned: the peer is still
-        # waiting on a turn from us and will not answer the next handshake
-        # until its own watchdog closes the game we walked away from.
-        # Zero disables it, which is what every existing caller gets.
+        # Two jobs, both driven by the agreed watchdog: the settle wait after
+        # an abandoned mini-game, and the freeze threshold in `freeze_guard`.
+        # Zero disables both, which is what a bare `MatchRunner(...)` in a test
+        # gets; production passes 60 from `network.watchdog_threshold_seconds`.
         self._watchdog_seconds = float(watchdog_seconds)
         self._sleep = sleep or time.sleep
         self._meter = meter

@@ -13,6 +13,8 @@ using this is testing the same control flow that runs on match day.
 import queue
 from typing import Any
 
+from najamjad_agent.net.turn_sequence import TurnSequence
+
 
 class BlockingLink:
     """A pair of queues joining two peers, with real timeout behaviour."""
@@ -27,7 +29,9 @@ class BlockingLink:
         self.boundaries = 0
         self.in_play = False
         self.rejected_stale = 0
-        self._last_step = -1
+        # The production guard itself, so this fake cannot drift from the rule
+        # it is meant to model.
+        self._sequence = TurnSequence()
 
     def connect(self, other: "BlockingLink") -> None:
         """Point each link at the other, so a send lands in their inbox."""
@@ -45,19 +49,23 @@ class BlockingLink:
         """
         assert self.peer is not None, "link was never connected"
         step = message.get("step")
-        if message.get("claim_response") is not None:
-            step = None  # an answer may arrive at the step it answers
         if isinstance(step, int):
-            if step == 1:
-                self.peer._last_step = step  # a new mini-game, as the real inbox reads it
-            elif step <= self.peer._last_step:
+            # Production's own guard, not a second copy of it. This fake used to
+            # re-implement the rule — including an unconditional bypass for any
+            # message carrying `claim_response` — so it accepted exactly what
+            # production had started refusing, and no integration test could
+            # surface the difference. A fake that is kinder than the wire is how
+            # five separate defects reached a real match (ADR-017).
+            refusal = self.peer._sequence.check(
+                step, message.get("claim_response") is not None
+            )
+            if refusal:
                 # Dropped, exactly as the real inbox drops it: rejected at
                 # ingress and never queued. Raising here would be louder but
                 # wrong — on the wire the sender learns nothing and simply waits,
                 # which is precisely how the defect presented in a real match.
                 self.rejected_stale += 1
                 return
-            self.peer._last_step = step
         self.sent_turns += 1
         self.peer.turns.put(message)
 
@@ -105,7 +113,7 @@ class BlockingLink:
             self.audits.get_nowait()
         for message in kept:
             self.turns.put(message)
-        self._last_step = 1 if kept else -1
+        self._sequence.begin_sub_game(bool(kept))
 
     def finish_sub_game(self) -> None:
         """Reopen the handshake gate, as the real transport does.

@@ -34,27 +34,47 @@ def test_a_concession_at_the_step_it_answers_is_admitted(sequence: TurnSequence)
     assert sequence.check(7, is_answer=True) is None
 
 
-def test_an_answer_one_step_either_side_is_admitted(sequence: TurnSequence) -> None:
-    """A window, not an equality, and deliberately so.
+def test_answers_ride_on_ordinary_turns_many_in_a_row(sequence: TurnSequence) -> None:
+    """The regression that a ±1 window caused, pinned with real data.
 
-    Our own counter can move by one between making the claim and their reply
-    landing. Insisting on the exact step would resurrect the stall this whole
-    exemption was written to cure — trading a replay hole for a lost game.
+    The reference attaches `capture_claim` to *every* police move, so the thief
+    answers on ordinary move-carrying turns, consecutively. These are the exact
+    steps our own archived `events.jsonl` recorded `peer.answered_claim` on in
+    one mini-game. Under the ±1 window, 10 of 35 turns were refused — each one a
+    dropped turn, a timed-out poll, and the peer's watchdog scoring it against
+    us.
+    """
+    _play(sequence, range(1, 11))
+
+    for step in (11, 12, 13, 14, 15):
+        assert sequence.check(step, is_answer=True) is None, f"refused an honest turn at {step}"
+    for step in (21, 22, 23, 24, 25, 26, 27):
+        _play(sequence, range(sequence.last_step + 1, step))
+        assert sequence.check(step, is_answer=True) is None
+
+
+def test_an_answer_ahead_of_us_advances_the_counter(sequence: TurnSequence) -> None:
+    """Because it *is* a turn. Not advancing is what made the window refuse.
+
+    An answer-bearing turn that never moved the mark left every later step
+    looking further and further out of range.
     """
     _play(sequence, range(1, 8))
 
-    assert sequence.check(6, is_answer=True) is None
     assert sequence.check(8, is_answer=True) is None
+    assert sequence.last_step == 8
 
 
-def test_an_answer_at_an_arbitrary_step_is_refused(sequence: TurnSequence) -> None:
-    """The hole. Any step at all used to be accepted, unconditionally."""
+def test_a_replayed_step_cannot_be_revived_by_calling_it_an_answer(
+    sequence: TurnSequence,
+) -> None:
+    """The hole: one key used to skip the sequence guard entirely."""
     _play(sequence, range(1, 8))
 
-    refusal = sequence.check(999, is_answer=True)
+    refusal = sequence.check(2, is_answer=True)
 
     assert refusal is not None
-    assert "answers no live turn" in refusal
+    assert "stale or replayed" in refusal
 
 
 def test_a_stale_step_cannot_be_revived_by_calling_it_an_answer(

@@ -116,3 +116,47 @@ def test_a_fired_watchdog_persists_the_live_state(state) -> None:
     assert "watchdog.snapshot" in names
     snapshot = next(e for e in events if e["event"] == "watchdog.snapshot")["state"]
     assert snapshot["step"] == state.step
+
+
+def test_the_turn_loop_actually_beats(state) -> None:
+    """The seam, not the component. `Watchdog` sat uncalled for the whole project.
+
+    A review replaced `watching` with a no-op yielding None and ran 502 tests
+    without a single failure: nothing asserted that `MatchRunner` arms the
+    guard or that `run_turn_loop` calls the heartbeat it is handed. A watchdog
+    that is never beaten fires on a healthy game; one that is never armed is the
+    dead component we just revived. Both are silent.
+    """
+    from najamjad_agent.constants import EndReason
+    from najamjad_agent.domain.turn_loop import run_turn_loop
+
+    beats: list[int] = []
+
+    class Conductor:
+        moves_first = True
+        calls = 0
+
+        def take_turn(self):
+            Conductor.calls += 1
+            return EndReason.SURVIVAL if Conductor.calls >= 3 else None
+
+        def receive_turn(self):
+            return None
+
+    run_turn_loop(Conductor(), max_moves=5, beat=lambda: beats.append(1))
+
+    assert beats, "run_turn_loop never called the heartbeat"
+    # Per half-turn: a freeze between our move and theirs is the same freeze.
+    assert len(beats) >= Conductor.calls
+
+
+def test_a_series_runner_arms_the_guard(state) -> None:
+    """`watching` must be reached from `play_sub_game`, not merely importable."""
+    import inspect
+
+    from najamjad_agent.domain import match
+
+    source = inspect.getsource(match.MatchRunner.play_sub_game)
+
+    assert "watching(" in source, "play_sub_game no longer arms the freeze guard"
+    assert "self._watchdog_seconds" in source
