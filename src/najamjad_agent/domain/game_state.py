@@ -27,7 +27,15 @@ class TurnFacts:
     legal: tuple[Move, ...]
     belief_peak: Position | None
     belief: dict[Position, float]
+    #: The **opponent's** trail — the field our belief is inferred from.
     scent: dict[Position, float]
+    #: **Our own** trail, which is a different field answering a different
+    #: question: not "where are they" but "where have I already told them I
+    #: was". `thief_brain._value` asks the second and was handed the first, so
+    #: the term meant to stop us re-treading perfumed ground was reading the
+    #: opponent's deposits instead — and was identically zero against a peer
+    #: that emits nothing.
+    own_scent: dict[Position, float] = field(default_factory=dict)
     last_hint: str = ""
     barriers_left: int = 0
     #: Which mini-game this decision belongs to. The speaker reads it to bill
@@ -105,6 +113,7 @@ class GameState:
             scent={
                 cell: self.opponent_scent.intensity_at(cell) for cell in self.board.cells()
             },
+            own_scent={cell: self.own_scent.intensity_at(cell) for cell in self.board.cells()},
             last_hint=self.last_opponent_hint,
             barriers_left=self.barriers_left,
         )

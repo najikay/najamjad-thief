@@ -58,7 +58,9 @@ was not mistuned; it optimised the wrong thing. Maximising distance from a
 heading for, and our thief did exactly that against uoh-sqak — caught at `[1,6]`
 on step 15, three games out of three, by a scripted opponent with no LLM.
 
-The sum survives as the fallback for a peer that transmits no scent at all.
+The sum survives only for a belief that names a cell. A peer that transmits
+nothing is handled by `strategy/blind.py` instead — see "Playing blind" below,
+and note that handing the sum a flat belief was itself a defect, not a fallback.
 
 ## Seeing a silent opponent (2026-08-04)
 
@@ -77,13 +79,26 @@ captures at turn 10, three times out of three.
 
 What a silent peer cannot withhold is what the rules make mandatory:
 
-| declaration | what it tells us | rule | seen in one series |
-|---|---|---|---|
-| capture claim | the cop's **exact** cell — a capture scores only if the cop occupies the cell it claims | 21-22 | 146 |
-| barrier | the cop is on that cell or one orthogonal step from it, **and did not move** | 15-16, FR-ENG-3 | 143 |
+| declaration | what it tells us | rule | seen in one series | used |
+|---|---|---|---|---|
+| barrier | the cop is on that cell or one orthogonal step from it, **and did not move** | 15-16, FR-ENG-3 | 143 | yes |
+| capture claim | where the cop asserts **the thief** is — *not* where the cop is | 21-22 | 146 | no |
 
-289 position disclosures per series, every one of them discarded. They are now
-read in `domain/cop_sighting.py` and fused by `BeliefGrid.observe_reach`.
+Barrier declarations are read in `domain/cop_sighting.py` and fused by
+`BeliefGrid.observe_reach`.
+
+**Capture claims are deliberately not used, and the first version of this work
+used them wrongly.** `capture.answer_capture_claim(true_thief_cell,
+claimed_cell)` settles the semantics from our own code: a claim names the cell
+the cop asserts the *thief* occupies. That equals the cop's own cell only for a
+claim that lands, and a cop may claim speculatively. uoh-sqak happened to claim
+only their own cell, which is the sole reason believing it looked right against
+their recorded line. Measured cost of believing it: against a cop claiming one
+row off, the thief went from 35/35 to captured at step 13; against one claiming
+our own cell it was blinded every turn, because 0.99 of the mass landed on our
+square and the next `exclude()` deleted it. Both were worse than ignoring claims
+outright — and the second is a free attack, since our own scent hands any
+opponent our exact cell.
 
 Three properties are load-bearing:
 
@@ -92,8 +107,8 @@ Three properties are load-bearing:
   cells; the observation is applied on top to say where that move landed. Fused
   before, the belief peaks on a *neighbour* of the true cell — and a thief
   holding distance 2 from a cell one step off the cop is standing next to it.
-* **A claim is a point, a barrier is a set.** The Barrier Law admits five cells
-  and we cannot tell which, so a barrier is soft evidence. Reporting it as one
+* **A barrier is a set, never a point.** The Barrier Law admits five cells and
+  we cannot tell which, so a barrier is soft evidence. Reporting it as one
   confident cell would claim knowledge the rules do not give.
 * **Confidence is posterior mass, not a per-cell multiplier.** As a multiplier
   it interacts with how many cells sit on each side of the split, and at 49
@@ -110,6 +125,68 @@ transmits nothing, replayed through the real `absorb_turn` and
 `decay_after_full_turn` rather than a hand-rolled belief
 (`tests/regression/test_silent_opponent.py`). Sweep unchanged at 360 games,
 0 audit failures, 0 disagreements.
+
+> That 35/35 is **geometry, not evasion**, and reporting it alone was
+> misleading. Their sweep ends at `[1,6]` and never enters the corner our thief
+> parked in, so the number survives with the barrier fix disabled entirely. It
+> is kept as a non-regression floor and is not evidence the policy works.
+
+## Playing blind (2026-08-05)
+
+Reading barrier declarations narrows the belief; it does not make it name a
+cell, and against a peer that places few barriers the thief is still blind. So
+the question the previous section never answered is what to actually *do* then —
+and the honest answer had been "run the informed policy on a flat belief", which
+is worse than doing nothing.
+
+**Two defects, both measured, neither a matter of tuning.**
+
+1. The fallback consulted the belief through `expected_distance` and
+   `_worst_case`. Under a flat distribution neither measures the opponent:
+   expected distance measures board geometry and is maximised at the corners,
+   and `_worst_case` took `max()` of a flat dict, which returns whichever key
+   CPython iterates first — always the cop's start. Together they invented a cop
+   in one corner and paid the thief to flee to the opposite one. From `[3,3]`
+   against a silent peer: `[6,5]` in five steps, then STAY for the remaining
+   thirty. Six distinct cells in a whole mini-game. That is the archived
+   immobility, and it was never a preference for standing still.
+2. `TurnFacts.scent` carried the **opponent's** field, while the term consuming
+   it asks where *we* have been. Against a peer that emits nothing it was a grid
+   of zeros. Now `TurnFacts.own_scent` carries ours and `scent` keeps theirs.
+
+**What replaces it.** `cop_start` is a negotiated term, fixed before the first
+move and identical in both configs — not a disclosure a peer can withhold — and
+movement is one cell per turn (FR-ENG-2). Together they bound the cop inside a
+Manhattan ball of radius `step` around its start, so a cell outside it is
+*provably* vacant for a known number of turns. `strategy/blind.py` scores room,
+minus the trap penalty, plus that warning, **capped at two turns**: the
+uncapped version chases the far corner, and a corner has two exits. The bound
+goes vacuous past the board's diameter, at which point it contributes a constant
+and room decides — real early, gone later, never fabricated.
+
+**What is deliberately absent**, each because it was measured to cost survivals:
+`corridor_risk` (20/43 with, 27/43 without — it needs a cop whose position we
+know), and our own trail (27/43 with, 36/43 without).
+
+**Why a near-best band rather than the argmax.** Over 70 held-out arenas,
+changing only which move wins a *tie* moved survival by fifteen games — against
+a fixed line, blind survival is mostly luck about which cell you park in, so
+optimising that number is fitting noise. The threat we have actually measured is
+the other one: a scripted opponent solved our previous thief 3/3 by replaying
+one line, and within a series a peer watches five sub-games before the sixth.
+`VARIATION_BAND` spends a survival we cannot rely on to buy variation we can.
+
+| policy | held-out survival | vs an opponent who studied game 1 |
+|---|---|---|
+| old fallback (phantom cop) | 15/43 | — |
+| blind, argmax | 44/70 | 10/100 |
+| **blind, banded (shipped)** | **43/70** | **32/100** |
+
+Honest limits: a silent opponent still reads *our* scent, so they see us while
+we do not see them. That asymmetry is not fixable by policy, and no blind thief
+survives every line — both the mobile and the static variants died 0/20 to a cop
+that predicts our moves outright. Movement is not evasion when you are
+predictable; the band is what answers that, not the motion.
 
 > Historic note: the earlier claim that this brain "survives 96-100 % of games
 > against a greedy cop" was measured against our own baselines. Given no cop can

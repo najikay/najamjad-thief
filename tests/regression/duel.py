@@ -22,6 +22,7 @@ from najamjad_agent.constants import Move
 from najamjad_agent.domain.board import Board
 from najamjad_agent.domain.capture import is_immobilised
 from najamjad_agent.domain.params import GameParams, Position
+from najamjad_agent.domain.scent import ScentField
 
 #: `(cop cell, step, thief cell) -> belief`. The thief cell is passed because a
 #: real belief excludes our own square, and a model that cannot see where we
@@ -48,12 +49,23 @@ class Facts:
     """The read-only view a brain is given, matching the orchestrator's."""
 
     def __init__(
-        self, board: Board, position: Position, belief: dict[Position, float], step: int, left: int
+        self,
+        board: Board,
+        position: Position,
+        belief: dict[Position, float],
+        step: int,
+        left: int,
+        own_scent: dict[Position, float] | None = None,
     ) -> None:
         self.board = board
         self.own_position = position
         self.belief = belief
         self.scent: dict[Position, float] = {}
+        #: Our own trail. It was omitted, and omitting it hid the freeze: the
+        #: only term in the fallback policy that penalises re-treading ground
+        #: is this one, so a harness that always passed `{}` was measuring a
+        #: thief with no memory of where it had been.
+        self.own_scent: dict[Position, float] = own_scent or {}
         self.legal = tuple(Move)
         self.barriers_left = 0
         self.role = "thief"
@@ -102,6 +114,12 @@ def run_duel(
     path: list[Position] = [thief]
     horizon = min(params.survival_threshold, params.max_moves)
     belief = belief_for or (lambda cell, _step, _thief: _certain(cell))
+    # The real thief cannot help emitting this, and the policy reads it to
+    # avoid re-treading its own ground. A real field rather than a stub: the
+    # decay rate and the ceiling are what decide whether staying put is
+    # actually punished, and inventing softer ones here would flatter us.
+    trail = ScentField(params.grid_size)
+    trail.deposit(thief)
 
     for step in range(1, horizon + 1):
         cop = tuple(cop_line[min(step - 1, len(cop_line) - 1)])
@@ -115,7 +133,8 @@ def run_duel(
         if is_immobilised(board, thief):
             return DuelResult(step - 1, True, tuple(path), "immobilised")
 
-        facts = Facts(board, thief, belief(cop, step, thief), step, horizon - step)
+        own = {cell: trail.intensity_at(cell) for cell in board.cells()}
+        facts = Facts(board, thief, belief(cop, step, thief), step, horizon - step, own)
         move = brain.pick_move(facts)
         row, col = board.delta_for(move)
         landing = (thief[0] + row, thief[1] + col)
@@ -124,6 +143,8 @@ def run_duel(
         # hiding behind an illegal escape.
         thief = landing if board.is_open(landing) else thief
         path.append(thief)
+        trail.decay_all()
+        trail.deposit(thief)
         if thief == cop:
             return DuelResult(step, True, tuple(path), "walked into the cop")
 

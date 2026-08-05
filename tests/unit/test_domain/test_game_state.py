@@ -16,6 +16,24 @@ def test_facts_expose_everything_a_brain_may_look_at() -> None:
     assert len(facts.scent) == 49
 
 
+def test_facts_keep_the_two_scent_fields_apart() -> None:
+    """They answer different questions and were being conflated.
+
+    `scent` is the opponent's trail, which is what our belief is inferred from.
+    `own_scent` is ours, which is what the thief consults to avoid re-treading
+    perfumed ground. Only the first existed, so the thief's leak term was
+    reading the wrong agent's deposits — and against a peer that emits nothing
+    it read a field of zeros.
+    """
+    state = build_state(Role.THIEF)
+    state.own_scent.deposit(state.own_position)
+
+    facts = state.facts((Move.NORTH,))
+
+    assert facts.own_scent[state.own_position] > 0.0
+    assert facts.scent[state.own_position] == 0.0
+
+
 def test_facts_carry_the_last_hint_for_the_speaker() -> None:
     state = build_state(Role.THIEF)
     state.last_opponent_hint = "I can smell you near the bridge"

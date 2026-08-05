@@ -16,6 +16,13 @@ So a move is scored on three things at once:
 
 A two-ply lookahead asks what the cop can do next, so we avoid moves that look
 safe now and are lost a turn later.
+
+**That is the policy for a cop we can locate, and only that.** All three terms
+above are statements about where the opponent is, so all three are meaningless
+when the belief does not name a cell — and against a peer who transmits nothing
+at all, it never does. Feeding them a flat distribution anyway is what cost us
+three archived mini-games: see `_blind_move`, which owns that case now, and
+`strategy/blind.py` for what can still be proven when nobody tells us anything.
 """
 
 import hashlib
@@ -26,7 +33,7 @@ from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
 from ..shared.strength import plays_full_strength
-from . import solver, thief_safety
+from . import blind, solver, thief_safety
 from .base import apply, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
 
@@ -95,7 +102,13 @@ class ThiefBrain:
             return Move.STAY
         belief = dict(getattr(facts, "belief", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
-        cop = self._cop_cell(belief) if plays_full_strength(self.strength) else None
+        # Located once, used twice. Playing at reduced strength withholds the
+        # *safety rule*, not our senses: a practice thief that also forgot how
+        # to read a belief it can plainly see would be a different agent, not a
+        # weaker one, and the fallback below still needs to know whether the
+        # distribution means anything.
+        located = self._cop_cell(belief)
+        cop = located if plays_full_strength(self.strength) else None
         if cop is not None:
             # No `barriers_left` argument: `facts.barriers_left` is *our* quota,
             # and a thief's is always zero, so passing it disabled the cut-cell
@@ -103,7 +116,22 @@ class ThiefBrain:
             # cop's true remaining count.
             tied = thief_safety.choose(board, origin, cop, legal)
             return self._break_tie(self._provably_safe(board, origin, cop, tied) or tied, facts)
-        scent = dict(getattr(facts, "scent", {}) or {})
+        open_cells = sum(1 for cell in board.cells() if board.is_open(cell))
+        if blind.uninformative(belief, open_cells):
+            # A belief spread across most of the board cannot name a *direction*
+            # either, so the weighted sum below is not merely uninformed here —
+            # it is actively misled. `_blind_move` is the honest policy.
+            #
+            # Asked of the belief's *support*, not of `located`. A five-cell
+            # localisation is far too broad to name a cell and far too sharp to
+            # throw away, and routing it here on the strength of `_cop_cell`
+            # saying no cost two self-play games at blur 1.
+            return self._blind_move(board, origin, legal, facts)
+        # Our own trail, not theirs. `facts.scent` is the *opponent's* field,
+        # and the leak term asks where **we** have already been — a different
+        # question, and one that was being answered with the wrong agent's data
+        # for as long as this policy has existed.
+        scent = dict(getattr(facts, "own_scent", {}) or {})
         endgame = self.is_endgame(facts)
         return max(
             legal,
@@ -111,6 +139,21 @@ class ThiefBrain:
                 self._value(board, origin, move, belief, scent, endgame),
                 move.value,
             ),
+        )
+
+    def _blind_move(self, board: Board, origin: Position, legal: tuple[Move, ...], facts: Any) -> Move:
+        """Hand the decision to `strategy/blind.py`, keeping our tie-break.
+
+        The tie-break stays here because it is the *same* seeded digest the
+        informed path uses: variation across sub-games, never within a replay,
+        so the audit can reproduce any game byte for byte.
+        """
+        return blind.choose(
+            board,
+            origin,
+            legal,
+            int(getattr(facts, "step", 0)),
+            lambda shortlist: self._break_tie(shortlist, facts),
         )
 
     def _provably_safe(
@@ -220,6 +263,11 @@ class ThiefBrain:
         several times more and raw distance almost nothing, because a cell we
         cannot be trapped in for two turns wins a game that a cell three steps
         further away does not.
+
+        **Only reached with a belief that names a cell.** Both distance terms
+        are meaningless otherwise — see `_blind_move`, which is where a flat
+        belief goes now — and calling this with one is how the thief spent three
+        archived games standing still.
         """
         landing = apply(board, origin, move)
         if not board.is_open(landing):

@@ -156,29 +156,81 @@ def test_the_belief_stays_flat_when_the_declarations_are_ignored(params: GamePar
     assert belief.peak != UOH_SQAK_SWEEP[5], "a silent peer must not be locatable"
 
 
-def test_the_blind_thief_still_loses_the_way_the_archive_recorded(params: GameParams) -> None:
-    """Pin the original failure so the gate keeps its teeth.
+class Blind:
+    """Our thief with the belief forced flat — the silent-peer case, exactly."""
 
-    With the belief forced flat the thief is back on the weighted sum, and the
-    archived behaviour was near-total immobility: four distinct cells in eleven
-    steps across three games. Assert the immobility, not a step count, because
-    immobility is the diagnosis.
+    def __init__(self) -> None:
+        self._inner = ThiefBrain()
+
+    def pick_move(self, facts):
+        facts.belief = {}
+        return self._inner.pick_move(facts)
+
+
+def test_the_blind_thief_does_not_stand_still(params: GameParams) -> None:
+    """The regression that lost three archived mini-games, pinned inverted.
+
+    The archive recorded near-total immobility: four distinct cells in eleven
+    steps, (5,5) held for six consecutive turns, a near-identical line in all
+    three games. It was never a preference for standing still — the fallback
+    read a *flat* belief as if it named a direction, ran to the corner furthest
+    from a cop that did not exist, and then found nothing left to improve.
+
+    Asserted on distinct cells rather than a step count, because immobility is
+    the diagnosis and a step count would pass for a thief that froze somewhere
+    the sweep happens not to reach. That is not a hypothetical: an earlier
+    version of this gate did exactly that, and the strategy audit showed it
+    passed with the entire fix disabled.
     """
-
-    class Blind:
-        def __init__(self) -> None:
-            self._inner = ThiefBrain()
-
-        def pick_move(self, facts):
-            facts.belief = {}
-            return self._inner.pick_move(facts)
-
     result = run_duel(Blind(), UOH_SQAK_SWEEP, params, UOH_SQAK_BARRIERS)
 
-    assert len(set(result.path[:12])) <= 5, (
+    assert len(set(result.path[:12])) >= 6, (
         "the blind policy used to visit four cells in eleven steps; "
-        f"this replay visited {len(set(result.path[:12]))}"
+        f"this replay visited only {len(set(result.path[:12]))}"
     )
+
+
+def test_the_blind_thief_never_parks_on_one_cell(params: GameParams) -> None:
+    """No absorbing fixed point — the specific shape the old bug settled into.
+
+    It walked (3,3) to (6,5) in five steps and then played STAY for the other
+    thirty, because at (6,5) every move scored below standing still. A policy
+    with a fixed point loses to any opponent patient enough to arrive.
+    """
+    result = run_duel(Blind(), UOH_SQAK_SWEEP, params, UOH_SQAK_BARRIERS)
+
+    longest = held = 1
+    for earlier, later in zip(result.path, result.path[1:], strict=False):
+        held = held + 1 if earlier == later else 1
+        longest = max(longest, held)
+
+    assert longest <= 4, f"the thief held one cell for {longest} consecutive turns"
+
+
+def test_the_blind_thief_plays_a_different_line_each_sub_game(params: GameParams) -> None:
+    """Silence is not an excuse to be predictable.
+
+    A scripted opponent solved our previous thief by replaying one line at it
+    three times, and within a single series a peer watches five sub-games before
+    the sixth. `VARIATION_BAND` buys that variation out of moves that are within
+    a point of the best rather than out of safety.
+    """
+
+    class Varying(Blind):
+        def __init__(self, sub_game: int) -> None:
+            super().__init__()
+            self._sub_game = sub_game
+
+        def pick_move(self, facts):
+            facts.sub_game = self._sub_game
+            return super().pick_move(facts)
+
+    lines = {
+        run_duel(Varying(sub), UOH_SQAK_SWEEP, params, UOH_SQAK_BARRIERS).path
+        for sub in range(1, 7)
+    }
+
+    assert len(lines) >= 3, f"six sub-games produced only {len(lines)} distinct lines"
 
 
 def test_a_barrier_narrows_the_cop_to_its_reach_without_naming_one_cell(
