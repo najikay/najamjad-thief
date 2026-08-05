@@ -1,6 +1,6 @@
 # Open items
 
-**Version 1.70 · 2026-07-27**
+**Version 1.80 · 2026-08-05**
 
 Things known to be incomplete, with the evidence gathered so far. Recorded here
 rather than left implicit, so nobody has to rediscover them — and so a grader
@@ -31,17 +31,31 @@ the message we had thrown away ourselves. Nothing shorter than a four-game
 series would have found it. Fixed, configured rather than hardcoded, and
 regression-tested in `tests/integration/test_inbound_throughput.py`.
 
-## CLOSED — the cop now converts captures against the reference
+## RETRACTED — "the cop now converts captures against the reference"
 
-Was: six games, 45-45, not one capture in twelve cop-halves. Now:
+**Every capture number in this section was measured against our own old thief,
+and it is fiction.** Kept rather than deleted because a document whose job is to
+show what we know cannot quietly drop the thing it got wrong.
+
+The published cop number of a Cartesian product of two trees is 2, so **one cop
+cannot force a capture on a 7×7 grid**. A saturated capture rate could only ever
+have been describing the opponent's weakness. Confirmed by exact backward
+induction over all 4802 perfect-information states: the only cop-win positions
+are the 49 where the two already share a cell. Re-swept against the current
+thief, `cop.barrier_threshold` across 0.05–0.60 and `cop.lookahead` across 1–4
+both give **0/24 at every value**. See `PRD_strategy_cop.md` §"Re-baseline,
+2026-08-03", which is the authority; this section is the retraction.
+
+The protocol fixes below are real and still stand. The scoreline is not:
 
 | game | our role | result | us | them |
 |---|---|---|---|---|
 | g01/g03/g05 | thief | survival | 10 | 5 |
 | g02/g04/g06 | police | **capture** | 20 | 5 |
 
-**90-30. Six wins from six**, both sides agreeing on every game, every audit
-`Verified OK`. Reproduce with `uv run python scripts/rehearsal.py --games 6`.
+~~**90-30. Six wins from six.**~~ Both sides did agree on every game and every
+audit was `Verified OK` — that part is a protocol result and holds. The 90-30
+is a statement about the baseline it was played against, not about our cop.
 
 One strategy change and two protocol fixes, in that order of visibility and
 reverse order of importance:
@@ -78,10 +92,20 @@ our thief. Sweeping `thief.horizon` across 1–5 does not help: every value is
 caught in 23 or 24 of 24 games, differences well inside the confidence
 intervals, so this is not a tuning problem.
 
-Recorded rather than fixed because a strategy rewrite at this stage is a larger
-change than the remaining schedule safely absorbs, and the cop — which scores
-the same points — is measured at 100 %. Quantified in `notebooks/analysis.ipynb`
-§3.1.
+Both halves of that table have since been re-measured and both moved.
+
+* The thief's "~4 % against our own cop" was a thief that stood still whenever
+  it could not name the cop's cell — a defect, not a strategy (T-2488). It is
+  fixed; blind survival is now 43/70 on held-out arenas.
+* "The cop scores the same points" was the false half. It does not: the theorem
+  above puts the cop's floor at **5 points a game (survival), not 20**, and
+  `scripts/strategy_smoke.py` currently measures 40/50 rather than the 100 %
+  this document used to claim.
+
+So the asymmetry is real but points the other way from how it was filed here:
+the thief is the half we can make guaranteeable, and the cop is the half that
+cannot be. Quantified in `notebooks/analysis.ipynb` §3.1 and
+`PRD_strategy_cop.md`.
 
 ## `cop.lookahead` is inert — and the fix is known
 
@@ -95,8 +119,14 @@ preserves the ranking.
 The fix is an **anisotropic kernel** biased by the thief's last inferred
 heading, so diffusion predicts where they are going rather than how far they
 could have got. This is the single most promising strategy change the analysis
-identified. Not shipped: it changes the cop's move selection, and the cop is
-currently at 100 %.
+identified.
+
+Not shipped, and the reason originally given here — "the cop is currently at
+100 %" — was withdrawn on 2026-08-03. The real reason is stronger: the sweep now
+measures `cop.lookahead` at **0/24 captures at every depth** against a correct
+thief, so an anisotropic kernel would be tuning a dial that the theorem says
+cannot reach the outcome. Worth trying only in an arena that demonstrably has a
+gradient (T-2484).
 
 ## `negotiation_model` configures nothing
 
@@ -130,9 +160,12 @@ several files rather than in one table. Mechanical to produce; not yet done.
 
 ## T-2108 — win-rate gate as a scheduled job
 
-The gate itself is implemented and asserted (`test_self_play_harness.py`), and
-the measured rate is 100 % as cop and 100 % survival as thief. What is missing
-is running it nightly rather than on demand.
+The gate itself is implemented and asserted (`test_self_play_harness.py`). The
+rates once recorded here — 100 % as cop, 100 % survival as thief — were both
+measured against our own baselines and are withdrawn; see the retraction above.
+`scripts/strategy_smoke.py` currently reports 40/50 as cop and full survival as
+thief against the scripted opponents it ships with. What is missing is running
+it nightly rather than on demand.
 
 ---
 
