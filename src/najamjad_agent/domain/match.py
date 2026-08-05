@@ -16,6 +16,7 @@ from typing import Any
 
 from ..constants import EndReason, Phase, Role
 from ..shared.events import Emit
+from .freeze_guard import watching
 from .fsm import GameStateMachine
 from .game_state import GameState
 from .handshake_retry import agree_on_terms
@@ -191,7 +192,8 @@ class MatchRunner:
         orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 
-        reason = run_turn_loop(orchestrator, self.params.max_moves) or EndReason.SURVIVAL
+        with watching(self._watchdog_seconds, state, sub_game, self._emit) as beat:
+            reason = run_turn_loop(orchestrator, self.params.max_moves, beat) or EndReason.SURVIVAL
         report = audit_or_skip(state, reason, self._transport, self._audit_timeout, self._emit)
         outcome = self.tracker.record(
             end_reason=reason,

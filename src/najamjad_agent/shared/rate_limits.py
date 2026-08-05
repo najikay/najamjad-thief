@@ -14,6 +14,13 @@ from pathlib import Path
 MIN_RETRY_BACKOFF_SEC = 5
 MAX_CONCURRENT_ALLOWED = 2
 MIN_QUEUE_DEPTH = 100
+
+#: Table 19 binds the *interval* between attempts and says nothing about how
+#: many seconds of them a caller may stack up. Capping the total is therefore
+#: ours to choose and is strictly stricter than the floor — unlike shortening
+#: the interval, which would breach it. That distinction killed an earlier
+#: attempt at this and is why the cap lives here rather than in the backoff.
+DEADLINE_DISABLED = 0
 SUPPORTED_VERSIONS = ("1.00",)
 
 
@@ -36,6 +43,11 @@ class RateLimitConfig:
     retry_after_seconds: int = 5
     max_retries: int = 3
     queue_depth: int = 100
+    #: Wall-clock ceiling on one `execute`, retries and back-off included.
+    #: Zero disables it, which is what every service except `mcp_peer` gets:
+    #: a deadline only makes sense where something on the far side has already
+    #: stopped waiting for us.
+    deadline_seconds: int = DEADLINE_DISABLED
 
     def validate(self, service: str) -> None:
         """Reject a configuration that would breach the binding minimums."""
@@ -53,6 +65,15 @@ class RateLimitConfig:
             )
         if self.queue_depth < MIN_QUEUE_DEPTH:
             raise ValueError(f"{service}: queue_depth must be at least {MIN_QUEUE_DEPTH}")
+        if self.deadline_seconds and self.deadline_seconds < self.retry_after_seconds:
+            # A deadline under one back-off would forbid the first retry, which
+            # is not a stricter policy but a broken one: the mandated 5 s pause
+            # would always overrun it and every call would give up after a
+            # single attempt.
+            raise ValueError(
+                f"{service}: deadline_seconds {self.deadline_seconds} is below one "
+                f"back-off of {self.retry_after_seconds}s, so no retry could ever run"
+            )
 
 
 def load_rate_limits(path: Path) -> dict[str, RateLimitConfig]:

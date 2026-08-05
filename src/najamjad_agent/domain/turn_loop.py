@@ -13,7 +13,9 @@ from typing import Any
 from ..constants import EndReason
 
 
-def run_turn_loop(orchestrator: Any, max_moves: int) -> EndReason | None:
+def run_turn_loop(
+    orchestrator: Any, max_moves: int, beat: Any = None
+) -> EndReason | None:
     """Alternate turns until one ends the game; None means the budget ran out.
 
     Input: the mini-game's conductor, and the agreed `max_moves`.
@@ -31,6 +33,12 @@ def run_turn_loop(orchestrator: Any, max_moves: int) -> EndReason | None:
             else (orchestrator.receive_turn, orchestrator.take_turn)
         )
         for act in (first, second):
+            if beat is not None:
+                # Proof of life, per half-turn rather than per full turn: a
+                # freeze that takes us out between our move and theirs is the
+                # same freeze, and a watchdog that only heard from us every
+                # other half would need twice the threshold to be sure.
+                beat()
             ended = act()
             if ended is not None:
                 return ended
