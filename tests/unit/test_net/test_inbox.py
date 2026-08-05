@@ -129,7 +129,7 @@ def test_audit_and_negotiate_messages_validate(inboxes: Inboxes) -> None:
 
 def test_a_turn_without_a_step_skips_the_sequence_guard(inboxes: Inboxes) -> None:
     """Guard on what exists: a message with no step cannot be out of order."""
-    assert inboxes._check_sequence(object()) is None
+    assert inboxes._sequence_problem(object()) is None
 
 
 NEGOTIATE = {"identity": "rival", "terms": {}, "nonce": "n", "signature": "s"}

@@ -1,57 +1,60 @@
 {
- "rate_limits": {
-  "version": "1.00",
-  "services": {
-   "default": {
-    "requests_per_minute": 30,
-    "requests_per_hour": 500,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100
-   },
-   "gmail": {
-    "requests_per_minute": 30,
-    "requests_per_hour": 500,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100
-   },
-   "mcp_peer": {
-    "requests_per_minute": 600,
-    "requests_per_hour": 20000,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100,
-    "_note": "The opponent is our protocol partner, not a metered third-party API. The gatekeeper exists to be a good citizen towards Anthropic and Gmail; applying those limits here only risks delaying our own reply past the opponent's 30s deadline and forfeiting a game to our own throttle. Rate raised so it never shapes a legitimate match; concurrency stays at the Appendix F ceiling of 2."
-   },
-   "anthropic": {
-    "requests_per_minute": 30,
-    "requests_per_hour": 500,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100
-   },
-   "deepseek": {
-    "requests_per_minute": 30,
-    "requests_per_hour": 500,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100
-   },
-   "inbound_peer": {
-    "requests_per_minute": 3000,
-    "requests_per_hour": 100000,
-    "concurrent_max": 2,
-    "retry_after_seconds": 5,
-    "max_retries": 3,
-    "queue_depth": 100,
-    "_note": "INBOUND messages from the opponent. This is a flood backstop, not a throttle on play: the real protection against a peer filling memory is the bounded inbox queue, which refuses politely and does not grow. The ceiling was 120/min on the assumption that turns are human-paced; they are not \u2014 a turn costs us milliseconds, so two fast peers exceed 2/sec trivially. In a six-game rehearsal against the reference we rejected its legitimate turn mid-game, then timed out waiting for the message we had thrown away ourselves. Set far above anything honest play can reach."
-   }
+  "rate_limits": {
+    "version": "1.00",
+    "services": {
+      "default": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 3,
+        "queue_depth": 100
+      },
+      "gmail": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 3,
+        "queue_depth": 100
+      },
+      "mcp_peer": {
+        "requests_per_minute": 600,
+        "requests_per_hour": 20000,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 10,
+        "queue_depth": 100,
+        "deadline_seconds": 45,
+        "_note": "10 retries, 5 s apart — about 45 s of persistence, deliberately generous. Opponents run ngrok and other free tunnels that drop connections; we run a named tunnel and stay put, so the flakiness is nearly always theirs, and giving up after ~10 s forfeited four mini-games in a real match. The ceiling is THEIR watchdog, not our patience: the agreed watchdog_timeout_sec is 60, so past roughly 45 s of retrying they have already scored the turn against us and further attempts cannot win the game — they only delay our own scoring of it. Being generous up to that line is free; going beyond it is not. deadline_seconds 45 is what MAKES that true: the retry count alone never bounded anything, because each attempt carries its own 30 s call timeout and PeerSession reconnects once inside it, so ten attempts could occupy 645 s against a 60 s watchdog. The cap is on total wall clock, not on the interval - Table 19 binds the interval at a 5 s MINIMUM and we keep it, so this is stricter on us and never looser."
+      },
+      "anthropic": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 1,
+        "queue_depth": 100,
+        "_note": "max_retries 1: a hint is optional and has a zero-token template floor beneath it, but the 30 s turn deadline is not optional. At the shared default of 3 retries 5 s apart, two unreachable vendors cost 20 s on the first hint of a match — measured — which is most of the deadline. retry_after_seconds stays at the Appendix F minimum because it is never reached: the gatekeeper only sleeps between attempts."
+      },
+      "deepseek": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 1,
+        "queue_depth": 100,
+        "_note": "max_retries 1: a hint is optional and has a zero-token template floor beneath it, but the 30 s turn deadline is not optional. At the shared default of 3 retries 5 s apart, two unreachable vendors cost 20 s on the first hint of a match — measured — which is most of the deadline. retry_after_seconds stays at the Appendix F minimum because it is never reached: the gatekeeper only sleeps between attempts."
+      },
+      "inbound_peer": {
+        "requests_per_minute": 3000,
+        "requests_per_hour": 100000,
+        "concurrent_max": 2,
+        "retry_after_seconds": 5,
+        "max_retries": 3,
+        "queue_depth": 100,
+        "_note": "INBOUND messages from the opponent. This is a flood backstop, not a throttle on play: the real protection against a peer filling memory is the bounded inbox queue, which refuses politely and does not grow. The ceiling was 120/min on the assumption that turns are human-paced; they are not — a turn costs us milliseconds, so two fast peers exceed 2/sec trivially. In a six-game rehearsal against the reference we rejected its legitimate turn mid-game, then timed out waiting for the message we had thrown away ourselves. Set far above anything honest play can reach."
+      }
+    }
   }
- }
 }
