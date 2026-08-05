@@ -25,6 +25,13 @@ logs/
 # both meant every archive showed up as a tree full of deletions — and one of
 # those took the repo-rules gate down with it.
 workspace/artifacts/
+# Runtime output, regenerated every run and rewritten by every test that
+# publishes an event. It is real evidence *during* a match — the connection
+# forensics read it, and it settled the T-2456 argument — but it is evidence we
+# keep from the run that produced it, not a file the repository should carry:
+# committed, it turns every local test run into a diff.
+workspace/events.jsonl
+workspace/dead_letters/
 
 # Per-match private material stays out of history
 matches/**/secrets*
