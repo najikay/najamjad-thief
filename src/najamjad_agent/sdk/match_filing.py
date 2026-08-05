@@ -18,6 +18,7 @@ from ..shared.app_config import setting
 def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
                 setup: dict | None = None, observer: Any = None) -> Any:
     """Turn a finished series into its four artifacts, and send the result."""
+    from ..domain.emission import EmissionPolicy
     from ..negotiation.contract import contract_hash, derive_game_ids
     from ..reporting.filing import MatchFiler
     from ..reporting.result_blocks import declaration_group
@@ -44,6 +45,7 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         # artifact schema and a human reader expect.
         written = filer.file_match(
             games, outcomes, result, _config_body(manager), contract_hash(terms),
+            emission=EmissionPolicy.from_config(manager).as_declaration(),
             groups_block={ours: declaration_group(session.get("identity") or {}),
                           theirs: declaration_group(peer.get("identity") or {})},
         )

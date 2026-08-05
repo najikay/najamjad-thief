@@ -10,7 +10,7 @@ import inspect
 
 import pytest
 
-from najamjad_agent.negotiation.flow import Negotiation
+from najamjad_agent.negotiation.flow import Negotiation, Stage
 from najamjad_agent.net.mcp_server import PeerServer
 from najamjad_agent.net.tunnel import Tunnel
 from najamjad_agent.sdk.actions import AgentActions
@@ -163,8 +163,24 @@ def test_archive_accepts_extra_sources(tmp_path):
 
 def test_approve_terms_passes_identity_through():
     class Flow:
+        """Thin, but not thinner than the thing it stands in for.
+
+        This fake had no `stage`, so it could not exhibit the reason `approve`
+        opens the negotiation first: the real object starts at `IDLE`, `agree`
+        refuses from there, and nothing in the UI routes to `propose`. A double
+        left the production object's state machine out entirely and turned a
+        real behaviour into an `AttributeError`.
+        """
+
         def __init__(self) -> None:
             self.seen: list[tuple] = []
+            self.proposed: list[dict] = []
+            self.stage = Stage.PROPOSED
+
+        def propose(self, terms=None):
+            self.proposed.append(terms)
+            self.stage = Stage.PROPOSED
+            return {"proposed": terms}
 
         def agree(self, terms, identity=None):
             self.seen.append((terms, identity))
@@ -174,6 +190,14 @@ def test_approve_terms_passes_identity_through():
     AgentActions(negotiation=flow).approve_terms({"board_size": 7}, {"group": "najamjad"})
 
     assert flow.seen == [({"board_size": 7}, {"group": "najamjad"})]
+    assert flow.proposed == [], "an open negotiation must not be reopened"
+
+    cold = Flow()
+    cold.stage = Stage.IDLE
+    AgentActions(negotiation=cold).approve_terms({"board_size": 7})
+
+    assert cold.proposed == [{"board_size": 7}], "a cold negotiation must be opened first"
+    assert cold.seen == [({"board_size": 7}, None)]
 
 
 def test_propose_terms_delegates_to_the_flow():

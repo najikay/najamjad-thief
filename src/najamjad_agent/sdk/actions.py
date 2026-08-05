@@ -11,6 +11,7 @@ which is only enforceable if there is one place they both have to come through.
 from pathlib import Path
 from typing import Any
 
+from ..negotiation.flow import Stage
 from ..net.opponent_wait import wait_for_opponent
 from ..net.preflight import PreflightReport, run_preflight
 from ..replay.verifier import ReplayResult, verify_log
@@ -195,7 +196,24 @@ class AgentActions:
     def approve_terms(
         self, terms: dict[str, Any], identity: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Agree terms a human has reviewed — the approval step (FR-NEG-4)."""
+        """Agree terms a human has reviewed — the approval step (FR-NEG-4).
+
+        Opens the negotiation first when it has not been opened, because that
+        is what the button means. `agree` refuses from `IDLE`, and nothing in
+        the UI routes to `propose`: there is a `/api/control/approve` endpoint
+        and no propose endpoint, so a fresh process could only ever reach this
+        from `IDLE`. Supplying a `Negotiation` therefore turned an
+        `AttributeError` into a `NegotiationError` at the same wall — the
+        button still 500ed, since `ui/views.py` catches only
+        `ControlDeniedError`.
+
+        Approving from cold is proposing and signing in one action, which is
+        exactly the human's intent: these are the terms I have read and want
+        sent. The record shows both steps, so the timeline still reads as a
+        negotiation rather than a signature from nowhere.
+        """
+        if self._negotiation.stage is Stage.IDLE:
+            self._negotiation.propose(terms)
         return self._negotiation.agree(terms, identity)
 
     def verify_log(self, log: Path) -> ReplayResult:

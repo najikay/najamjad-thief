@@ -65,6 +65,7 @@ class MatchFiler:
         config_sha256: str,
         groups_block: dict[str, Any],
         confirmed: bool | None = None,
+        emission: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Write all four artifacts and return where they went.
 
@@ -96,8 +97,19 @@ class MatchFiler:
         # Every write is attempted independently. One mini-game's log failing
         # must never suppress the `result` artifact below it — that is the file
         # the league grades, and losing it scores as not having played (rule 35).
+        # `emission` says what we chose to transmit this match. Emitting less
+        # than the maximum is a tactical choice and not a secret one: rule 49
+        # means the lecturer reads these repositories, and a documented setting
+        # reads as the choice it is where the same behaviour undeclared reads as
+        # something we were hiding. It rides in the artifact rather than the
+        # handshake identity on purpose — a peer's strict declaration model once
+        # rejected a whole block over an unexpected key, costing six played
+        # games their artifacts, and we will not hand anyone that.
+        extra = {"emission": emission} if emission else {}
         written["declaration"] = attempt(
-            "declaration", lambda: self._writer.write_declaration(groups_block), self._emit
+            "declaration",
+            lambda: self._writer.write_declaration(groups_block, **extra),
+            self._emit,
         )
         for game, row in zip(games, rows, strict=False):
             number = int(game.get("sub_game", 0))

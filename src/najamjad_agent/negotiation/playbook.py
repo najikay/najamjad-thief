@@ -50,6 +50,11 @@ class Position:
             number = float(value)
         except (TypeError, ValueError):
             return value == self.default
+        if number != number:
+            # NaN. The old `>= floor` test rejected it for free; inverting into
+            # `not <` accepted it, because every comparison against NaN is
+            # False. `json.loads` parses a bare `NaN`, so a peer can send one.
+            return False
         if self.floor is not None and number < float(self.floor):
             return False
         return not (self.ceiling is not None and number > float(self.ceiling))
@@ -86,6 +91,10 @@ RED_LINES: dict[str, str] = {
     "llm_moves": "movement stays deterministic Python (book rule 25; our strategic edge)",
     "skip_audit": "the mutual audit is what makes honesty verifiable (book rule 36)",
     "lower_minimum": "Appendix F minimums may be raised, never lowered (book rule 12)",
+    "unreadable": (
+        "we cannot read this as a number, so we cannot check it against the "
+        "Appendix F bound — send a numeric value"
+    ),
     "raise_ceiling": (
         "raising this past our ceiling buys the proposer thinking time rather than "
         "resilience; our moves are deterministic and take milliseconds, so we neither "
@@ -94,12 +103,29 @@ RED_LINES: dict[str, str] = {
 }
 
 
-def _above(value: Any, ceiling: Any) -> bool:
-    """Whether a proposed value exceeds a ceiling, tolerating non-numbers."""
+def _numeric(value: Any) -> bool:
+    """Whether a proposal value is a real number we can compare at all."""
     try:
-        return float(value) > float(ceiling)
+        number = float(value)
     except (TypeError, ValueError):
         return False
+    return number == number
+
+
+def _above(value: Any, ceiling: Any) -> bool:
+    """Whether a proposed value exceeds a ceiling, tolerating non-numbers.
+
+    A non-number is not "above" anything: `hint_max_words = "many"` is
+    unreadable rather than greedy, and reporting it as a ceiling breach would
+    hand the other team the wrong sentence to fix.
+    """
+    if ceiling is None:
+        return False
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return False
+    return number == number and number > float(ceiling)
 
 
 @dataclass
@@ -125,6 +151,9 @@ class Playbook:
         """Score a peer's proposal into accept / counter / reject with reasons."""
         violations: list[str] = []
         counters: dict[str, Any] = {}
+        #: Kept apart so a ceiling breach can be explained in its own words
+        #: while still being answered with a counter-offer.
+        ceiling_asks: dict[str, Any] = {}
         for key, value in proposal.items():
             if key in self.red_lines and value:
                 violations.append(f"{key}: {self.red_lines[key]}")
@@ -133,19 +162,38 @@ class Playbook:
             if position is None:
                 continue
             if not position.acceptable(value):
-                # Which red line, not just *a* red line. Every refusal used to
-                # be reported as "minimums may be raised, never lowered", which
-                # is the wrong sentence for a value that is too *large* — and
-                # the sentence is what the other team reads when they have
-                # minutes to settle a handshake.
-                over = position.ceiling is not None and _above(value, position.ceiling)
-                reason = self.red_lines["raise_ceiling"] if over else \
-                    self.red_lines["lower_minimum"]
-                violations.append(f"{key}={value}: {reason}")
+                # **A ceiling breach is a counter, not a walkout.** Rejecting
+                # abandons the negotiation, and `ABANDONED` is terminal on a
+                # process-lifetime object — one legal ask and the match is gone
+                # until someone restarts the agent. That is a real risk rather
+                # than a hypothetical: our own bootstrap records a cold
+                # DeepSeek call taking 27-61 s against a 30 s budget, so a
+                # conforming peer without a warm-up step genuinely needs longer
+                # than our 45 s ceiling and is not trying to cheat us. Rule 12
+                # breaches and the true red lines still reject; wanting more
+                # room than we like earns a push back to our number.
+                if _above(value, position.ceiling):
+                    ceiling_asks[key] = position.preferred
+                    continue
+                # Naming the right rule matters: `hint_max_words` has no floor
+                # at all, so telling a team their value is "below the Appendix F
+                # minimum" sends them looking for a rule that does not exist,
+                # with minutes to settle a handshake.
+                rule = "lower_minimum" if _numeric(value) else "unreadable"
+                violations.append(f"{key}={value}: {self.red_lines[rule]}")
             elif value != position.preferred:
                 counters[key] = position.preferred
         if violations:
             return {"verdict": REJECT, "reasons": violations, "counter": {}}
+        if ceiling_asks:
+            counters.update(ceiling_asks)
+            return {
+                "verdict": COUNTER,
+                "reasons": [
+                    f"{key}: {self.red_lines['raise_ceiling']}" for key in sorted(ceiling_asks)
+                ] + self._explain({k: v for k, v in counters.items() if k not in ceiling_asks}),
+                "counter": counters,
+            }
         if counters:
             return {"verdict": COUNTER, "reasons": self._explain(counters), "counter": counters}
         return {"verdict": ACCEPT, "reasons": [], "counter": {}}

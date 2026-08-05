@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from ..constants import Role
+from ..negotiation.flow import Negotiation
 from ..net.inbox import Inboxes
 from ..net.mcp_server import PeerServer
 from ..net.preflight_checks import standard_checks
@@ -144,6 +145,15 @@ def build_sdk(
         emit=bus.publish,
     )
     tunnel = _build_tunnel(manager, chosen, bus)
+    # One negotiation object, shared by the half that *acts* on it
+    # (`AgentActions.approve_terms`) and the half that *renders* it
+    # (`AgentSdk.negotiation_timeline`). They are separate attributes on
+    # separate classes, and wiring only the first left the dashboard's timeline
+    # permanently empty while `flow.py`'s own docstring promised it was
+    # rendered.
+    talks = Negotiation(
+        our_group=str(manager.get("game.group_id", "najamjad")), emit=bus.publish
+    )
     actions = AgentActions(
         server=server,
         tunnel=tunnel,
@@ -152,12 +162,26 @@ def build_sdk(
         emit=bus.publish,
         opponent_url=str(manager.get("network.opponent_url", "")),
         wait_seconds=float(manager.get("network.opponent_wait_seconds", 900)),
+        # Without this `_negotiation` is None and both dashboard negotiation
+        # controls raise `AttributeError` on click — the buttons were wired to
+        # nothing.
+        #
+        # It does **not** make the playbook's red lines reachable, and an
+        # earlier version of this comment claimed it did. `Playbook.evaluate`
+        # runs only from `Negotiation.receive`, which handles an *incoming*
+        # proposal, and nothing routes to it: the UI exposes an approve
+        # endpoint and no receive endpoint, and a real match is agreed
+        # take-it-or-leave-it by `exchange_agreement`. So the ceilings are
+        # enforced in `evaluate` and exercised by tests, and a peer's proposal
+        # still cannot reach them in production. Filed rather than papered
+        # over.
+        negotiation=talks,
     )
     # One meter for the whole process: the dashboard's budget panel and the
     # token figures in the emailed report must be the same numbers, not two
     # counts that can disagree about whether we are near the agreed cap.
     meter = token_meter(manager, bus)
-    sdk = AgentSdk(events=bus, actions=actions, meter=meter,
+    sdk = AgentSdk(events=bus, actions=actions, meter=meter, negotiation=talks,
                    controls_enabled=bool(setting(setup, "features.controls", False)))
     if dashboard:
         _attach_dashboard(sdk, actions, manager, bus)
