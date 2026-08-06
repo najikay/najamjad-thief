@@ -57,6 +57,12 @@ def played_record(
         "their_claim": report.their_claim,
         "their_records": list(report.their_records),
         "disputed": report.disputed,
+        # The audit's own numbers. Without these the log artifact reported the
+        # *step count* as `verified_steps` and an always-empty `failed_steps` —
+        # so a TAMPERED game named no failing step, which is the one occasion
+        # anybody would read the field.
+        "verified_steps": list(report.verified_steps),
+        "failed_steps": list(report.failed_steps),
         # What the fair-play monitor saw. Carried on every played record, clean
         # or not, because "we checked and found nothing" is the sentence that
         # makes the finding credible on the one occasion there is something.

@@ -30,6 +30,7 @@ class AgentActions:
         server: Any = None,
         tunnel: Any = None,
         negotiation: Any = None,
+        email_mode: str = "",
         checks: dict[str, Any] | None = None,
         workspace: Path | None = None,
         emit: Any = None,
@@ -42,6 +43,11 @@ class AgentActions:
         self._server = server
         self._tunnel = tunnel
         self._negotiation = negotiation
+        #: `email.mode` as configured. Empty means "not supplied", which is what
+        #: every test double passes, and the delivery guard treats as nothing to
+        #: check — a fake that never intended to send mail must not be refused a
+        #: match it is only pretending to play.
+        self._email_mode = email_mode
         self._checks = checks or {}
         self._workspace = workspace or Path("workspace")
         self._emit = emit or (lambda _event: None)
@@ -140,6 +146,7 @@ class AgentActions:
         """
         if self._match is None:
             raise RuntimeError("no match configured — set network.opponent_url first")
+        self._refuse_undeliverable_counted_match()
         # The result was previously discarded, so a wait that expired went on to
         # play anyway: `opponent.absent waited=120` was recorded and the
         # handshake then died three stack frames deep in a 502. The wait already
@@ -159,6 +166,32 @@ class AgentActions:
         self._emit({"event": "match.finished", "games": len(self._match.games)})
         self._file(result)
         return result
+
+    def _refuse_undeliverable_counted_match(self) -> None:
+        """Stop a counted series that could only draft its report.
+
+        Rules 33-34 require the report to be *sent*; a draft is never delivered
+        and rule 35 scores that as not having played. Nothing about the run
+        looks wrong, because drafting succeeds.
+
+        **Here, not in `build_sdk`.** A first attempt guarded at construction,
+        which refuses every command that builds an SDK — `archive`, `peer`, the
+        dashboard, and worst of all `preflight`, whose entire job is to *report*
+        that `email.mode` is draft. `mode = "draft"` is the committed default in
+        both repos, so that version broke the shipped state: six tests red and
+        CI failing on both sides. The correct trigger is not "an agent exists",
+        it is "a counted series is about to be played", which is exactly here.
+
+        `preflight`'s `delivery_check` still reports the same condition as a
+        checklist line, which is the right shape for something whose answer
+        depends on operator intent. This is the backstop for the operator who
+        never ran it.
+        """
+        from ..shared.practice import current, guard_counted_delivery
+
+        if not self._email_mode:
+            return
+        guard_counted_delivery(self._email_mode, counted=not current().enabled)
 
     def attach_filer(self, filer: Any) -> None:
         """Wire in the thing that turns a finished match into its artifacts."""

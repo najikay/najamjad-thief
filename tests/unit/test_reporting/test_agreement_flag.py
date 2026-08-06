@@ -100,3 +100,60 @@ def test_a_disputed_game_still_withdraws_it(tmp_path) -> None:
     outcomes = [_outcome(1, EndReason.CAPTURE), _outcome(2, EndReason.SURVIVAL)]
 
     assert _confirmed(tmp_path, games, outcomes) is False
+
+
+def test_a_contradicted_game_is_reconciled_not_just_flagged(tmp_path) -> None:
+    """`reconcile` is now the authority on the dispute half, and it is reached.
+
+    It had no production caller — the flag it exists to set was derived from our
+    own audits only, so `mutual_agreement.confirmed` was never a statement about
+    agreement *with the opponent*.
+    """
+    games = [_game(1, "capture", "Verified OK"), _game(2, "survival", "Verified OK")]
+    games[1]["disputed"] = True
+    games[1]["their_claim"] = "capture"
+    outcomes = [_outcome(1, EndReason.CAPTURE), _outcome(2, EndReason.SURVIVAL)]
+
+    assert _confirmed(tmp_path, games, outcomes) is False
+
+
+def test_a_mismatch_reaches_the_operator(tmp_path) -> None:
+    """A wrong-but-confident report is worse than a late one.
+
+    The alert carries both versions so a human can decide, which is the whole
+    reason `reconcile` refuses to silently pick a winner.
+    """
+    from najamjad_agent.domain.series import SeriesResult
+    from najamjad_agent.reporting.filing import MatchFiler
+
+    events: list[dict] = []
+    games = [_game(1, "survival", "Verified OK")]
+    games[0]["disputed"] = True
+    games[0]["their_claim"] = "capture"
+    filer = MatchFiler(tmp_path, "najamjad-vs-rival", "uid-1", GROUPS, emit=events.append)
+    filer.file_match(
+        games,
+        [_outcome(1, EndReason.SURVIVAL)],
+        SeriesResult(
+            total_score={"najamjad": 20, "rival": 5},
+            sub_games_won={"najamjad": 1, "rival": 0},
+            ties=0,
+            winner_group="najamjad",
+            series_tie=False,
+        ),
+        {},
+        "sha",
+        {"najamjad": {}, "rival": {}},
+    )
+
+    mismatch = [event for event in events if event["event"] == "result.mismatch"]
+    assert mismatch, "a contradicted result reached nobody"
+    assert mismatch[0]["differences"]
+
+
+def test_a_silent_opponent_does_not_block_the_report(tmp_path) -> None:
+    """`NO_REPLY` still files: rule 35 punishes not reporting, too."""
+    games = [_game(1, "timeout", "AUDIT SKIPPED"), _game(2, "timeout", "AUDIT SKIPPED")]
+    outcomes = [_outcome(1, EndReason.TIMEOUT), _outcome(2, EndReason.TIMEOUT)]
+
+    assert _confirmed(tmp_path, games, outcomes) is True

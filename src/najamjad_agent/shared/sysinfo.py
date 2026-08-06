@@ -11,8 +11,10 @@ GPU driver must never stop a match from starting.
 
 import os
 import platform
+import re
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 
 UNKNOWN = "unknown"
@@ -131,14 +133,51 @@ def _gpu_name() -> str:
     return first[0].strip() if first else "none detected"
 
 
+def _cpu_freq_mhz() -> float | str:
+    """Clock speed in MHz, from the kernel first and the model name second.
+
+    Rule 24's computational-fairness declaration wants six fields, and this was
+    one of two we published as `null` — `collect_spec` never produced the key,
+    so `spec.get("cpu_freq_mhz")` was `None` in every declaration we ever filed.
+    A blank on a fairness declaration is worse than a rough number: it reads as
+    something withheld.
+
+    `cpuinfo_max_freq` is in kHz and is the honest figure where it exists.
+    Failing that, the model string carries it — "i7-1165G7 @ 2.80GHz" — which is
+    the nominal rather than current clock, and nominal is what a fairness
+    comparison wants anyway.
+    """
+    try:
+        khz = Path("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq").read_text()
+    except OSError:
+        khz = ""
+    if khz.strip().isdigit():
+        return round(int(khz.strip()) / 1000, 1)
+    match = re.search(r"@\s*([\d.]+)\s*GHz", _cpu_name(), re.IGNORECASE)
+    return round(float(match.group(1)) * 1000, 1) if match else UNKNOWN
+
+
+def _vram_gb() -> float | str:
+    """Dedicated video memory, or a truthful zero when there is no GPU.
+
+    The other `null`. `0.0` beside `gpu_type: "none detected"` is a complete
+    statement; `null` beside it is the same fact with a hole in it.
+    """
+    if _gpu_name() in ("none detected", UNKNOWN):
+        return 0.0
+    return UNKNOWN
+
+
 def collect_spec() -> dict:
     """Collect the hardware declaration in the reference field shape."""
     return {
         "os": f"{platform.system()} {platform.release()}",
         "cpu_type": _cpu_name(),
         "cpu_cores": os.cpu_count() or UNKNOWN,
+        "cpu_freq_mhz": _cpu_freq_mhz(),
         "ram_gb": _ram_gb(),
         "gpu_type": _gpu_name(),
+        "vram_gb": _vram_gb(),
         "python": platform.python_version(),
     }
 

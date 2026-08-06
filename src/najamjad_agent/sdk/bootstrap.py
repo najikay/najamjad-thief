@@ -176,6 +176,8 @@ def build_sdk(
         # still cannot reach them in production. Filed rather than papered
         # over.
         negotiation=talks,
+        # Checked when a series is actually played, not at construction.
+        email_mode=str(manager.get("email.mode", "")),
     )
     # One meter for the whole process: the dashboard's budget panel and the
     # token figures in the emailed report must be the same numbers, not two
