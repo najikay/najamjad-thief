@@ -1,0 +1,9 @@
+# najicop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://cop.4laboratory.com/mcp"
+group_id = "najamjad"
+name     = "najicop"
+notes    = "Naji running the cop half, named tunnel"
