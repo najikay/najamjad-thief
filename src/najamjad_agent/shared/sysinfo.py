@@ -133,6 +133,24 @@ def _gpu_name() -> str:
     return first[0].strip() if first else "none detected"
 
 
+#: Where the kernel publishes the nominal clock, in kHz. Named so a test can
+#: point it somewhere else instead of monkeypatching `pathlib.Path.read_text`,
+#: which patches the method for *everything* running at the time.
+CPU_MAX_FREQ = "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
+
+
+def _read_first(path: str) -> str:
+    """File contents, or empty when the platform does not publish it.
+
+    Virtualised CI runners frequently do not expose `cpufreq` at all, which is
+    a normal answer rather than an error.
+    """
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
 def _cpu_freq_mhz() -> float | str:
     """Clock speed in MHz, from the kernel first and the model name second.
 
@@ -147,10 +165,7 @@ def _cpu_freq_mhz() -> float | str:
     the nominal rather than current clock, and nominal is what a fairness
     comparison wants anyway.
     """
-    try:
-        khz = Path("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq").read_text()
-    except OSError:
-        khz = ""
+    khz = _read_first(CPU_MAX_FREQ)
     if khz.strip().isdigit():
         return round(int(khz.strip()) / 1000, 1)
     match = re.search(r"@\s*([\d.]+)\s*GHz", _cpu_name(), re.IGNORECASE)

@@ -35,7 +35,7 @@ def test_the_clock_falls_back_to_the_nominal_speed(monkeypatch: pytest.MonkeyPat
     The model string carries the nominal clock, which is what a fairness
     comparison wants anyway.
     """
-    monkeypatch.setattr(sysinfo.Path, "read_text", _raising_open, raising=False)
+    monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
     monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "11th Gen Core i7-1165G7 @ 2.80GHz")
 
     assert sysinfo._cpu_freq_mhz() == 2800.0
@@ -43,14 +43,21 @@ def test_the_clock_falls_back_to_the_nominal_speed(monkeypatch: pytest.MonkeyPat
 
 def test_an_undeterminable_clock_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
     """`unknown` is the established convention here, and beats inventing a 0."""
-    monkeypatch.setattr(sysinfo.Path, "read_text", _raising_open, raising=False)
+    monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
     monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "a CPU with no clock in its name")
 
     assert sysinfo._cpu_freq_mhz() == sysinfo.UNKNOWN
 
 
-def test_no_gpu_reports_zero_vram_not_null() -> None:
-    """`0.0` beside "none detected" is a complete statement; `null` is a hole."""
+def test_no_gpu_reports_zero_vram_not_null(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`0.0` beside "none detected" is a complete statement; `null` is a hole.
+
+    The GPU is stated rather than detected: this asserted against whatever
+    hardware happened to be running it, which is a test that means one thing on
+    a laptop and another on a CI runner.
+    """
+    monkeypatch.setattr(sysinfo, "_gpu_name", lambda: "none detected")
+
     assert sysinfo._vram_gb() == 0.0
 
 
