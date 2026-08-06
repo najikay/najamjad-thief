@@ -91,7 +91,12 @@ class FakeClock:
         return self.value
 
 
-def build_state(role: Role, position: Position | None = None, board: Board | None = None) -> GameState:
+def build_state(
+    role: Role,
+    position: Position | None = None,
+    board: Board | None = None,
+    emission: Any = None,
+) -> GameState:
     """A fresh mini-game state for one peer."""
     params = GameParams.from_config(CONFIG)
     grid = board or Board(params)
@@ -105,6 +110,7 @@ def build_state(role: Role, position: Position | None = None, board: Board | Non
         own_scent=ScentField(board_size=grid.size),
         opponent_scent=ScentField(board_size=grid.size),
         ledger=CommitLedger(sub_game=1),
+        **({"emission": emission} if emission is not None else {}),
     )
 
 
@@ -117,7 +123,12 @@ def build_orchestrator(
     **kwargs: Any,
 ) -> tuple[Orchestrator, FakeTransport, ScriptedBrain]:
     """Assemble an orchestrator wired entirely to fakes."""
-    state = build_state(role, position=kwargs.pop("position", None), board=kwargs.pop("board", None))
+    state = build_state(
+        role,
+        position=kwargs.pop("position", None),
+        board=kwargs.pop("board", None),
+        emission=kwargs.pop("emission", None),
+    )
     transport = FakeTransport(inbox)
     brain = ScriptedBrain(moves or [], barriers)
     sink = events.append if events is not None else None

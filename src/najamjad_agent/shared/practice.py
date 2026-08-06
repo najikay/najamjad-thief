@@ -139,6 +139,34 @@ class PracticeMode:
         }
 
 
+def guard_counted_delivery(mode: str, counted: bool) -> str:
+    """Refuse to start a counted match that would only draft its report.
+
+    Rules 33-34 require the report to be **sent**; a draft sits in a folder and
+    is never delivered, which rule 35 scores as not having played. So a counted
+    series run in `draft` plays six real mini-games and files nothing that
+    counts — and nothing about the run looks wrong, because drafting succeeds.
+
+    `strength.guard_counted` says it is "modelled on the `email.mode` draft
+    trap", and the trap it was modelled on had no guard of its own. This is it.
+    Raising rather than flipping the default on purpose: silently switching to
+    `send` would mail the grader from every development run, which is the
+    mistake in the other direction and much harder to take back.
+
+    Practice runs are unaffected — `mode_for` already forces a real send to our
+    own address, so `counted` is false for them and this never fires.
+    """
+    resolved = str(mode or "").strip().lower()
+    if counted and resolved != SEND:
+        raise PracticeError(
+            f"a counted match must deliver its report, but email.mode is "
+            f"{resolved or 'unset'!r}. Rules 33-34 require the JSON to be sent and rule 35 "
+            f"scores an undelivered report as not having played — set email.mode = \"{SEND}\" "
+            f"in your role config, or enable practice mode to rehearse safely."
+        )
+    return resolved
+
+
 def load_practice(setup: dict[str, Any]) -> PracticeMode:
     """Build the mode from `setup.json`; absent means off.
 

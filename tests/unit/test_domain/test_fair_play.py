@@ -138,7 +138,7 @@ def test_the_monitor_is_actually_wired_into_a_live_state() -> None:
     wiring rather than the class.
     """
     from najamjad_agent.domain.params import GameParams
-    from najamjad_agent.sdk.match_setup import build_state
+    from najamjad_agent.sdk.state_setup import build_state
 
     params = GameParams.from_config(
         {
@@ -161,7 +161,7 @@ def test_a_violation_reaches_the_event_log_through_ingress() -> None:
     """End to end: a real breach in a real message must surface as an event."""
     from najamjad_agent.domain.params import GameParams
     from najamjad_agent.domain.turn_ingress import absorb_turn
-    from najamjad_agent.sdk.match_setup import build_state
+    from najamjad_agent.sdk.state_setup import build_state
 
     params = GameParams.from_config(
         {

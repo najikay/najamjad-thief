@@ -121,3 +121,61 @@ def test_reference_model_field_decays_absolutely() -> None:
     other.decay_all()
     assert other.intensity_at((3, 3)) == pytest.approx(0.8)
     assert other.model is ScentModel.REFERENCE
+
+
+def test_our_emission_matches_the_published_interop_field() -> None:
+    """The physics both peers must share, checked against an outside source.
+
+    Nothing crashes when two teams run different scent models: the grid is not
+    part of the commit, so every audit still passes. Both sides simply infer the
+    wrong position from each other's field for the whole series, and each
+    concludes the other is buggy.
+
+    `ScentField` defaults to `BOOK` and nothing overrode it, so we emitted the
+    radial relative-falloff field while the league's CORE model is subtractive
+    Chebyshev. These are the exact centre and corner fields from the interop
+    kit's `vectors/pheromone.json`; our `REFERENCE` model reproduces both and
+    `BOOK` reproduces neither.
+    """
+    from najamjad_agent.domain.scent_models import ScentModel, emission_field
+
+    centre = {
+        (1, 1): 0.3, (1, 2): 0.3, (1, 3): 0.3, (1, 4): 0.3, (1, 5): 0.3,
+        (2, 1): 0.3, (2, 2): 0.6, (2, 3): 0.6, (2, 4): 0.6, (2, 5): 0.3,
+        (3, 1): 0.3, (3, 2): 0.6, (3, 3): 0.9, (3, 4): 0.6, (3, 5): 0.3,
+        (4, 1): 0.3, (4, 2): 0.6, (4, 3): 0.6, (4, 4): 0.6, (4, 5): 0.3,
+        (5, 1): 0.3, (5, 2): 0.3, (5, 3): 0.3, (5, 4): 0.3, (5, 5): 0.3,
+    }
+    corner = {
+        (0, 0): 0.9, (0, 1): 0.6, (0, 2): 0.3,
+        (1, 0): 0.6, (1, 1): 0.6, (1, 2): 0.3,
+        (2, 0): 0.3, (2, 1): 0.3, (2, 2): 0.3,
+    }
+
+    emitted = {c: round(v, 3) for c, v in emission_field((3, 3), 0.9, 5, ScentModel.REFERENCE, 7).items()}
+    clipped = {c: round(v, 3) for c, v in emission_field((0, 0), 0.9, 5, ScentModel.REFERENCE, 7).items()}
+
+    assert emitted == centre
+    assert clipped == corner
+
+
+def test_the_league_model_is_what_production_builds() -> None:
+    """The seam. Matching physics in a helper nobody calls is worth nothing."""
+
+    from najamjad_agent.constants import Role
+    from najamjad_agent.domain.params import GameParams
+    from najamjad_agent.domain.scent_models import ScentModel
+    from najamjad_agent.sdk.state_setup import state_factory
+    from tests.role_config import load_role_config
+
+    manager = load_role_config()
+    params = GameParams.from_config({
+        "board_and_agents": {"grid_size": 7, "thief_start": [3, 3], "cop_start": [0, 0]},
+        "movement_and_barriers": {
+            "move_set": ["N", "S", "E", "W", "STAY"], "max_barriers": 14,
+            "max_moves": 35, "survival_threshold": 35,
+        },
+    })
+    state = state_factory(manager)(params, Role.THIEF, 1)
+
+    assert state.own_scent.model is ScentModel.REFERENCE

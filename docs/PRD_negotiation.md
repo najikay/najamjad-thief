@@ -1,6 +1,6 @@
 # Mechanism PRD — negotiation
 
-**Version 1.00 · 2026-07-26 · FR-NEG-1..6 · ADR-011**
+**Version 1.10 · 2026-08-05 · FR-NEG-1..6 · ADR-011**
 
 ## Problem
 
@@ -71,3 +71,36 @@ silently commits us to terms is exactly what went wrong last time.
 | Reference proposal | Accepted by our ingress | `test_interop_contract.py` |
 | Our proposal | Verified by the reference's crypto | measured |
 | Illegal stage transition | `NegotiationError` | `test_playbook_flow.py` |
+
+## What is actually negotiable (2026-08-05)
+
+Two things were being reasoned about as though they were negotiated, and neither
+is.
+
+**Timing is not a signed term.** The contract both sides must match is a flat
+fourteen keys — `board_size`, `smell_grid_size`, `decay_per_step`,
+`emit_intensity`, `min_center_intensity`, `max_steps`, `barriers_max`,
+`setting`, `hint_max_words`, `axis_origin_corner`, `axis_start_index`,
+`thief_start`, `cop_start`, `num_games`. `response_timeout_sec` and
+`watchdog_timeout_sec` are **not among them**. No opponent has ever been able to
+lengthen our turns and none can; the values are local config at Appendix F Table
+19's own numbers, 30 s and 60 s. We could not shorten them either — waiting less
+than 30 s would score a peer as timed out before the book permits — so on the
+one axis where an opponent might buy thinking time for a model, we are already
+as strict as the rules allow.
+
+**Production does not negotiate at all.** `exchange_agreement` sends our terms
+and `verify_peer` requires the peer's to be byte-identical (rule 11). There is
+no counter-offer path in a real match: `NegotiationFlow`, which is where the
+playbook's red lines are evaluated, has no production caller. The playbook is
+therefore a *statement of position* — used by the dashboard and by us when
+agreeing values with a team by hand — rather than a live gate.
+
+That makes it more important, not less, that its red lines are honest, which is
+why they are now bounded in both directions (T-2499). It also means the real
+interop risk is the opposite of being too permissive: **any team differing on any
+one of the fourteen fields cannot complete a handshake with us at all**, down to
+`setting: "New York"`. `describe_mismatch` exists precisely for that conversation
+and names the key and both values, so two teams can settle it in one message
+instead of diffing configs under time pressure. Agree the fourteen values with an
+opponent *before* match day; `docs/HOW_TO_PLAY_US.md` §3 publishes ours.

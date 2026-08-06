@@ -64,7 +64,8 @@ def test_a_move_is_computed_well_inside_the_step_budget():
     from najamjad_agent.constants import Role
     from najamjad_agent.domain.movement import legal_moves
     from najamjad_agent.domain.params import GameParams
-    from najamjad_agent.sdk.match_setup import build_brain, build_state
+    from najamjad_agent.sdk.match_setup import build_brain
+    from najamjad_agent.sdk.state_setup import build_state
 
     params = GameParams.from_config({
         "board_and_agents": {"grid_size": 15, "thief_start": [7, 7], "cop_start": [0, 0]},
@@ -83,3 +84,38 @@ def test_a_move_is_computed_well_inside_the_step_budget():
     elapsed = (time.monotonic() - start) / 10
 
     assert elapsed < 5.0, f"a move takes {elapsed:.2f}s on a 15x15 board"
+
+
+def test_the_rate_limits_do_not_drift_between_the_repos():
+    """The core is guarded against drift; `config/` never was, and it drifted.
+
+    `sync_core.py`'s manifest covers `src/`, `tests/`, `scripts/` and `docs/`,
+    deliberately not `config/` — ports, role and group id must differ per repo.
+    But `rate_limits.json` is about *external services and the opponent*, so
+    nothing in it is role-specific, and leaving it unguarded meant three
+    separate fixes reached only the cop:
+
+    * `mcp_peer.max_retries` 10 against 3 — the increase made after giving up
+      too early forfeited four mini-games in a real match;
+    * `anthropic`/`deepseek.max_retries` 1 against 3 — measured at 20 s lost on
+      the first hint of a match when two vendors are unreachable, most of a
+      30 s deadline;
+    * `mcp_peer.deadline_seconds` — the wall-clock cap, absent entirely.
+
+    Each was written up as fixed. Each was half-applied, and the thief repo
+    plays half our games.
+    """
+    import json
+
+    sibling = ROOT.parent / ("najamjad-thief" if ROOT.name == "najamjad-cop" else "najamjad-cop")
+    if not sibling.exists():
+        pytest.skip("sibling repository not checked out")
+
+    def limits(root):
+        raw = json.loads((root / "config" / "rate_limits.json").read_text(encoding="utf-8"))
+        return {
+            name: {key: value for key, value in entry.items() if not key.startswith("_")}
+            for name, entry in raw["rate_limits"]["services"].items()
+        }
+
+    assert limits(ROOT) == limits(sibling), "rate limits differ between the two repos"

@@ -21,13 +21,10 @@ from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 from ..shared.events import Emit
+from .error_detail import describe
 from .rate_limits import RateLimitConfig
 
 ResultT = TypeVar("ResultT")
-
-# Enough to identify a fault, short enough that an HTML error page from a
-# tunnel edge cannot flood the event log it is meant to make readable.
-MAX_ERROR_DETAIL = 200
 
 
 class QueueFullError(Exception):
@@ -136,9 +133,50 @@ class ApiGatekeeper:
             with self._lock:
                 self._waiting = max(0, self._waiting - 1)
 
+    def _out_of_time(self, started: float, attempt: int) -> bool:
+        """Whether another attempt would finish after anyone still cares.
+
+        The retry budget was never the number of retries — it was always the
+        clock, and we were counting the wrong one. `mcp_peer` allows ten
+        attempts five seconds apart and the config called that "about 45 s of
+        persistence", but each attempt is itself bounded by a 30 s call timeout
+        and `PeerSession` reconnects once inside that, so one message could
+        occupy **645 s**. The agreed `watchdog_timeout_sec` is 60. Everything
+        past roughly 45 s is time spent after the opponent has already scored
+        the turn against us, and it is not free: our own turn loop is blocked
+        in that send, so the minutes come straight out of the next mini-game.
+
+        Deliberately measured *including* the pending back-off, because the
+        question is whether the next attempt lands inside the budget, not
+        whether this instant does.
+
+        **What this does not promise.** It governs whether a *new* attempt may
+        start and cannot reach into one already in flight, so the true ceiling
+        is the deadline plus one response timeout — and Table 19 fixes that
+        timeout at 30 s, so for two or more attempts no legal configuration
+        stays under a 60 s watchdog. 645 s becomes 65 s, not 45. The residue is
+        why `MatchRunner`'s freeze threshold is a multiple of the agreed
+        watchdog and not equal to it.
+        """
+        deadline = self.config.deadline_seconds
+        if not deadline:
+            return False
+        spent = self.clock() - started
+        if spent + self.config.retry_after_seconds < deadline:
+            return False
+        self._event(
+            "gatekeeper.deadline",
+            attempt=attempt,
+            spent=round(spent, 3),
+            deadline=deadline,
+        )
+        return True
+
     def execute(self, api_call: Callable[..., ResultT], *args: Any, **kwargs: Any) -> ResultT:
         """Run `api_call` under the limiter, retrying transient failures."""
         last_error: Exception | None = None
+        started = self.clock()
+        attempt = 0
         for attempt in range(1, self.config.max_retries + 1):
             self._admit()
             try:
@@ -148,18 +186,24 @@ class ApiGatekeeper:
                 self._event(
                     "gatekeeper.retry",
                     attempt=attempt,
-                    error=type(error).__name__,
                     # The type alone is not enough to act on, and finding that
                     # out cost a day. Three police mini-games died to ten
                     # `RuntimeError`s each, and `RuntimeError` is what fastmcp
                     # raises for *every* connect-level fault — its own message
                     # is the only thing that separates "nothing is listening"
-                    # from a protocol error. Truncated because a vendor can
-                    # return a whole HTML page as its `str()`.
-                    detail=f"{error}"[:MAX_ERROR_DETAIL],
+                    # from a protocol error.
+                    #
+                    # Then the message turned out to be empty 152 times out of
+                    # 154, so the type-plus-message pair named nothing either.
+                    # `describe` adds the cause chain underneath it, which is
+                    # where the answer actually was. Truncated inside, because a
+                    # vendor can return a whole HTML page as its `str()`.
+                    **describe(error),
                     backoff=self.config.retry_after_seconds,
                 )
                 if attempt < self.config.max_retries:
+                    if self._out_of_time(started, attempt):
+                        break
                     self.sleep(self.config.retry_after_seconds)
             else:
                 self._event("gatekeeper.call", attempt=attempt)
@@ -168,8 +212,12 @@ class ApiGatekeeper:
                 self._release()
         self._event(
             "gatekeeper.failed",
-            attempts=self.config.max_retries,
-            error=type(last_error).__name__ if last_error else "",
-            detail=f"{last_error}"[:MAX_ERROR_DETAIL] if last_error else "",
+            # What we actually ran, not the ceiling. The deadline can stop us
+            # early, and `analysis/connection_forensics.py` reads this field —
+            # reporting ten attempts when nine ran turns the forensics into
+            # fiction in exactly the situation they exist to explain.
+            attempts=attempt,
+            spent=round(self.clock() - started, 3),
+            **(describe(last_error) if last_error else {"error": "", "detail": "", "cause": ""}),
         )
-        raise RuntimeError(f"{self.service}: failed after {self.config.max_retries} attempts") from last_error
+        raise RuntimeError(f"{self.service}: failed after {attempt} attempts") from last_error

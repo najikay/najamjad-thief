@@ -16,9 +16,8 @@ from typing import Any
 
 from fastmcp import Client
 
+from ..shared.error_detail import describe
 from ..shared.events import Emit
-
-MAX_ERROR_DETAIL = 200
 
 
 def _task_name() -> str:
@@ -66,6 +65,12 @@ class PeerSession:
         exception type with three different messages. The failure is evented
         before it propagates, because the alternative — which we lived through —
         is ten identical `RuntimeError` lines and no way to tell which.
+
+        And three *different* messages was the optimistic reading. In the real
+        series the wrapper's message was `Client failed to connect: ` with
+        nothing after the colon 152 times out of 154, because the exception it
+        wrapped stringified to the empty string. `describe` is what makes the
+        difference: it follows the wrapper down to whatever actually failed.
         """
         if self._session is None:
             session = Client(self.url)
@@ -76,8 +81,7 @@ class PeerSession:
                     "event": "client.session_failed",
                     "url": self.url,
                     "task": _task_name(),
-                    "error": type(error).__name__,
-                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                    **describe(error),
                 })
                 raise
             self._session = session
@@ -89,6 +93,12 @@ class PeerSession:
     async def drop(self) -> None:
         """Close and forget the session, tolerating an already-dead socket.
 
+        Takes the lock before claiming the session. `retarget` and `close`
+        both drop from outside the request path, and without the lock either can
+        `__aexit__` a session out from under a call that is still using it —
+        which surfaces as a connect failure against the *old* URL, on a peer we
+        had just been told had moved.
+
         The failure is reported and *then* swallowed, rather than swallowed
         blind. We discard the session either way — a peer that has already gone
         makes an orderly teardown fail by definition — but a teardown that
@@ -97,7 +107,8 @@ class PeerSession:
         purpose-built experiment. It costs one event to never run that
         experiment again.
         """
-        session, self._session = self._session, None
+        async with self._lock:
+            session, self._session = self._session, None
         if session is None:
             return
         try:
@@ -107,8 +118,7 @@ class PeerSession:
                 "event": "client.drop_failed",
                 "url": self.url,
                 "task": _task_name(),
-                "error": type(error).__name__,
-                "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                **describe(error),
             })
 
     async def call(self, tool: str, arguments: dict[str, Any]) -> Any:
@@ -130,8 +140,7 @@ class PeerSession:
                     "url": self.url,
                     "tool": tool,
                     "task": _task_name(),
-                    "error": type(error).__name__,
-                    "detail": f"{error}"[:MAX_ERROR_DETAIL],
+                    **describe(error),
                 })
                 session = await self.open()
                 return await session.call_tool(tool, arguments)

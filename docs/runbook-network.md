@@ -190,3 +190,62 @@ need two simultaneous public hostnames. It stays wired as the fallback — a
 **Why a paid domain at all:** a hostname that can change (quick tunnels) or
 disappear (free TLDs) is the exact failure that cost Assignment 6 the most
 time. The domain outlives the course and is reusable for other projects.
+
+---
+
+## The stall: what it actually was (2026-08-04)
+
+Three separate defects wore the same costume — "our cop stops sending after
+~20 steps". None of them was DNS, which is what we told the opponent it was.
+
+### 1. We dialled an address they had already left
+
+Their handshake identity carries `mcp_servers` and always has. We logged it and
+kept dialling `network.opponent_url`, typed in before the match.
+
+uoh-sqak run **ngrok free, whose hostname re-mints every session** — written on
+their own opponent card. The moment they restart an agent mid-series, the
+address we hold is dead and stays dead for the rest of the match. Every symptom
+follows from that one cached string:
+
+| symptom | why |
+|---|---|
+| their access log shows zero errors | our requests never reached their server |
+| a TCP probe says they are reachable | the ngrok **edge** answers on any hostname, tunnel or not |
+| it starts mid-game, not at the start | it starts when *they* restart |
+| the whole series does not fail | only the role whose endpoint went stale fails |
+
+Fixed in `net/peer_endpoint.py`. A peer may move us only to an address they
+declared inside a signed, hash-locked handshake.
+
+### 2. We announced an endpoint before it could answer
+
+`PeerServer.start()` returned in **0.4 ms**; the socket did not accept for
+**314 ms** on a cold start; and `running` meant "the thread is alive". So
+`server.started` fired, the tunnel was started, and `agent.online` published a
+URL that answered `connection refused`. This is the source of the
+`dial tcp 127.0.0.1:8802: connect: connection refused` lines that fill our own
+`cloudflared` terminal.
+
+Fixed: `start()` blocks until a real connection succeeds, and raises if it never
+does. `net/readiness.py` keeps "can I bind here" and "will a connection
+complete" as the two different questions they are.
+
+### 3. We asked the wrong layer who failed
+
+`accepts_tcp` asks whether the tunnel edge is up. For a hosted tunnel that is
+close to a constant: the edge terminates TLS and serves **HTTP 502** when the
+laptop half is gone. We read the completed handshake as "their endpoint is
+reachable; the fault is not connectivity" and stopped one layer above the
+answer.
+
+`net/http_probe.py` asks at the HTTP layer, and is decisive both ways — a
+provider error page names the far side, a `200`/`405`/`406` while our client
+cannot connect names **us**, and `attribute()` now returns `our-network` for it.
+
+### Reading the cloudflared log
+
+`Unable to reach the origin service ... dial tcp 127.0.0.1:8802: connection
+refused` means **our** agent is not listening. Harmless when no match is
+running — a named tunnel stays up while the agent does not. During a match it is
+the fault, and it is ours.

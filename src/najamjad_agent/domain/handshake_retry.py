@@ -16,13 +16,18 @@ from ..shared.events import Emit
 
 
 def agree_on_terms(
-    handshake: Any, sub_game: int, retries: int, emit: Emit
+    handshake: Any, sub_game: int, retries: int, emit: Emit, role: str = ""
 ) -> bool:
     """Run the pre-game handshake, retrying the *same* sub-game on failure.
 
     Input: the injected handshake callable (None when unconfigured), which
-        mini-game is being agreed, how many retries the config allows, and the
-        event sink.
+        mini-game is being agreed, how many retries the config allows, the
+        event sink, and the role we hold this mini-game.
+
+    `role` is forwarded because the peer's handshake declares the endpoint
+    for the role *they* are playing, and which of their addresses we should
+    dial therefore depends on which of ours we hold. Optional so every
+    existing caller and test keeps working.
     Output: True once terms are agreed; False when the attempts are exhausted,
         which the caller resolves as a technical outcome rather than a game.
     Setup: `network.handshake_retries` in the role config.
@@ -37,7 +42,7 @@ def agree_on_terms(
         return True
     for attempt in range(1 + retries):
         try:
-            handshake()
+            _invoke(handshake, role)
         except Exception as error:  # noqa: BLE001 - injected boundary, reported
             emit({
                 "event": "handshake.retry" if attempt < retries else "handshake.exhausted",
@@ -48,3 +53,20 @@ def agree_on_terms(
         else:
             return True
     return False
+
+
+def _invoke(handshake: Any, role: str) -> Any:
+    """Call the handshake, passing the role only if it accepts one.
+
+    The injected callable is a boundary and older ones take no arguments. A
+    `TypeError` from the call itself would be indistinguishable from one raised
+    *inside* the handshake, so capability is inspected rather than guessed at
+    from an exception.
+    """
+    import inspect
+
+    try:
+        takes_role = bool(inspect.signature(handshake).parameters)
+    except (TypeError, ValueError):
+        takes_role = False
+    return handshake(role) if takes_role else handshake()

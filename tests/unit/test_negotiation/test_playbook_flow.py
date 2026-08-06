@@ -45,7 +45,10 @@ def test_every_negotiable_appendix_f_item_has_a_position(playbook: Playbook) -> 
 
 def test_opening_terms_use_our_preferred_values(playbook: Playbook) -> None:
     opening = playbook.opening_terms()
-    assert opening["response_timeout_sec"] == 45, "we ask for tunnel headroom"
+    # We no longer ask for headroom: a longer turn helps whoever needs time to
+    # think, and that is never us. Retries and the send deadline answer a tunnel
+    # hiccup without lengthening every turn of the match for both sides.
+    assert opening["response_timeout_sec"] == 30, "we ask for the book's own value"
     assert opening["num_games"] == 6
 
 
@@ -58,9 +61,10 @@ def test_an_identical_proposal_is_accepted(playbook: Playbook) -> None:
 
 
 def test_a_workable_difference_produces_a_counter(playbook: Playbook) -> None:
-    assessment = playbook.evaluate({"response_timeout_sec": 30})
+    """45 s is inside our ceiling, so it is a haggle rather than a refusal."""
+    assessment = playbook.evaluate({"response_timeout_sec": 45})
     assert assessment["verdict"] == COUNTER
-    assert assessment["counter"]["response_timeout_sec"] == 45
+    assert assessment["counter"]["response_timeout_sec"] == 30
     assert assessment["reasons"], "a counter must explain itself"
 
 
@@ -167,8 +171,12 @@ def test_agreeing_from_idle_is_refused(negotiation: Negotiation) -> None:
 
 
 def test_a_counter_round_can_lead_to_agreement(negotiation: Negotiation) -> None:
-    """The normal path: they propose, we counter, they accept our terms."""
-    negotiation.receive({"response_timeout_sec": 30})
+    """The normal path: they propose, we counter, they accept our terms.
+
+    45 s rather than 30 s now, because 30 s *is* our position — a proposal we
+    already agree with is accepted, and no counter round happens at all.
+    """
+    negotiation.receive({"response_timeout_sec": 45})
     assert negotiation.stage is Stage.COUNTERED
     negotiation.agree(TERMS)
     assert negotiation.stage is Stage.AGREED

@@ -37,6 +37,10 @@ class FinalResult(ArtifactModel):
     ties: int = Field(ge=0)
     winner_group: str | None
     series_tie: bool
+    #: Mini-games that ended off the board. Distinct from `ties`, because a
+    #: technical ending scores 0/0 for both sides and so looks exactly like
+    #: a draw without being one.
+    technical_endings: int = 0
     tokens_total_series: dict[str, int] = Field(default_factory=dict)
     #: The book's tie score for both teams (PAGE 87, Appendix F: 2). Present
     #: only on a tied series: `aggregate_series` computed it and the schema had
@@ -80,6 +84,11 @@ class ResultArtifact(BaseModel):
     sub_games: list[SubGameRow] = Field(min_length=1)
     final_result: FinalResult
     mutual_agreement: MutualAgreement
+    #: Every sub-game's config and log, because `links` names only the
+    #: first: on a six-game series that pointed a grader at one sixth of
+    #: the evidence. Additive, so `links` keeps the shape peers parse.
+    all_configs: list[str] = Field(default_factory=list)
+    all_logs: list[str] = Field(default_factory=list)
     links: dict[str, str] = Field(default_factory=dict)
     #: Both teams' repositories, keyed by group id (rule 49). Chapter 9.4 is
     #: explicit that all four links — cop and thief for each side — appear in

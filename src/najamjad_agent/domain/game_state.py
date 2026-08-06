@@ -11,6 +11,7 @@ from typing import Any
 from ..constants import EndReason, Move, Role
 from .belief import BeliefGrid
 from .board import Board
+from .emission import EmissionPolicy
 from .ledger import CommitLedger
 from .params import Position
 from .scent import ScentField
@@ -26,7 +27,15 @@ class TurnFacts:
     legal: tuple[Move, ...]
     belief_peak: Position | None
     belief: dict[Position, float]
+    #: The **opponent's** trail — the field our belief is inferred from.
     scent: dict[Position, float]
+    #: **Our own** trail, which is a different field answering a different
+    #: question: not "where are they" but "where have I already told them I
+    #: was". `thief_brain._value` asks the second and was handed the first, so
+    #: the term meant to stop us re-treading perfumed ground was reading the
+    #: opponent's deposits instead — and was identically zero against a peer
+    #: that emits nothing.
+    own_scent: dict[Position, float] = field(default_factory=dict)
     last_hint: str = ""
     barriers_left: int = 0
     #: Which mini-game this decision belongs to. The speaker reads it to bill
@@ -54,6 +63,24 @@ class GameState:
     opponent_estimate: Position | None = None
     pending_capture_claim: bool | None = None
     claimed_cell: Position | None = None
+    # Position evidence read out of the opponent's *mandatory* declarations — a
+    # capture claim or a barrier (see `domain/cop_sighting.py`). Held here rather
+    # than applied at absorb time because it has to be fused in the right order:
+    # after the diffusion step that models their move, alongside the scent, or a
+    # point observation gets blurred across five cells before anything reads it.
+    #
+    # `last_sighting` outlives it, because plausibility is judged against the
+    # previous sighting and a peer that stops declaring must not reset that.
+    cop_sighting: Any = None
+    last_sighting: Any = None
+    # How much of our own evidence we disclose each turn (`domain/emission.py`).
+    # Defaulted rather than required so every existing construction keeps the
+    # behaviour it had: full scent, hints spoken.
+    emission: EmissionPolicy = field(default_factory=EmissionPolicy)
+    # Consecutive opponent turns carrying neither scent nor a hint. Feeds
+    # `EmissionPolicy.mirroring`, so we only ever go quiet after watching
+    # them do it first — reciprocity has to be reciprocal to be worth the name.
+    peer_silent_turns: int = 0
     # An ending we have detected but not yet told the opponent about. Both peers
     # must record the same reason or rules 33-35 void the game, and they cannot
     # detect every ending at the same moment: the turn order means one side sees
@@ -86,6 +113,7 @@ class GameState:
             scent={
                 cell: self.opponent_scent.intensity_at(cell) for cell in self.board.cells()
             },
+            own_scent={cell: self.own_scent.intensity_at(cell) for cell in self.board.cells()},
             last_hint=self.last_opponent_hint,
             barriers_left=self.barriers_left,
         )

@@ -1,6 +1,7 @@
 """Tests for the event bus: correlation, secret scrubbing, fan-out isolation."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from najamjad_agent.shared.events import EventBus
@@ -119,4 +120,31 @@ def test_an_unwritable_path_is_reported_not_fatal(tmp_path: Path) -> None:
 def test_publish_returns_the_enriched_event() -> None:
     bus = EventBus(correlation={"game_uid": "u"})
     published = bus.publish({"event": "x"})
-    assert published == {"event": "x", "game_uid": "u"}
+    assert published["event"] == "x"
+    assert published["game_uid"] == "u"
+
+
+def test_every_event_carries_a_utc_timestamp() -> None:
+    """Without this the log cannot be lined up against an opponent's server log.
+
+    Ten thousand events were written with no time on them, which is why the one
+    diagnostic an opponent offered — their timestamped request log against ours
+    — could not be run at all.
+    """
+    bus = EventBus()
+    stamped = bus.publish({"event": "client.sending"})
+    assert datetime.fromisoformat(stamped["ts"]).tzinfo is not None
+
+
+def test_a_caller_supplied_timestamp_is_not_overwritten() -> None:
+    """A replayed event keeps the time it happened, not the time it was re-read."""
+    bus = EventBus()
+    published = bus.publish({"event": "turn.sent", "ts": "2026-08-02T19:47:36.000+00:00"})
+    assert published["ts"] == "2026-08-02T19:47:36.000+00:00"
+
+
+def test_timestamps_are_written_to_the_log_file(tmp_path: Path) -> None:
+    bus = EventBus(path=tmp_path / "events.jsonl")
+    bus.publish({"event": "x"})
+    bus.close()
+    assert "ts" in json.loads((tmp_path / "events.jsonl").read_text().splitlines()[0])

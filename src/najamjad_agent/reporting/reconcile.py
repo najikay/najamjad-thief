@@ -129,3 +129,49 @@ def our_summary(
         "sha256": agreement_hash(game_id, game_uid, groups, sub_games),
         "outcome": symmetric_outcome(game_id, game_uid, groups, sub_games),
     }
+
+
+def from_recorded_games(
+    game_id: str,
+    game_uid: str,
+    groups: tuple[str, str],
+    our_sub_games: list[dict[str, Any]],
+    games: list[dict[str, Any]],
+) -> Reconciliation:
+    """Reconcile from what the opponent told us *during* the match.
+
+    Input: the identifiers, our symmetric rows, and the raw per-mini-game
+    records.
+    Output: a `Reconciliation` whose status is real rather than assumed.
+    Setup: none, and no network — every input is already on disk.
+
+    **Why not exchange summaries on the wire.** `reconcile` was written for a
+    result exchange that does not exist, and inventing one now would be a poor
+    trade: `ControlMessage` validates `kind` against a closed set and *rejects*
+    anything else, so a new verb would be refused by every conforming peer and
+    look like a protocol violation days before four counted matches.
+
+    We do not need it. Rules 18-22 already make the opponent state each
+    mini-game's ending, `match_audit` records it as `their_claim`, and the
+    orchestrator sets `disputed` when their claim contradicts ours. That is the
+    contradiction rules 33-35 void a match for — recorded, per game, from
+    evidence they revealed. This assembles it into the verdict the module was
+    always meant to produce.
+
+    Three outcomes, and the middle one is the point. A peer that claimed
+    endings and never contradicted us is `AGREED`; one that contradicted us is
+    `MISMATCH`, which holds the send and hands the operator both versions; one
+    that told us nothing — every game technical, say — is `NO_REPLY`, which
+    still permits filing, because rule 35 punishes not reporting too.
+    """
+    ours = symmetric_outcome(game_id, game_uid, groups, our_sub_games)
+    disputes = [
+        _describe(f"sub_game[{game.get('sub_game')}]", game.get("end_reason"), game.get("their_claim"))
+        for game in games
+        if game.get("disputed")
+    ]
+    if disputes:
+        return Reconciliation(status=MISMATCH, ours=ours, differences=disputes)
+    if not any(str(game.get("their_claim") or "").strip() for game in games):
+        return Reconciliation(status=NO_REPLY, ours=ours)
+    return Reconciliation(status=AGREED, ours=ours, theirs=ours)

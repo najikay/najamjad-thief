@@ -34,6 +34,9 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlparse
 
+from . import http_probe
+from .readiness import resolves
+
 OPPONENT = "opponent-unreachable"
 OURS = "our-network"
 INDETERMINATE = "indeterminate"
@@ -67,19 +70,6 @@ def _endpoint(url: str) -> tuple[str, int] | None:
     return parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)
 
 
-def resolves(url: str, timeout: float = PROBE_TIMEOUT) -> bool:
-    """Whether the host in `url` resolves in DNS right now."""
-    target = _endpoint(url)
-    if target is None:
-        return False
-    socket.setdefaulttimeout(timeout)
-    try:
-        socket.getaddrinfo(target[0], target[1], proto=socket.IPPROTO_TCP)
-    except OSError:
-        return False
-    return True
-
-
 def accepts_tcp(url: str, timeout: float = PROBE_TIMEOUT) -> bool:
     """Whether something accepts a TCP connection at `url`.
 
@@ -102,11 +92,17 @@ def attribute(
     their_url: str,
     error: str = "",
     probe: Any = None,
+    http: Any = None,
 ) -> Attribution:
     """Decide who failed, from what is reachable at this moment.
 
-    Input: our public URL, theirs, the failing error's message, and optionally a
-    probe override for tests.
+    Input: our public URL, theirs, the failing error's message, and optionally
+    overrides for the TCP and HTTP probes.
+
+    Both probes are injectable so a unit test needs no network. That is not
+    tidiness: the first version reached the real internet from the suite, and
+    a test whose verdict depends on whether an opponent's tunnel happens to be
+    up today is a test that will fail for the wrong reason at 20:00.
     Output: an `Attribution` carrying the verdict and the raw observations.
     Setup: none. Safe to call inside a failing turn — every probe is bounded.
 
@@ -115,6 +111,7 @@ def attribute(
     exactly the overreach that makes the whole record untrustworthy.
     """
     reach = probe or accepts_tcp
+    ask = http or http_probe.probe
     evidence: dict[str, Any] = {"error": error[:200]}
     if not their_url:
         return Attribution(INDETERMINATE, "no opponent endpoint configured", evidence)
@@ -126,6 +123,27 @@ def attribute(
     evidence["our_tcp"] = bool(reach(our_url))
 
     if evidence["their_tcp"]:
+        # A completed TCP handshake is much weaker evidence than it looks. A
+        # hosted tunnel is a cloud edge plus an agent on someone's laptop; the
+        # edge answers on 443 whether or not the laptop half still exists, so
+        # `their_tcp` is very nearly a constant and we built a verdict on it. Ask
+        # at the HTTP layer, where the answer actually lives — and where it is
+        # decisive in both directions.
+        answer = ask(their_url)
+        evidence["their_http"] = answer.as_dict()
+        if answer.edge_failure:
+            return Attribution(
+                OPPONENT,
+                "their tunnel edge answers but reports no origin behind it",
+                evidence,
+            )
+        if answer.origin_alive:
+            return Attribution(
+                OURS,
+                "their server answered our probe while our own client could not "
+                "connect; the fault is on our side",
+                evidence,
+            )
         return Attribution(
             INDETERMINATE, "their endpoint is reachable; the fault is not connectivity", evidence
         )

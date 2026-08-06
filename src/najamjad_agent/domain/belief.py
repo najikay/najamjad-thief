@@ -140,6 +140,57 @@ class BeliefGrid:
             self._values[cell] = max(self._values[cell] * max(0.0, weight), MIN_CELL_PROBABILITY)
         self.normalise()
 
+    def observe_reach(self, cells: tuple[Position, ...], confidence: float = 1.0) -> None:
+        """Fuse a public declaration that narrows the opponent to `cells`.
+
+        The fourth evidence source, and the only one that works against an
+        opponent who transmits nothing. A capture claim names the cop's exact
+        cell and a barrier names a five-cell reach set (see
+        `domain/cop_sighting.py`); both are mandatory and both are truthful under
+        rules 15-16 and 21-22. Against uoh-sqak, who send no scent and no hints,
+        these were the *only* position disclosures in the whole series — 289 of
+        them — and the belief ignored every one.
+
+        `confidence` is the posterior mass the declaration is worth — the share
+        of belief that ends up *inside* `cells` — and the rest is left spread
+        over the board in its existing proportions. That is Jeffrey conditioning,
+        and stating it as a mass rather than as a per-cell multiplier is not
+        cosmetic: a multiplier interacts with how many cells happen to be on each
+        side, and at 49 cells a barrier's 4-cell reach set finished with *less*
+        mass than the 44 cells it had just ruled out. The name has to mean what
+        it says or the dial cannot be tuned by anyone, including us.
+
+        Nothing reaches a hard zero. `MIN_CELL_PROBABILITY` survives the update
+        so a mistaken observation stays recoverable — a cell driven to zero can
+        never come back under multiplication, and this is the one evidence
+        source with no physics behind it to correct a lie.
+
+        A declaration naming nothing we track is *ignored*, not applied. Zeroing
+        the whole grid would trip `normalise`'s collapse recovery and reset us to
+        uniform — strictly worse than the belief we already held, and reachable
+        by an opponent simply by declaring a cell we think is walled.
+        """
+        wanted = set(cells) & set(self._values)
+        if not wanted:
+            return
+        share = max(0.0, min(1.0, confidence))
+        inside = sum(self._values[cell] for cell in wanted)
+        outside = sum(value for cell, value in self._values.items() if cell not in wanted)
+        if inside <= 0.0 or outside <= 0.0:
+            # One side holds everything already; rescaling it against an empty
+            # other side would divide by zero for no gain.
+            return
+        self._values = {
+            cell: max(
+                MIN_CELL_PROBABILITY,
+                share * value / inside
+                if cell in wanted
+                else (1.0 - share) * value / outside,
+            )
+            for cell, value in self._values.items()
+        }
+        self.normalise()
+
     def exclude(self, cells: tuple[Position, ...]) -> None:
         """Zero out cells the opponent provably does not occupy (e.g. our own)."""
         for cell in cells:

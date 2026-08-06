@@ -1,6 +1,6 @@
 # Security posture — an agent that plays strangers on the open internet
 
-**Version 1.00 · 2026-07-25**
+**Version 1.10 · 2026-08-05**
 
 This project has an unusual threat model for a course assignment: our MCP server
 is **publicly reachable by requirement** (book rule 10), its URL is published in
@@ -21,14 +21,48 @@ into a technical loss.
 
 | Control | Effect |
 |---|---|
-| Identity binding | After negotiation, only the agreed opponent id may send turns |
+| Identity binding | After negotiation, only the peer holding the opposite **role** may send turns |
 | Session token | HMAC over the signed contract hash + `game_uid`; both peers derive it independently, an outsider cannot, and it never crosses the wire |
-| Inbound rate limit | 120/min globally — far above honest play, far below a flood |
+| Inbound rate limit | 3000/min globally — far above honest play, far below a flood. It was 120, on the assumption turns are human-paced; they are not, and it rejected a legitimate turn mid-series and lost us that game |
 | Order of checks | Identity is checked **before** the sequence guard, so a stranger cannot even advance our step counter |
 
 The session token is **optional by design**: an opponent running the reference
 implementation sends none, and refusing to play them would cost us a match
 rather than protect us. Unauthenticated peers are logged, not rejected.
+
+### The binding was dead, and then it was wrong (2026-08-05)
+
+Worth recording in full, because both halves were invisible for months.
+
+`SessionGuard.bind` had **no caller outside its own test file**, so `check()`
+returned early on `not self.bound` for every message any opponent ever sent. The
+identity half of this section described an intention, not a behaviour, for the
+whole project — while our MCP endpoint sat public under rule 10 with its URL in a
+repository the lecturer reads.
+
+Wiring it then broke everything, for a reason the repo already contained. The
+wire's `sender` field carries a **role** — `"police"` or `"thief"` — not a group
+id: `docs/research/simulator-repo-digest.md` records that shape on the turn,
+audit and control messages, and our own `turn_egress` sends `state.role.value`.
+Binding `expected_sender` to `"uoh-sqak"` therefore compared it against
+`"police"` and refused every inbound turn and every audit reveal from the first
+handshake onward — against the reference *and* against our own twin. A review
+caught it before a match did.
+
+So the design settled where the protocol actually is:
+
+* the **token** is the identity proof, because it is derived from a contract
+  only the two of us hold and cannot be forged by a stranger;
+* `expected_sender` is the **role** the opponent holds this mini-game, re-bound
+  each game since roles alternate, because that is what their messages carry;
+* a peer that declares no group id leaves us deliberately **unbound**, with an
+  event — binding to the empty string would reject everything they send, which
+  is losing a series to our own defence.
+
+The lesson is not "check the wire format". It is that the safety test used
+`sender = ""`, the one input that could not exhibit the bug, and the docstring
+asserted the reference "does not set the field" while our own research digest
+said it does.
 
 ## 2. Prompt injection from the opponent
 
@@ -106,6 +140,10 @@ moves, and mid-turn disconnects.
 | Concern | Tests |
 |---|---|
 | Session binding, rate limit | `tests/unit/test_net/test_session_guard.py` |
+| Binding actually reached, and the wire's real shape | `tests/unit/test_sdk/test_session_binding.py` |
+| Step guard and the claim-answer exemption | `tests/unit/test_net/test_turn_sequence.py` |
+| Opponent barrier budget | `tests/unit/test_domain/test_barrier_budget.py` |
+| Canonical form and commit construction | `tests/unit/test_protocol/test_interop_vectors.py` |
 | Prompt injection | `tests/unit/test_llm/test_injection_guard.py` |
 | Outbound hint rules | `tests/unit/test_llm/test_template_and_guard.py` |
 | Crypto checklist (source-scanning) | `tests/unit/test_domain/test_crypto_review.py` |
@@ -149,3 +187,43 @@ Three design rules, and the first two are the important ones:
 
 The monitor is pure and takes no I/O, so a stored log re-audits identically
 offline — which is what makes a finding arguable after the fact.
+
+## Replay, and the one exemption that had to exist (2026-08-05)
+
+The monotonic step guard refuses a step it has already accepted. It carries a
+single exemption, and that exemption has now been wrong in *both* directions,
+which is worth writing down because the two failures look nothing alike.
+
+**Too open.** Any message carrying `claim_response` skipped the sequence check
+entirely — any step number, any number of times. One key was a complete bypass
+of the guard, on an endpoint anyone can reach. The comment defending it argued
+"an answer is idempotent, the game ends on the first one", which is true of an
+answer to a claim we actually made and *not* true of a field the sender sets.
+
+**Too closed.** Narrowing it to `last_step ± 1` assumed an answer is always a
+final concession. It is not: the reference attaches `capture_claim` to every
+police move, so the thief answers on ordinary move-carrying turns, many
+consecutively. Replaying our own archived `events.jsonl` through that version
+refused 10 of 35 turns in one mini-game and 14 of 35 in another — each a dropped
+turn, a timed-out poll, and the peer's watchdog scoring it against us.
+
+The rule now is the ordinary one plus a single exception: an answer arriving at
+the step we last accepted is taken **once**; anything ahead of it is a normal
+turn and advances the counter; anything behind it is stale and refused.
+
+## The opponent's barrier budget (2026-08-05)
+
+`movement.place_barrier` refuses *our* placement past `max_barriers`; nothing
+checked theirs, so we banked every wall a peer cared to declare — a bare board
+accepted 46 against an agreed 14. Honoured, enough walls seal the thief into a
+pocket, and rule 47 scores immobilisation as a capture.
+
+Refusing the excess is self-defence rather than an accusation, and it is the one
+place in `turn_ingress` where we act on a declaration instead of merely recording
+it. It is not free: a refused wall makes our board diverge from theirs, and a
+move we compute as legal may be illegal on theirs, which is a rules 33-35
+dispute. We take that trade because the alternative is losing the mini-game to a
+peer who can simply keep declaring, and because divergence only begins after they
+have broken the agreed quota. No opponent has actually done this — the archive's
+per-mini-game maximum is exactly 14, never exceeded in 31 games.
+

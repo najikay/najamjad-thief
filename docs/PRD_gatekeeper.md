@@ -1,6 +1,6 @@
 # Mechanism PRD — API gatekeeper
 
-**Version 1.00 · 2026-07-26 · ADR-009**
+**Version 1.10 · 2026-08-05 · ADR-009**
 
 ## Problem
 
@@ -84,3 +84,34 @@ becomes a timeout.
 | Permanent failure (bad key) | Fails fast, no retry burn | `test_provider_lifecycle.py` |
 | Config outside Appendix F | Rejected at load | `test_rate_limits.py` |
 | Peer service | Never throttles a legitimate match | `test_match_setup` / measured |
+
+## The retry budget was never the retry count (2026-08-05)
+
+`max_retries` bounds attempts, not time, and time is what the opponent's
+watchdog measures. `mcp_peer` allows ten attempts five seconds apart and the
+config called that "about 45 s of persistence" — but each attempt carries its own
+30 s call timeout and `PeerSession` reconnects once inside it, so one message
+could occupy **645 s** against an agreed 60 s watchdog. The time is not idle: our
+turn loop is blocked in that send, so the minutes come out of the mini-games that
+follow. That is a plausible mechanism for an opponent reporting "your cop stops
+moving after ~20 steps", which we could never otherwise account for.
+
+`deadline_seconds` caps the total wall clock and stops us *starting* attempts
+once the budget plus one back-off is spent.
+
+**Legal, and the distinction is the point.** Appendix F Table 19 binds the
+*interval* between attempts at a 5 s minimum, which we keep untouched. Capping
+the total is a different quantity and makes us stricter on ourselves; shortening
+the interval would breach the table, which is why an earlier fast-first-backoff
+idea was abandoned rather than shipped.
+
+**What it does not promise.** The budget governs whether a *new* attempt may
+start and cannot reach into one already in flight, so the ceiling is the deadline
+plus one response timeout: 645 s becomes 65 s, not 45 s. For two or more attempts
+no legal configuration stays under a 60 s watchdog. That residue is exactly why
+`domain/freeze_guard.py` waits three agreed watchdogs rather than one — a freeze
+detector that fires on a healthy slow turn is a new way to lose a game.
+
+Off by default (`0`) for every other service: a deadline only makes sense where
+something on the far side has already stopped waiting for us.
+

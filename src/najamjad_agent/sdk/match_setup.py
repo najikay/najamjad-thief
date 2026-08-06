@@ -13,14 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from ..constants import Role
-from ..domain.belief import BeliefGrid
-from ..domain.board import Board
-from ..domain.fair_play import FairPlayMonitor
 from ..domain.game_state import GameState
-from ..domain.ledger import CommitLedger
 from ..domain.match import MatchRunner
 from ..domain.params import GameParams
-from ..domain.scent import ScentField
 from ..domain.scoring import ScoreTable
 from ..domain.series import SeriesTracker
 from ..llm.speaker import Speaker
@@ -33,27 +28,7 @@ from ..shared.rate_limits import for_service, load_rate_limits
 from ..strategy.cop_brain import CopBrain
 from ..strategy.thief_brain import ThiefBrain
 from .plugins import resolve
-
-
-def build_state(params: GameParams, role: Role, sub_game: int) -> GameState:
-    """A fresh mini-game state; nothing may leak between sub-games."""
-    board = Board(params)
-    start = params.cop_start if role is Role.COP else params.thief_start
-    return GameState(
-        board=board,
-        role=role,
-        sub_game=sub_game,
-        own_position=start,
-        belief=BeliefGrid(board),
-        own_scent=ScentField(board_size=board.size),
-        opponent_scent=ScentField(board_size=board.size),
-        ledger=CommitLedger(sub_game=sub_game),
-        # One monitor per mini-game, because the barrier budget and the step
-        # numbering both reset with it. Watching the opponent is not optional
-        # equipment: commit-reveal proves they did not rewrite what they did,
-        # and this is the only thing that asks whether they were allowed to.
-        fair_play=FairPlayMonitor(max_barriers=params.max_barriers),
-    )
+from .state_setup import state_factory
 
 
 def brain_factory(manager: Any = None) -> Any:
@@ -119,10 +94,22 @@ build_brain = brain_factory()
 
 
 def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
-    """The live link to the opponent, rate-limited and deadline-bounded."""
+    """The live link to the opponent, rate-limited and deadline-bounded.
+
+    The resolver cache is installed here, before the first call, because DNS is
+    what actually cost us mini-games: three against uoh-sqak died to
+    `Temporary failure in name resolution` on a mid-game reconnect, on a machine
+    whose lookups measure 502 ms median and 1.9 s worst case. An opponent's
+    address does not move inside a match, so asking twice buys nothing.
+    """
+    from ..net import dns_cache
+
+    opponent = str(manager.require("network.opponent_url"))
+    dns_cache.install()
+    dns_cache.warm(opponent, emit=bus.publish)
     limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
     client = PeerClient(
-        opponent_url=str(manager.require("network.opponent_url")),
+        opponent_url=opponent,
         # `mcp_peer`, the name the config actually declares. Asking for "peer"
         # fell through to `default` — 30 requests a minute, one message every
         # two seconds — and the opponent is not a quota-limited third-party
@@ -178,7 +165,7 @@ def build_match(
         params=params,
         tracker=tracker,
         transport=transport,
-        build_state=build_state,
+        build_state=state_factory(manager),
         build_brain=brain_factory(manager),
         speaker=speaker,
         clock=time.monotonic,
@@ -200,4 +187,7 @@ def build_match(
         observer=observer,
         response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
         max_retries=int(manager.get("network.max_retries", 3)),
+        # Spent only after a mini-game we abandoned, so the peer has closed its
+        # side before we offer it the next handshake (docs: domain/settle.py).
+        watchdog_seconds=float(manager.get("network.watchdog_threshold_seconds", 60)),
     )

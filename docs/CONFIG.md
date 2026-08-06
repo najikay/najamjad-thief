@@ -1,6 +1,6 @@
 # Configuration reference
 
-**Version 1.00 · 2026-07-27 · guidelines §7.2–7.4**
+**Version 1.10 · 2026-08-05 · guidelines §7.2–7.4**
 
 Every configurable value, where it lives, and whether it is ours to change.
 
@@ -104,8 +104,10 @@ to play. See that module before editing anything here.
 | `email.recipient` | Appendix F address | Rule 30 fixes the scope at `gmail.send`. |
 | `email.mode` | `draft` | **Change to `send` for a counted match.** `draft` is the safe default while testing; practice mode overrides it to `send` (§3b). |
 | `strategy.cop_class` / `thief_class` | `""` | Empty means the shipped brains; a `"module:Attribute"` path loads a plugin (`docs/EXTENDING.md`). |
-| `[strategy.cop]` | `barrier_threshold` 0.40, `lookahead` 2, `claim_threshold` 0.12 | The dials the sweep varies. `barrier_threshold` decides matches: 0.05 captured 4 % of games, 0.40 captured 100 %. |
+| `[strategy.cop]` | `barrier_threshold` 0.40, `lookahead` 2, `claim_threshold` 0.12 | The dials the sweep varies. The capture rates once quoted here (0.05 → 4 %, 0.40 → 100 %) were measured against our own old thief and are **withdrawn**: one cop cannot force a capture on a 7×7, and a re-sweep against a correct thief gives 0/24 at every value of both dials. See `PRD_strategy_cop.md` §Re-baseline. |
 | `[strategy.thief]` | `horizon` 3, `stall_trigger` 3 | `stall_trigger` is how close to the survival horizon the thief stops taking chances. |
+| `strength.level` | `full` | `full` or `practice`. At anything but full the safety invariant and the exact solve are skipped — credible weakness, because it was genuinely ours. `sdk/bootstrap` refuses to start a **counted** match at reduced strength. |
+| `[emission]` | `scent` `full`, `hints` `true`, `reciprocal` `false` | What we transmit. `scent` is `full`/`window`/`none` and `hints` toggles free-language hints — both let us match an opponent who tells us nothing. `reciprocal` is off by default: going quiet should be a deliberate choice, not something that happens to us because a tunnel was slow for three turns. Suppression happens **before** the commit is sealed, so the sealed payload and the wire message stay identical in every mode. |
 
 > **Scalars before sub-tables.** TOML assigns a bare key to the most recent
 > table header, so writing `cop_class` *after* `[strategy.thief]` silently makes
@@ -158,9 +160,38 @@ to boot rather than quietly breaking a rule.
 |---|---|---|
 | `default` | 30 | Conservative for anything unnamed. |
 | `gmail` | 30 | Protects the account (rule 30). |
-| `mcp_peer` | 600 | **Outbound to the opponent.** They are our protocol partner, not a metered API; throttling here only risks missing their 30 s deadline. |
+| `mcp_peer` | 600 | **Outbound to the opponent.** They are our protocol partner, not a metered API; throttling here only risks missing their 30 s deadline. `max_retries` is 10 and `deadline_seconds` is 45 — see below. |
 | `anthropic` / `deepseek` | 30 | **`max_retries` is 1, unlike everything else.** A hint is optional and has a zero-token template floor beneath it; the 30 s turn deadline is not optional. At the shared default of 3 retries 5 s apart, two unreachable vendors cost 20 s on the first hint of a match — measured — which is most of the deadline and enough to lose a game to our own retry policy. |
 | `inbound_peer` | 3000 | **Inbound from the opponent.** A flood backstop, not a throttle — the bounded inbox queue is the real protection. At 120 we rejected a legitimate turn mid-series and lost the game to our own guard. |
+
+### `deadline_seconds` — the only cap that actually bounds a send
+
+`max_retries` never bounded anything. Each attempt carries its own 30 s call
+timeout and `PeerSession` reconnects once inside it, so `mcp_peer`'s ten
+attempts could occupy **645 s** against an agreed 60 s watchdog — and the time
+is not idle, because our turn loop is blocked in that send, so the minutes come
+out of the mini-games that follow.
+
+`deadline_seconds` caps the total wall clock and stops us *starting* attempts
+once the budget plus one back-off is spent. **This is legal precisely because it
+is not the back-off**: Appendix F Table 19 binds the *interval* between attempts
+at a 5 s minimum, which we keep untouched. Capping the total is a different
+quantity and makes us stricter; shortening the interval would breach the table.
+
+What it does not promise: it cannot reach into an attempt already in flight, so
+the ceiling is the deadline plus one 30 s response timeout. 645 s becomes 65 s,
+not 45 — and for two or more attempts no legal configuration stays under a 60 s
+watchdog. That residue is why the freeze watchdog waits three agreed watchdogs
+rather than one (`domain/freeze_guard.py`).
+
+Zero disables it, which is what every other service gets: a deadline only makes
+sense where something on the far side has already stopped waiting for us.
+
+> Both repos must agree on this file. Nothing in it is role-specific, but
+> `sync_core.py` deliberately excludes `config/`, and three separate fixes once
+> reached only the cop — including this key, which would have left the cap inert
+> for every game we play as thief. `test_the_rate_limits_do_not_drift_between_the_repos`
+> now fails at the gate instead.
 
 ## 5. Secrets
 

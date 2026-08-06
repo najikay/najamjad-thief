@@ -1,6 +1,6 @@
 # Wire protocol — what crosses the network, and what never does
 
-**Version 1.00 · 2026-07-25**
+**Version 1.10 · 2026-08-05**
 
 This document exists because we got it wrong once, and the mistake was the kind
 that would have quietly lost every match while all 1,000 tests stayed green.
@@ -16,7 +16,7 @@ language, or something the rules oblige us to declare.
 | Field | Sent per turn | Why |
 |---|---|---|
 | `step` | yes | ordering and replay detection |
-| `sender` | yes | session binding to the negotiated opponent |
+| `sender` | yes | session binding — carries a **role** (`"police"`/`"thief"`), never a group id |
 | `commit` | yes | SHA-256 over our sealed record — the anchor of the audit |
 | `hint` | yes | free-language dialogue is mandatory (rule 26); may be a lie |
 | `smell_grid` | yes | scent is emitted involuntarily and cannot be faked (PAGE 22) |
@@ -83,3 +83,83 @@ Some opponents will send their position, either from a naive implementation or
 as bait. We do not consume it — belief comes from scent and hints only — but we
 emit `peer.leaked_position`, because a team broadcasting its own location is
 useful to know about and worth mentioning to them.
+
+## 6. Canonical form — the thing that voids games silently (2026-08-05)
+
+At the end of every mini-game the opponent re-hashes our sealed records. Two
+implementations that are each perfectly correct but serialize JSON differently
+each conclude the other tampered, and rules 33-35 void the game for **both**. It
+is the cheapest way in this league to score zero while playing perfectly.
+
+```
+canonical_json(payload) = json.dumps(payload, sort_keys=True,
+                                     ensure_ascii=False, separators=(",", ":"))
+commit                  = SHA256(canonical_json(payload) + "|" + nonce)
+```
+
+UTF-8 throughout. The two flags are where honest implementations drift, because
+both differ from Python's defaults: `ensure_ascii` defaults to `True` (escaping
+a Hebrew hint to `\uXXXX` and changing every hash that carries one) and
+`separators` defaults to `", "` / `": "` (changing every hash, full stop).
+
+**This cannot be found by playing ourselves.** Our two repos share a
+byte-identical core, so cop and thief agree with each other by construction —
+including when both are wrong. It needs a second implementation, which is why
+`tests/unit/test_protocol/test_interop_vectors.py` asserts *literal* strings and
+digests rather than round-tripping through our own function.
+
+Cross-checked on 2026-08-05 against the independent specification at
+`github.com/Imreec/copthief-league-protocol` (§2, §3), which states the same
+canonical form, the same pipe separator and the same construction. Reviewed and
+verified, never imported.
+
+## 7. The claim-answer exemption
+
+The step guard is monotonic, with one exception: the reference concedes a
+capture with a final message **at the step it answers**, without advancing its
+counter, and a strict guard rejects the one message we are waiting for —
+stalling the game at the moment we won it.
+
+That exemption must be exactly one case wide. Unconditional, it is a one-key
+bypass of the whole guard. Narrowed to a window and not advancing the counter, it
+refuses ordinary turns: the reference attaches `capture_claim` to *every* police
+move, so a thief answers on consecutive move-carrying turns, and our archived
+matches show `peer.answered_claim` at steps 11-15, 21-27 and 35 in a single
+mini-game.
+
+The rule: an answer at the step we last accepted is taken once; anything ahead is
+an ordinary turn and advances the counter; anything behind is stale and refused.
+
+## 8. The two places a second byte format applies (2026-08-05)
+
+Cross-checked against the published interop kit. Both are cases where using the
+form from §6 is *wrong*, and both fail silently.
+
+**The settlement signature is spaced, not compact.** The consensus signature —
+key `חתימת_קונסנזוס_משותפת` — is SHA-256 over sorted-key, raw-UTF-8 JSON with the
+standard library's **default** separators, computed *before* the key is inserted
+into the report it covers. A peer verifies by popping the key, re-serializing
+spaced and re-hashing. Signing the compact form instead produces a valid-looking
+digest that simply never matches, at the one moment both teams must agree.
+`protocol/canonical.spaced_json` keeps both forms in one module so nobody
+unifies them; `reporting/consensus.py` is the only caller.
+
+**The pheromone model is subtractive Chebyshev.** `half = grid // 2`,
+`falloff = intensity / (half + 1)`, `value = max(0, intensity − falloff ×
+chebyshev)`, rounded to 3 places, decay subtractive and clamped at zero, only
+`value > 0` on the wire. Nothing crashes if two teams disagree here — the grid is
+not part of the commit, so audits pass — but both sides infer the wrong position
+from each other's field for the whole series. Ours is `pheromones.pheromone_model`,
+default `reference`.
+
+## 9. Three published commit constructions, only one of which interoperates
+
+The release ships **three** commit formulas, all producing different digests for
+the same sealed record. One of them consumes only `nonce|move`, binding neither
+state nor intent — position and bluff tampering are invisible to it.
+
+Ours is the reference form, `SHA256(canonical_json(payload) + "|" + nonce)`,
+asserted against the kit's vectors in `test_interop_vectors.py`. If your commits
+match one of the other two, you implemented from a book listing rather than the
+reference, and our audits will contradict each other on the first mini-game.
+

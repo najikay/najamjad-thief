@@ -90,8 +90,15 @@ class SeriesTracker:
 
     def result(self) -> SeriesResult:
         """Aggregate every recorded mini-game into the series result."""
+        # `end_reason` travels with the scores because a technical ending
+        # scores 0/0 for both sides, and equal scores are how a tie is detected —
+        # so without it every abandoned game was aggregated as a draw.
         rows = [
-            {self.our_group: outcome.our_score, self.their_group: outcome.their_score}
+            {
+                self.our_group: outcome.our_score,
+                self.their_group: outcome.their_score,
+                "end_reason": outcome.end_reason.value,
+            }
             for outcome in self.outcomes
         ]
         return aggregate_series(rows, (self.our_group, self.their_group), self.table.tie_score)

@@ -7,7 +7,7 @@ validated on load rather than trusted.
 
 from dataclasses import dataclass
 
-from ..constants import EndReason, Role
+from ..constants import EndReason, Role, is_technical
 
 # Appendix F Table 17 (fixed): capture 20/5, survival 5/10, tie 2, technical 0/0.
 FIXED_SCORES = {
@@ -60,6 +60,11 @@ class SeriesResult:
     winner_group: str | None
     series_tie: bool
     tie_award: int | None = None
+    #: Mini-games that ended off the board (timeout, forfeit, quit). Counted
+    #: separately because they score 0/0 for both sides, which looks exactly
+    #: like a draw and is not one — reporting them as ties described three
+    #: unfinished games as three draws in a graded artifact.
+    technical: int = 0
 
 
 def aggregate_series(sub_games: list[dict], groups: tuple[str, str], tie_score: int) -> SeriesResult:
@@ -73,14 +78,21 @@ def aggregate_series(sub_games: list[dict], groups: tuple[str, str], tie_score: 
     totals = dict.fromkeys(groups, 0)
     wins = dict.fromkeys(groups, 0)
     ties = 0
+    technical = 0
     for scores in sub_games:
         for group in groups:
             totals[group] += int(scores.get(group, 0))
-        if scores.get(groups[0], 0) == scores.get(groups[1], 0):
+        equal = scores.get(groups[0], 0) == scores.get(groups[1], 0)
+        if equal and is_technical(scores.get("end_reason")):
+            # Scored 0/0 for both, so the scores are equal — but nobody drew.
+            # Counting it as a tie made our own artifact report `"ties": 3`
+            # about a series in which three mini-games never finished.
+            technical += 1
+        elif equal:
             ties += 1
         else:
             wins[max(groups, key=lambda group: scores.get(group, 0))] += 1
     if totals[groups[0]] == totals[groups[1]]:
-        return SeriesResult(totals, wins, ties, None, True, tie_score)
+        return SeriesResult(totals, wins, ties, None, True, tie_score, technical)
     winner = max(groups, key=lambda group: totals[group])
-    return SeriesResult(totals, wins, ties, winner, False)
+    return SeriesResult(totals, wins, ties, winner, False, None, technical)

@@ -13,6 +13,7 @@ game loop that feeds it.
 import contextlib
 import threading
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -102,9 +103,21 @@ class EventBus:
         return _unsubscribe
 
     def publish(self, event: dict[str, Any]) -> dict[str, Any]:
-        """Stamp, scrub, persist and broadcast one event."""
+        """Stamp, scrub, persist and broadcast one event.
+
+        The timestamp is UTC and it is not optional. Ten thousand events were
+        written without one, and the cost showed up the day an opponent offered
+        their own server log to compare against ours: 713 requests on their side
+        with timestamps, 1036 sends on ours with none, and no way to line up a
+        single pair. The whole argument about whose fault the stalls were was
+        unresolvable for want of a field that costs a microsecond.
+
+        A caller may pass its own `ts` — a replayed or reconstructed event keeps
+        the time it happened, not the time it was re-read.
+        """
+        stamped = {"ts": datetime.now(UTC).isoformat(timespec="milliseconds"), **event}
         with self._lock:
-            enriched = _scrub({**self._correlation, **event})
+            enriched = _scrub({**self._correlation, **stamped})
             self._history.append(enriched)
             subscribers = list(self._subscribers)
         self._append(enriched)

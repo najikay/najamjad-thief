@@ -13,6 +13,7 @@ from najamjad_agent.net.fault_attribution import (
     OURS,
     attribute,
 )
+from najamjad_agent.net.http_probe import ProbeResult
 
 OURS_URL = "https://cop.4laboratory.com/mcp"
 THEIRS = "https://d664-176-229-170-175.ngrok-free.app/mcp"
@@ -21,6 +22,15 @@ THEIRS = "https://d664-176-229-170-175.ngrok-free.app/mcp"
 def probe(**reachable):
     """A stand-in for the TCP probe, so tests need no network."""
     return lambda url: reachable.get(url, False)
+
+
+def http(status=None, body="", reached=True):
+    """A stand-in for the HTTP probe.
+
+    Required, not optional: without it these tests reach the real internet and
+    their verdict depends on whether an opponent's tunnel is up today.
+    """
+    return lambda url: ProbeResult(reached, status=status, body=body)
 
 
 def test_our_tunnel_up_and_theirs_down_is_their_fault() -> None:
@@ -45,7 +55,8 @@ def test_neither_endpoint_answering_is_our_fault() -> None:
 def test_a_reachable_opponent_is_never_blamed_for_connectivity() -> None:
     """If their edge answers, whatever failed was not the connection."""
     verdict = attribute(OURS_URL, THEIRS, "some protocol error",
-                        probe=probe(**{OURS_URL: True, THEIRS: True}))
+                        probe=probe(**{OURS_URL: True, THEIRS: True}),
+                        http=http(reached=False))
 
     assert verdict.verdict == INDETERMINATE
 
@@ -82,3 +93,36 @@ def test_the_verdict_serialises_for_the_record() -> None:
     payload = attribute(OURS_URL, THEIRS, "x", probe=probe(**{OURS_URL: True})).as_dict()
 
     assert set(payload) == {"verdict", "detail", "evidence"}
+
+
+def test_a_tunnel_edge_error_page_names_the_far_side() -> None:
+    """The edge answering *for* an absent origin is the far side's own report.
+
+    This is what a TCP probe could never see: the handshake completes, TLS
+    completes, and the provider then says there is nothing behind it.
+    """
+    verdict = attribute(
+        OURS_URL, THEIRS, "Client failed to connect: ",
+        probe=probe(**{OURS_URL: True, THEIRS: True}),
+        http=http(status=502, body="ERR_NGROK_3200: tunnel not found"),
+    )
+
+    assert verdict.verdict == OPPONENT
+    assert verdict.evidence["their_http"]["edge_failure"] is True
+
+
+def test_a_healthy_origin_makes_the_fault_ours_and_we_say_so() -> None:
+    """The branch that matters most: it must be able to blame us.
+
+    A stateless MCP server answers a bare GET with 405. If they answer us while
+    our own client cannot connect, the client is the problem and no amount of
+    evidence-gathering should be able to phrase that as their fault.
+    """
+    verdict = attribute(
+        OURS_URL, THEIRS, "Client failed to connect: ",
+        probe=probe(**{OURS_URL: True, THEIRS: True}),
+        http=http(status=405),
+    )
+
+    assert verdict.verdict == OURS
+    assert "the fault is on our side" in verdict.detail

@@ -21,8 +21,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ..constants import is_technical
 from ..shared.events import Emit
 from .artifacts import ArtifactWriter
+from .reconcile import MISMATCH, from_recorded_games
 from .resilient_filing import attempt, missing
 from .result_blocks import (
     final_result_block,
@@ -65,6 +67,7 @@ class MatchFiler:
         config_sha256: str,
         groups_block: dict[str, Any],
         confirmed: bool | None = None,
+        emission: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Write all four artifacts and return where they went.
 
@@ -87,17 +90,67 @@ class MatchFiler:
             # other contradicted. A dispute is precisely what rules 33-35 void
             # both teams for, so reporting one as agreement is the worst
             # available answer.
-            verified = all(
-                row["audit"]["log_verified"] and not row["audit"]["tampered"] for row in rows
+            #
+            # **A skipped audit is not a failed one**, and treating it as one
+            # was costing us the flag on whole series. A technical ending has no
+            # reveal to verify — nobody refused, there is simply nothing there —
+            # so `log_verified` is false and one timeout in six games flipped
+            # the entire series to `confirmed: false`. An opponent whose rule is
+            # "no contradiction means agreed" files `true`, and two reports
+            # disagreeing about agreement is itself the contradiction rules
+            # 33-35 void both teams for. This is the same distinction
+            # `MatchRunner` already draws when it scores a game.
+            # `reconcile` has existed since early on, fully tested, with no
+            # production caller — component #12 of that family, and the one
+            # whose absence meant `mutual_agreement.confirmed` was never an
+            # agreement *with the opponent* at all, only a statement about our
+            # own audits. It is now the authority on the dispute half.
+            settlement = from_recorded_games(
+                self._game_id, self._writer.game_uid, self._groups, rows, games
             )
-            confirmed = verified and not any(game.get("disputed") for game in games)
+            alert = settlement.operator_alert()
+            if alert is not None:
+                self._emit(alert)
+            tampered = any(row["audit"]["tampered"] for row in rows)
+            unverified = any(
+                not row["audit"]["log_verified"] and not is_technical(row["result"])
+                for row in rows
+            )
+            # Both halves must hold: our own evidence has to be sound *and*
+            # the opponent must not have contradicted us.
+            confirmed = not tampered and not unverified and settlement.status != MISMATCH
         written: dict[str, Any] = {"config": [], "log": []}
 
         # Every write is attempted independently. One mini-game's log failing
         # must never suppress the `result` artifact below it — that is the file
         # the league grades, and losing it scores as not having played (rule 35).
+        # `emission` says what we chose to transmit this match. Emitting less
+        # than the maximum is a tactical choice and not a secret one: rule 49
+        # means the lecturer reads these repositories, and a documented setting
+        # reads as the choice it is where the same behaviour undeclared reads as
+        # something we were hiding. It rides in the artifact rather than the
+        # handshake identity on purpose — a peer's strict declaration model once
+        # rejected a whole block over an unexpected key, costing six played
+        # games their artifacts, and we will not hand anyone that.
+        extra: dict[str, Any] = {"emission": emission} if emission else {}
+        # The declaration used to ship the schema defaults — 6 sub-games and the
+        # default token cap — while the result beside it computed `num_sub_games`
+        # from the games actually played. A two-game match therefore filed a
+        # declaration saying six, so our own artifact set contradicted itself in
+        # front of a grader. Both now come from the same match.
+        extra["num_sub_games"] = len(rows) or 1
+        # Empty strings in the golden's place. They are ours to fill: the first
+        # game's start and the last game's end are both on the records.
+        started = [str(game.get("started_at", "")) for game in games if game.get("started_at")]
+        ended = [str(game.get("ended_at", "")) for game in games if game.get("ended_at")]
+        if started:
+            extra["game_started_at"] = min(started)
+        if ended:
+            extra["game_ended_at"] = max(ended)
         written["declaration"] = attempt(
-            "declaration", lambda: self._writer.write_declaration(groups_block), self._emit
+            "declaration",
+            lambda: self._writer.write_declaration(groups_block, **extra),
+            self._emit,
         )
         for game, row in zip(games, rows, strict=False):
             number = int(game.get("sub_game", 0))
@@ -154,7 +207,9 @@ class MatchFiler:
             "tokens_total": int(game.get("tokens", 0)),
             "audit": {
                 "passed": row["audit"]["log_verified"],
-                "verified_steps": int(game.get("steps", 0)),
+                # The audit's count, not the game's length. These were the
+                # step count and an empty list, so a failed audit named no step.
+                "verified_steps": len(list(game.get("verified_steps") or [])),
                 "failed_steps": list(game.get("failed_steps") or []),
             },
         }

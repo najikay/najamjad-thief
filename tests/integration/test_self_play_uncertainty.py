@@ -51,13 +51,23 @@ def blurred_belief(board: Board, truth, spread: int) -> dict:
     return dict.fromkeys(cells, 1.0 / len(cells))
 
 
-def play_blurred(cop_brain, thief_brain, spread: int, cop_start=(0, 0), thief_start=(3, 3)) -> str:
-    """One mini-game where neither side sees the other exactly."""
+def play_blurred(
+    cop_brain, thief_brain, spread: int, cop_start=(0, 0), thief_start=(3, 3), sub_game: int = 1
+) -> str:
+    """One mini-game where neither side sees the other exactly.
+
+    `sub_game` seeds the thief's tie-break among equally safe moves. It used
+    to be pinned at 1, so this harness measured exactly one of the several
+    lines the thief may legitimately play and reported it as *the* outcome —
+    which is how a single coin flip came to be an assertion.
+    """
     board: Board = build_state(Role.COP).board
     cop, thief, barriers_left = cop_start, thief_start, 14
 
-    for _ in range(SURVIVAL_STEPS):
+    for step in range(1, SURVIVAL_STEPS + 1):
         thief_facts = Facts(board, thief, blurred_belief(board, cop, spread), role="thief")
+        thief_facts.sub_game = sub_game
+        thief_facts.step = step
         move = thief_brain.pick_move(thief_facts)
         row, col = board.delta_for(move)
         candidate = (thief[0] + row, thief[1] + col)
@@ -101,32 +111,40 @@ def test_our_own_cop_is_a_real_threat_to_our_own_thief(spread: int) -> None:
     assert play_blurred(CopBrain(), ThiefBrain(), spread) in {"capture", "survival"}
 
 
-def test_only_a_barrier_trap_under_exact_information_still_takes_our_thief() -> None:
-    """The last configuration that beat this thief no longer does.
+def test_a_barrier_trap_under_exact_information_can_still_take_our_thief() -> None:
+    """The last configuration that beat this thief, measured as a rate not a coin flip.
 
-    This assertion has now been rewritten three times, and the sequence is the
+    This assertion has now been rewritten four times, and the sequence is the
     point rather than an embarrassment:
 
-    1. originally `spread=0 == "capture"` — true of the *old* thief, and read
-       as evidence our cop was strong. It was measuring the thief conceding;
+    1. originally `spread=0 == "capture"` — true of the *old* thief, and read as
+       evidence our cop was strong. It was measuring the thief conceding;
     2. after the distance-2 invariant, capture at blur 0 and 1 — the cop could
-       still build a barrier trap, cornering us at [0,6] where `STAY` is safe
-       for exactly one more turn;
-    3. after the exact solve, capture at blur 0 only — one cell of error is now
-       enough to defeat the trap, where before it took two.
+       still build a barrier trap, cornering us at [0,6];
+    3. after the exact solve, capture at blur 0 only;
+    4. **now**: capture at blur 0 for *some* tie-break seeds and not others.
 
-    A fourth version briefly claimed survival everywhere. That was measured
-    against a barrier planner that has since been reverted for causing audit
-    failures, so it described code that no longer exists; it is corrected here
-    rather than left as a flattering number.
+    A fifth version briefly claimed survival everywhere. That was measured
+    against a barrier planner since reverted, so it described code that no
+    longer exists.
 
-    Each rewrite recorded a real measurement rather than being relaxed to pass.
-    The honest current reading: **pursuit cannot beat correct play — ours or
-    anyone's** — and the one thing that still can is a barrier trap built with
-    exact knowledge of our cell. Our three cop games are worth 5 points each
-    unless an opponent errs, and that is where every cop point will come from.
+    What changed for (4) is that tie-breaking among equally safe moves now
+    spreads properly across sub-games instead of collapsing onto two or three
+    choices. The exact solve is silent about barriers — it models a cop that
+    only *moves* — so which safe move we pick still decides whether a barrier
+    trap closes. Escaping it is therefore genuinely seed-dependent, and stating
+    it as "we survive" would be the flattering-number mistake again.
+
+    Measured over the six sub-game seeds of a real series, so it is a rate.
     """
-    assert play_blurred(CopBrain(), ThiefBrain(), spread=0) == "capture"
+    outcomes = [
+        play_blurred(CopBrain(), ThiefBrain(), spread=0, sub_game=sub) for sub in range(1, 7)
+    ]
+
+    assert "capture" in outcomes, (
+        "an exact-information barrier trap should still land for at least one "
+        f"tie-break seed; got {outcomes}"
+    )
     for spread in (1, 2, 3):
         assert play_blurred(CopBrain(), ThiefBrain(), spread=spread) == "survival"
 

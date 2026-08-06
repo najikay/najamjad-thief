@@ -23,25 +23,9 @@ from typing import Any
 
 from ..shared.events import Emit
 from ..shared.gatekeeper import ApiGatekeeper
+from .best_effort import try_send as best_effort_send
 from .mcp_session import PeerSession
-
-TOOL_FOR_KIND = {
-    "negotiate": "negotiate",
-    "turn": "receive_turn",
-    "audit": "submit_audit",
-    "control": "receive_control",
-}
-# The argument name each tool expects. This is not ours to choose: the reference
-# implementation declares `message` on three tools and `payload` on
-# `submit_audit`, and most of the class builds on it. Sending `payload`
-# everywhere — as we did — meant a reference-derived opponent rejected every
-# turn and every proposal we sent. Verified against the real simulator.
-ARGUMENT_FOR_TOOL = {
-    "negotiate": "message",
-    "receive_turn": "message",
-    "receive_control": "message",
-    "submit_audit": "payload",
-}
+from .tool_names import ARGUMENT_FOR_TOOL, TOOL_FOR_KIND
 
 
 class PeerClient:
@@ -98,10 +82,23 @@ class PeerClient:
         return await self._session.call(tool, {argument: payload})
 
     def _invoke(self, tool: str, payload: dict[str, Any]) -> Any:
-        """Run one tool call on the persistent loop and wait for its result."""
+        """Run one tool call on the persistent loop and wait for its result.
+
+        A timeout **cancels** the coroutine rather than abandoning it: an
+        abandoned call keeps holding `PeerSession._lock`, so every gatekeeper
+        retry then blocks on it and burns its own full timeout. Against a peer
+        whose edge accepts TCP and never answers — the ngrok case we have
+        already lost games to — that is ten retries at thirty seconds, minutes
+        past the point their watchdog scored the turn against us.
+        """
         loop = self._ensure_loop()
         future = asyncio.run_coroutine_threadsafe(self._call_tool(tool, payload), loop)
-        return future.result(timeout=self._timeout)
+        try:
+            return future.result(timeout=self._timeout)
+        except TimeoutError:
+            future.cancel()
+            self._emit({"event": "client.call_cancelled", "tool": tool, "url": self.opponent_url})
+            raise
 
     def send(self, kind: str, payload: dict[str, Any]) -> Any:
         """Send a message of `kind` to the opponent through the gatekeeper."""
@@ -114,20 +111,8 @@ class PeerClient:
         return result
 
     def try_send(self, kind: str, payload: dict[str, Any]) -> bool:
-        """Best-effort send for audit/control: never raises, always reports.
-
-        Used where the opponent may legitimately have exited already (post-game
-        audit exchange); a failure here must not turn a finished game into a
-        crash.
-        """
-        try:
-            self.send(kind, payload)
-        except Exception as error:  # noqa: BLE001 - reported, not swallowed
-            self._emit(
-                {"event": "client.send_failed", "kind": kind, "error": type(error).__name__}
-            )
-            return False
-        return True
+        """Best-effort send for audit and control (see `net/best_effort.py`)."""
+        return best_effort_send(self, kind, payload, self._emit)
 
     def close(self) -> None:
         """Release the session, then stop the background loop (idempotent).
@@ -153,6 +138,28 @@ class PeerClient:
             return
         with contextlib.suppress(Exception):
             asyncio.run_coroutine_threadsafe(self._session.drop(), loop).result(timeout=5)
+
+    def retarget(self, opponent_url: str) -> None:
+        """Move to a new opponent address, dropping the session held on the old one.
+
+        Input: the URL the peer declared in its handshake.
+        Output: none; subsequent calls go to the new address.
+        Setup: none. Safe before the loop has started.
+
+        The old session must be released rather than abandoned. It is an open
+        socket to a host we are done with, and on a peer whose tunnel re-mints
+        every session — which is the case this exists for — that host is usually
+        already gone, so keeping it costs a file descriptor and an event loop
+        callback for the rest of the series.
+
+        The loop itself is *not* restarted. It is address-agnostic and restarting
+        it would throw away the one long-lived thing this class exists to keep.
+        """
+        if not opponent_url or opponent_url == self.opponent_url:
+            return
+        self._release_session()
+        self.opponent_url = opponent_url
+        self._session = PeerSession(opponent_url, emit=self._emit)
 
     @property
     def reconnects(self) -> int:

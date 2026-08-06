@@ -72,7 +72,18 @@ def test_only_the_client_talks_to_the_opponent() -> None:
     # `mcp_probe` is the readiness check split out of `mcp_client` when that
     # module hit its line budget. It is the same egress path, not a second
     # one: it speaks to the opponent and nothing else does.
-    allowed = {"mcp_client.py", "mcp_probe.py", "mcp_server.py", "mcp_session.py"}
+    # `http_probe` is a diagnostic, not a second egress path, and the exception
+    # is narrow on purpose. It must work precisely when the gatekeeper path is
+    # failing — that is the entire question it exists to ask — so routing it
+    # through the gatekeeper would silence it exactly when it matters. It sends
+    # one bare GET, carries no game payload, and reads back a status code.
+    allowed = {
+        "mcp_client.py",
+        "mcp_probe.py",
+        "mcp_server.py",
+        "mcp_session.py",
+        "http_probe.py",
+    }
     for path in SRC.rglob("*.py"):
         if path.name in allowed:
             continue

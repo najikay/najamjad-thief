@@ -15,8 +15,55 @@ from najamjad_agent.shared import sysinfo
 
 
 def test_collect_spec_has_the_declaration_fields() -> None:
+    """All six fields rule 24 asks for, plus what our own artifacts read.
+
+    `cpu_freq_mhz` and `vram_gb` were absent, so `spec_for_declaration`'s
+    `spec.get(...)` put `None` into every fairness declaration we ever filed.
+    """
     spec = sysinfo.collect_spec()
-    assert set(spec) == {"os", "cpu_type", "cpu_cores", "ram_gb", "gpu_type", "python"}
+
+    assert set(spec) == {
+        "os", "cpu_type", "cpu_cores", "cpu_freq_mhz",
+        "ram_gb", "gpu_type", "vram_gb", "python",
+    }
+
+
+def test_the_clock_falls_back_to_the_nominal_speed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No `cpuinfo_max_freq` — a container, or not Linux — still yields a number.
+
+    The model string carries the nominal clock, which is what a fairness
+    comparison wants anyway.
+    """
+    monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
+    monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "11th Gen Core i7-1165G7 @ 2.80GHz")
+
+    assert sysinfo._cpu_freq_mhz() == 2800
+
+
+def test_an_undeterminable_clock_is_none_not_a_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`HardwareSpec.cpu_freq_mhz` is `int | None`, so a string destroys the file.
+
+    Returning `UNKNOWN` here failed egress validation and took the **whole
+    declaration artifact** with it — the entire rule 24 filing, not one blank
+    field. Invisible on a laptop that can read its own clock; red on a runner
+    that cannot.
+    """
+    monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
+    monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "a CPU with no clock in its name")
+
+    assert sysinfo._cpu_freq_mhz() is None
+
+
+def test_no_gpu_reports_zero_vram_not_null(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`0.0` beside "none detected" is a complete statement; `null` is a hole.
+
+    The GPU is stated rather than detected: this asserted against whatever
+    hardware happened to be running it, which is a test that means one thing on
+    a laptop and another on a CI runner.
+    """
+    monkeypatch.setattr(sysinfo, "_gpu_name", lambda: "none detected")
+
+    assert sysinfo._vram_gb() == 0.0
 
 
 def test_cpu_name_falls_back_when_proc_is_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
