@@ -67,14 +67,74 @@ Every value is at or above the Appendix F minimum. Rule 12 says a term may be
 | Map area (for hint flavour) | New York · hints ≤ 15 words |
 | Pheromone | centre 0.9, decay 0.10, grid 5 |
 
-**We are flexible on all of it.** Send a counter-proposal and we will almost
-certainly accept — the only things we will not move on are the Appendix F
-minimums, because neither of us is allowed to.
+### The exact object we sign
 
-Both peers must end up holding a **byte-identical** `config/game.json`; our
-handshake verifies a SHA-256 over the terms and refuses to play on a mismatch,
-which is a feature — it means neither of us can be playing a different game than
-we think.
+`verify_peer` compares the peer's `terms` against ours for **byte-identical**
+equality (rule 11), so the table above is the human summary and this is the
+thing that actually has to match. Fourteen keys, these names, these types:
+
+```json
+{
+  "board_size": 7,
+  "smell_grid_size": 5,
+  "decay_per_step": 0.1,
+  "emit_intensity": 0.9,
+  "min_center_intensity": 0.5,
+  "max_steps": 35,
+  "barriers_max": 14,
+  "setting": "New York",
+  "hint_max_words": 15,
+  "axis_origin_corner": "top-left",
+  "axis_start_index": 0,
+  "thief_start": [3, 3],
+  "cop_start": [0, 0],
+  "num_games": 6
+}
+```
+
+Canonical form is `json.dumps(payload, sort_keys=True, ensure_ascii=False,
+separators=(",", ":"))` over UTF-8, and the contract hash is SHA-256 of that.
+For the object above that is:
+
+```
+a284082dfb1572236f1b614d29295a99625539c7d33a096f7f8921bafbc3d08d
+```
+
+If you compute the same digest from your own config, our handshake will lock on
+the first try. If you do not, `describe_mismatch` names the key and both values
+in the refusal, so it is one message to settle rather than two configs to diff
+under time pressure.
+
+**Please settle this before match day, not during it.** We are genuinely
+flexible about the *values* — raise anything you like, subject to rule 12, and
+we will change our config to match. What we cannot do is negotiate at the
+handshake: our match path sends our terms and requires yours to be identical, so
+a counter-proposal arriving mid-handshake is a refusal rather than a discussion.
+An earlier version of this page said "send a counter-proposal and we will almost
+certainly accept", which described an intention rather than the code.
+
+### Four things worth checking before we play
+
+* **`ensure_ascii`.** Python's default is `True`, which renders a non-ASCII hint
+  as `\uXXXX` and changes every hash that carries one. We use `False`. Hints are
+  free text and this cohort writes Hebrew, so this is one hint away from voiding
+  a game for both of us at audit time.
+* **`separators`.** `json.dumps` defaults to `", "` and `": "`. Any payload
+  serialized that way hashes differently from ours, on every single step.
+
+* **The settlement signature is the *spaced* form**, not the compact one —
+  sorted keys, raw UTF-8, default `", "` / `": "` separators, signed before the
+  `חתימת_קונסנזוס_משותפת` key is inserted. Signing compact here produces a digest
+  that never matches, at the exact moment both reports must agree.
+* **The pheromone model is subtractive Chebyshev**, not the book's radial
+  variant. Nothing crashes if we disagree — the grid is not hashed — but both of
+  us would read each other's field wrongly for the whole series.
+
+All four are settled in the same direction by the interop kit at
+`github.com/Imreec/copthief-league-protocol`, which we cross-checked our
+implementation against on 2026-08-05 and agreed with on every point. Our own
+known-answer vectors live in `tests/unit/test_protocol/test_interop_vectors.py`
+if you want to diff against something concrete.
 
 ## 4. Turn order and protocol notes
 

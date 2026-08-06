@@ -1,6 +1,6 @@
 # Mechanism PRD — negotiation
 
-**Version 1.00 · 2026-07-26 · FR-NEG-1..6 · ADR-011**
+**Version 1.10 · 2026-08-05 · FR-NEG-1..6 · ADR-011**
 
 ## Problem
 

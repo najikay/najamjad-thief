@@ -37,6 +37,13 @@ def test_sha256_is_only_computed_in_designated_modules() -> None:
         "nonce_vault.py",  # at-rest keystream for spilled nonces
         "session_guard.py",  # HMAC session token binding a match to one opponent
         "contract.py",  # config_sha256 + the derived game_uid both peers compute
+        # The settlement signature, and the *only* hash in the project over the
+        # spaced serialization rather than the canonical one. It is listed
+        # separately for exactly that reason: it is a second byte format, it is
+        # what the league compares our report against the opponent's with, and
+        # burying it in `crypto.py` beside commit-reveal would invite someone to
+        # unify the two encodings and silently break settlement.
+        "consensus.py",
         "agreement.py",  # the symmetric result signature both peers must match
     }
     offenders = [p.name for p in SOURCES if "hashlib.sha256" in _read(p) and p.name not in allowed]

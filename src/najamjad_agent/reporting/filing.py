@@ -21,6 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from ..constants import is_technical
 from ..shared.events import Emit
 from .artifacts import ArtifactWriter
 from .resilient_filing import attempt, missing
@@ -88,10 +89,26 @@ class MatchFiler:
             # other contradicted. A dispute is precisely what rules 33-35 void
             # both teams for, so reporting one as agreement is the worst
             # available answer.
-            verified = all(
-                row["audit"]["log_verified"] and not row["audit"]["tampered"] for row in rows
+            #
+            # **A skipped audit is not a failed one**, and treating it as one
+            # was costing us the flag on whole series. A technical ending has no
+            # reveal to verify — nobody refused, there is simply nothing there —
+            # so `log_verified` is false and one timeout in six games flipped
+            # the entire series to `confirmed: false`. An opponent whose rule is
+            # "no contradiction means agreed" files `true`, and two reports
+            # disagreeing about agreement is itself the contradiction rules
+            # 33-35 void both teams for. This is the same distinction
+            # `MatchRunner` already draws when it scores a game.
+            tampered = any(row["audit"]["tampered"] for row in rows)
+            unverified = any(
+                not row["audit"]["log_verified"] and not is_technical(row["result"])
+                for row in rows
             )
-            confirmed = verified and not any(game.get("disputed") for game in games)
+            confirmed = (
+                not tampered
+                and not unverified
+                and not any(game.get("disputed") for game in games)
+            )
         written: dict[str, Any] = {"config": [], "log": []}
 
         # Every write is attempted independently. One mini-game's log failing

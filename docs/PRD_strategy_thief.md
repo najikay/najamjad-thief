@@ -1,6 +1,6 @@
 # Mechanism PRD — thief strategy
 
-**Version 1.00 · 2026-07-26 · FR-STR-5..7 · ADR-007**
+**Version 1.10 · 2026-08-05 · FR-STR-5..7 · ADR-007**
 
 ## Problem
 

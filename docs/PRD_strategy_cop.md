@@ -1,6 +1,6 @@
 # Mechanism PRD — cop strategy
 
-**Version 1.00 · 2026-07-26 · FR-STR-1..4 · ADR-007**
+**Version 1.10 · 2026-08-05 · FR-STR-1..4 · ADR-007**
 
 ## Problem
 

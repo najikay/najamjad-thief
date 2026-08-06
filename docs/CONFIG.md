@@ -1,6 +1,6 @@
 # Configuration reference
 
-**Version 1.00 · 2026-07-27 · guidelines §7.2–7.4**
+**Version 1.10 · 2026-08-05 · guidelines §7.2–7.4**
 
 Every configurable value, where it lives, and whether it is ours to change.
 

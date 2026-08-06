@@ -24,6 +24,7 @@ from ..domain.game_state import GameState
 from ..domain.ledger import CommitLedger
 from ..domain.params import GameParams
 from ..domain.scent import ScentField
+from ..domain.scent_models import ScentModel
 
 
 def state_factory(manager: Any = None) -> Any:
@@ -69,6 +70,20 @@ def build_state(
         grid_size=int(terms.get("pheromone_grid_size", DEFAULT_GRID_SIZE)),
         decay=float(terms.get("pheromone_decay", 0.10)),
         centre_intensity=float(terms.get("pheromone_center_intensity", 0.9)),
+        # **Which physics both peers are running.** `ScentField` defaults to
+        # `BOOK`, and nothing here used to override it, so we emitted a radial
+        # relative-falloff field while the rest of the league emits the
+        # subtractive-Chebyshev one. Nothing crashes: the scent is not part of
+        # the commit, so audits still pass — both sides simply infer the wrong
+        # position from each other's grid, for the whole series, and each
+        # concludes the other is buggy.
+        #
+        # Verified against the interop kit's CORE `pheromone.json` on
+        # 2026-08-05: our `REFERENCE` model reproduces its centre and corner
+        # fields exactly, and `BOOK` does not. Configurable because the model is
+        # a term both peers must agree on, and a team that has standardised on
+        # the book's own variant can still be matched by changing one key.
+        model=ScentModel(str(terms.get("pheromone_model", ScentModel.REFERENCE.value))),
     )
     return GameState(
         board=board,

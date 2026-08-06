@@ -6,11 +6,14 @@
 them (`ui/controls.py`) validates its inputs carefully and then calls into a
 crash.
 
-Wiring it also gives `negotiation/flow.py` and the playbook's red lines their
-first production caller. A match itself is agreed take-it-or-leave-it by
-`exchange_agreement`, which demands byte-identical terms (rule 11); this manual
-path is where a human settles those terms with a *new* opponent beforehand,
-which is the thing standing between us and a counted match.
+It does **not** make the playbook's red lines reachable, and an earlier version
+of this docstring said it did. `Playbook.evaluate` runs only from
+`Negotiation.receive`, and nothing under `src/` calls it — the UI exposes an
+approve endpoint and no receive endpoint, and a real match is agreed
+take-it-or-leave-it by `exchange_agreement`. The ceilings are enforced and
+tested; a peer's proposal still cannot reach them in production. Recorded here
+because this file asserted the retracted version after the code and the TODO had
+both been corrected.
 """
 
 import pytest
@@ -92,9 +95,49 @@ def test_bootstrap_supplies_one_to_both_halves(constructed: str) -> None:
     ]
 
     assert calls, f"{constructed} is no longer constructed in bootstrap"
-    assert any(
-        keyword.arg == "negotiation" for call in calls for keyword in call.keywords
-    ), f"{constructed} is built without a negotiation"
+    supplied = [
+        keyword.value
+        for call in calls
+        for keyword in call.keywords
+        if keyword.arg == "negotiation"
+    ]
+
+    assert supplied, f"{constructed} is built without a negotiation"
+    # **The same object, not merely an object.** Presence was the weaker test
+    # and it missed the actual defect: giving each half its own `Negotiation()`
+    # satisfies "has the argument" while restoring exactly the bug — one half
+    # acts on a record the other half never renders, so the dashboard timeline
+    # stays permanently empty. Verified by mutation: the presence-only version
+    # passed 248 tests with the defect fully reintroduced.
+    assert all(
+        isinstance(value, ast.Name) for value in supplied
+    ), f"{constructed} builds its own negotiation instead of sharing the shared one"
+
+
+def test_both_halves_share_one_object() -> None:
+    """The property the AST check stands in for, asserted on the names.
+
+    `AgentActions` and `AgentSdk` must receive the *same* local, or the acting
+    half and the rendering half diverge.
+    """
+    import ast
+    import inspect
+
+    from najamjad_agent.sdk import bootstrap
+
+    tree = ast.parse(inspect.getsource(bootstrap))
+    names = {
+        call.func.id: keyword.value.id
+        for call in ast.walk(tree)
+        if isinstance(call, ast.Call)
+        and isinstance(call.func, ast.Name)
+        and call.func.id in {"AgentActions", "AgentSdk"}
+        for keyword in call.keywords
+        if keyword.arg == "negotiation" and isinstance(keyword.value, ast.Name)
+    }
+
+    assert set(names) == {"AgentActions", "AgentSdk"}
+    assert len(set(names.values())) == 1, f"the two halves use different objects: {names}"
 
 
 def test_a_ceiling_breach_is_countered_rather_than_walked_away_from() -> None:

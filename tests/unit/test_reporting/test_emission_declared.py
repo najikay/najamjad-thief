@@ -66,16 +66,50 @@ def test_no_emission_leaves_the_key_out_entirely(filer, tmp_path) -> None:
     assert "emission" not in _declaration(tmp_path)
 
 
-def test_the_filer_is_actually_given_one(tmp_path) -> None:
-    """The seam, since the defect was a missing call rather than broken code.
+def test_the_real_config_produces_a_declaration() -> None:
+    """Run the production helper, do not grep for it.
 
-    Every assertion above passes while `build_filer` never supplies `emission`,
-    which is exactly how this component stayed dead through eleven predecessors.
+    The first version of this test asserted `"as_declaration()" in
+    inspect.getsource(build_filer)` — and passed while the call underneath it
+    was broken, because a substring never executes anything. The call was
+    `EmissionPolicy.from_config(manager)`, but `from_config` takes the
+    `[emission]` **section**, so it raised `TypeError: 'ConfigManager' object is
+    not iterable`.
     """
-    import inspect
 
-    from najamjad_agent.sdk import match_filing
+    from najamjad_agent.sdk.match_filing import _emission_declaration
+    from tests.role_config import load_role_config
 
-    source = inspect.getsource(match_filing.build_filer)
+    manager = load_role_config()
 
-    assert "as_declaration()" in source, "build_filer no longer declares our emission"
+    assert _emission_declaration(manager) == {"scent": "full", "hint": "spoken"}
+
+
+def test_a_broken_config_costs_the_declaration_and_nothing_else() -> None:
+    """The blast radius, which is the real lesson here.
+
+    The bad call sat in the **argument list** of `file_match`, so it raised
+    before the function was entered — going round the per-artifact `attempt()`
+    guard whose entire purpose is that one failure must not suppress the
+    `result` file the league grades. `AgentActions._file` caught it and emitted
+    `artifacts.failed`: six mini-games played, **zero of four artifacts
+    written**, no report sent, and rule 35 scores that as not having played.
+
+    `from_config` also rejects an unknown mode with `EmissionError`, which is
+    correct at boot and catastrophic here. A typo in one config key must not
+    cost a played series its paperwork.
+    """
+    from najamjad_agent.sdk.match_filing import _emission_declaration
+
+    class Exploding:
+        def get(self, *_args, **_kwargs):
+            raise RuntimeError("boom")
+
+    assert _emission_declaration(Exploding()) is None
+
+
+def test_the_filer_still_writes_everything_when_emission_is_unknown(filer, tmp_path) -> None:
+    """A missing declaration must cost the declaration, not the match."""
+    filer.file_match([], [], None, {}, "sha", groups_block={}, emission=None)
+
+    assert "emission" not in _declaration(tmp_path)

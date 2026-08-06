@@ -77,3 +77,33 @@ def test_terms_the_book_fixes_are_unmoved() -> None:
         position = BY_KEY[key]
         assert position.acceptable(position.default), key
         assert not position.acceptable(float(position.default) - 1), key
+
+
+def test_a_nan_cannot_pass_a_bound_it_never_compared_against() -> None:
+    """`json.loads('{"grid_size": NaN}')` parses, and every NaN comparison is False.
+
+    The old test was `float(value) >= float(floor)`, which rejected NaN for
+    free. Inverting it into `not (number < floor)` accepted it, because
+    `nan < 7` and `nan > 45` are both False — the guard silently stopped
+    guarding. Described at length in T-2510 and, until now, pinned by nothing.
+    """
+    import json
+
+    assert not BY_KEY["grid_size"].acceptable(float("nan"))
+    assert not BY_KEY["response_timeout_sec"].acceptable(json.loads('{"v": NaN}')["v"])
+
+
+def test_an_unreadable_value_is_told_which_rule_it_broke() -> None:
+    """`hint_max_words` has no floor, so citing a minimum sends them hunting.
+
+    The refusal text is what the other team reads with minutes to settle a
+    handshake, and naming a rule that does not apply to that term costs them
+    the one thing they needed from us.
+    """
+    from najamjad_agent.negotiation.playbook import REJECT, Playbook
+
+    assessment = Playbook().evaluate({"hint_max_words": "many"})
+
+    assert assessment["verdict"] == REJECT
+    assert any("cannot read this as a number" in reason for reason in assessment["reasons"])
+    assert not any("never lowered" in reason for reason in assessment["reasons"])

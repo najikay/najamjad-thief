@@ -15,10 +15,41 @@ from ..domain.match_record import now_iso
 from ..shared.app_config import setting
 
 
+def _emission_declaration(manager: Any) -> dict[str, str] | None:
+    """What we chose to transmit, or None when we cannot work it out.
+
+    Two mistakes are guarded here, and the first one cost every artifact of a
+    finished match. `EmissionPolicy.from_config` takes the `[emission]`
+    *section*, not the `ConfigManager`; handing it the manager raises
+    `TypeError: 'ConfigManager' object is not iterable`. Because that call was
+    an **argument** to `file_match`, it raised before the function was entered,
+    so it went round the per-artifact `attempt()` guard whose whole purpose is
+    that one failure must not suppress the `result` file the league grades.
+    `AgentActions._file` then caught it and emitted `artifacts.failed`: six
+    mini-games played, zero of four artifacts written, no report sent, and rule
+    35 scores that as not having played.
+
+    So the value is computed *before* the call and never raises. `from_config`
+    can also reject an unknown mode with `EmissionError`, which is right at
+    boot and catastrophic here — a typo in one config key must not cost a
+    played series its paperwork. A declaration we cannot compute is simply
+    omitted, and said out loud.
+    """
+    from ..domain.emission import DEFAULT_GRID_SIZE, EmissionPolicy
+
+    try:
+        pheromones = dict(manager.get("pheromones", {}) or {})
+        return EmissionPolicy.from_config(
+            dict(manager.get("emission", {}) or {}),
+            grid_size=int(pheromones.get("pheromone_grid_size", DEFAULT_GRID_SIZE)),
+        ).as_declaration()
+    except Exception:  # noqa: BLE001 - a report beats a perfect report
+        return None
+
+
 def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
                 setup: dict | None = None, observer: Any = None) -> Any:
     """Turn a finished series into its four artifacts, and send the result."""
-    from ..domain.emission import EmissionPolicy
     from ..negotiation.contract import contract_hash, derive_game_ids
     from ..reporting.filing import MatchFiler
     from ..reporting.result_blocks import declaration_group
@@ -45,7 +76,7 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         # artifact schema and a human reader expect.
         written = filer.file_match(
             games, outcomes, result, _config_body(manager), contract_hash(terms),
-            emission=EmissionPolicy.from_config(manager).as_declaration(),
+            emission=_emission_declaration(manager),
             groups_block={ours: declaration_group(session.get("identity") or {}),
                           theirs: declaration_group(peer.get("identity") or {})},
         )
