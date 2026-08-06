@@ -26,7 +26,6 @@ def test_collect_spec_has_the_declaration_fields() -> None:
         "os", "cpu_type", "cpu_cores", "cpu_freq_mhz",
         "ram_gb", "gpu_type", "vram_gb", "python",
     }
-    assert None not in spec.values()
 
 
 def test_the_clock_falls_back_to_the_nominal_speed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -38,15 +37,21 @@ def test_the_clock_falls_back_to_the_nominal_speed(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
     monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "11th Gen Core i7-1165G7 @ 2.80GHz")
 
-    assert sysinfo._cpu_freq_mhz() == 2800.0
+    assert sysinfo._cpu_freq_mhz() == 2800
 
 
-def test_an_undeterminable_clock_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`unknown` is the established convention here, and beats inventing a 0."""
+def test_an_undeterminable_clock_is_none_not_a_sentinel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`HardwareSpec.cpu_freq_mhz` is `int | None`, so a string destroys the file.
+
+    Returning `UNKNOWN` here failed egress validation and took the **whole
+    declaration artifact** with it — the entire rule 24 filing, not one blank
+    field. Invisible on a laptop that can read its own clock; red on a runner
+    that cannot.
+    """
     monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
     monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "a CPU with no clock in its name")
 
-    assert sysinfo._cpu_freq_mhz() == sysinfo.UNKNOWN
+    assert sysinfo._cpu_freq_mhz() is None
 
 
 def test_no_gpu_reports_zero_vram_not_null(monkeypatch: pytest.MonkeyPatch) -> None:

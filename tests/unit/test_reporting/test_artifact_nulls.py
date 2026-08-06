@@ -71,9 +71,23 @@ def _outcome(number: int, reason: EndReason) -> SubGameOutcome:
     )
 
 
-@pytest.fixture()
-def artifacts(tmp_path) -> dict[str, dict]:
-    """One filed two-game match, read back from disk."""
+@pytest.fixture(params=["this machine", "a runner with no clock and no gpu"])
+def artifacts(request, tmp_path, monkeypatch) -> dict[str, dict]:
+    """One filed two-game match, read back from disk.
+
+    Run twice: once on whatever hardware this is, and once on a machine that
+    cannot read its own clock and has no GPU. The second is not hypothetical —
+    virtualised CI runners rarely expose `cpufreq`, and an AMD EPYC model string
+    carries no clock either, so both fallbacks miss. That case took the whole
+    declaration artifact down and nothing here noticed, because this laptop
+    reports a clock and the tests only ever ran on it.
+    """
+    if request.param != "this machine":
+        from najamjad_agent.shared import sysinfo
+
+        monkeypatch.setattr(sysinfo, "CPU_MAX_FREQ", "/nonexistent/cpufreq")
+        monkeypatch.setattr(sysinfo, "_cpu_name", lambda: "AMD EPYC 7763 64-Core Processor")
+        monkeypatch.setattr(sysinfo, "_gpu_name", lambda: "none detected")
     manager = load_role_config()
     filer = MatchFiler(tmp_path, "najamjad-vs-rival", "uid-1", GROUPS)
     filer.file_match(
@@ -113,24 +127,36 @@ def test_every_artifact_kind_is_written(artifacts) -> None:
 
 
 def test_no_artifact_carries_an_unexplained_null(artifacts) -> None:
-    """The A6 defect, as a gate over real output rather than a schema check."""
+    """The A6 defect, as a gate over real output rather than a schema check.
+
+    `cpu_freq_mhz` joins the allowed list only because a machine can genuinely
+    fail to report it. Every other null here is a wiring bug.
+    """
+    allowed = (ALLOWED_NULL, "cpu_freq_mhz")
     for name, body in artifacts.items():
-        offenders = [path for path in _nulls(body) if not path.endswith(ALLOWED_NULL)]
+        offenders = [path for path in _nulls(body) if not path.endswith(allowed)]
         assert offenders == [], f"{name} carries nulls at {offenders}"
 
 
-def test_the_hardware_declaration_is_complete(artifacts) -> None:
+def test_the_hardware_declaration_carries_what_it_can(artifacts) -> None:
     """Rule 24 fairness: `cpu_freq_mhz` and `vram_gb` were null in every filing.
 
     `collect_spec()` never produced those keys, so `spec.get(...)` handed the
     declaration two `None`s. A blank on a fairness declaration reads as
     something withheld.
+
+    The fields that are always knowable are asserted unconditionally. The clock
+    is not one of them — and the first fix for that returned an `"unknown"`
+    string, which `HardwareSpec` types as `int | None`, so it failed egress
+    validation and destroyed the entire declaration rather than blanking one
+    field. A gap is a gap; it must never be an outage.
     """
     declaration = next(body for name, body in artifacts.items() if name.startswith("declaration"))
     spec = declaration["groups"]["najamjad"]["hardware_spec"]
 
-    for field in ("cpu_model", "cpu_cores", "cpu_freq_mhz", "ram_gb", "gpu_model", "vram_gb"):
+    for field in ("cpu_model", "cpu_cores", "ram_gb", "gpu_model", "vram_gb"):
         assert spec.get(field) is not None, f"{field} is null in the fairness declaration"
+    assert "cpu_freq_mhz" in spec
 
 
 def test_the_declaration_agrees_with_the_result_about_the_match(artifacts) -> None:

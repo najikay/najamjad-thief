@@ -151,7 +151,7 @@ def _read_first(path: str) -> str:
         return ""
 
 
-def _cpu_freq_mhz() -> float | str:
+def _cpu_freq_mhz() -> int | None:
     """Clock speed in MHz, from the kernel first and the model name second.
 
     Rule 24's computational-fairness declaration wants six fields, and this was
@@ -164,15 +164,28 @@ def _cpu_freq_mhz() -> float | str:
     Failing that, the model string carries it — "i7-1165G7 @ 2.80GHz" — which is
     the nominal rather than current clock, and nominal is what a fairness
     comparison wants anyway.
+
+    **Returns `None`, never the `UNKNOWN` sentinel, and that is not cosmetic.**
+    `HardwareSpec.cpu_freq_mhz` is `int | None`, so the string `"unknown"` fails
+    egress validation and takes the **whole declaration artifact** down with it —
+    not one blank field but the entire rule 24 filing, which rule 35 then scores
+    as not having played. A machine that cannot read its own clock is common:
+    virtualised CI runners rarely expose `cpufreq`, and an AMD EPYC model string
+    carries no clock either, so both fallbacks miss. My own laptop reports
+    2800.0 and coerces cleanly, which is exactly why this was invisible here and
+    red on the runner.
+
+    So the honest gap is `None` — the value the schema already accepts — rather
+    than a sentinel that destroys the file it appears in.
     """
     khz = _read_first(CPU_MAX_FREQ)
     if khz.strip().isdigit():
-        return round(int(khz.strip()) / 1000, 1)
+        return round(int(khz.strip()) / 1000)
     match = re.search(r"@\s*([\d.]+)\s*GHz", _cpu_name(), re.IGNORECASE)
-    return round(float(match.group(1)) * 1000, 1) if match else UNKNOWN
+    return round(float(match.group(1)) * 1000) if match else None
 
 
-def _vram_gb() -> float | str:
+def _vram_gb() -> float | None:
     """Dedicated video memory, or a truthful zero when there is no GPU.
 
     The other `null`. `0.0` beside `gpu_type: "none detected"` is a complete
@@ -180,7 +193,7 @@ def _vram_gb() -> float | str:
     """
     if _gpu_name() in ("none detected", UNKNOWN):
         return 0.0
-    return UNKNOWN
+    return None
 
 
 def collect_spec() -> dict:
