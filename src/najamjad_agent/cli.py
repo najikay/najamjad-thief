@@ -69,6 +69,10 @@ OpponentOption = Annotated[str, typer.Option("--opponent", help="name of a card 
 #: A practice-only identity override. Never for a counted match: the committed
 #: config carries our real group_id and a test pins it.
 GroupIdOption = Annotated[str, typer.Option("--group-id", help="override our group_id (practice only)")]
+#: Play deterministically: no scent, no hints, and no LLM call at all. For
+#: mirroring a peer who transmits nothing — several do — and for a run whose
+#: cost and timing are entirely predictable.
+QuietOption = Annotated[bool, typer.Option("--quiet/--talk", help="emit no scent or hints; no LLM")]
 #: Runs this process in practice mode without touching any tracked file.
 PracticeOption = Annotated[bool, typer.Option("--practice/--counted", help="redirect reports to the operator")]
 
@@ -100,10 +104,12 @@ def match(
     opponent: OpponentOption = "",
     group_id: GroupIdOption = "",
     practice: PracticeOption = False,
+    quiet: QuietOption = False,
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
     _practice(practice)
-    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
+               group_id=group_id or None, quiet=quiet)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     from .sdk.actions import OpponentUnreachableError
 

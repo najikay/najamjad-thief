@@ -103,6 +103,7 @@ def build_sdk(
     workspace: Path | None = None,
     opponent: str | None = None,
     group_id: str | None = None,
+    quiet: bool = False,
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -128,6 +129,20 @@ def build_sdk(
         # config and loosening the test that pins our real identity, which
         # would let a wrong group_id ship at submission.
         manager.overlay({"game": {"group_id": group_id}})
+    if quiet:
+        # Match a peer who tells us nothing. Emitting less is a tactical choice
+        # the rules allow — the scent field is ours to publish or not — and
+        # against a silent opponent it costs us nothing they are not already
+        # withholding. It is an *overlay* rather than a config edit so a run
+        # stays reproducible from its command line, and so the shipped default
+        # remains "talk", which is what a counted match against an unknown team
+        # should do.
+        #
+        # `hint = false` also skips the vendor call outright, so this is a
+        # genuinely deterministic run: zero tokens, no provider latency, and
+        # the same move policy either way — moves have always been plain
+        # Python (rule 25; we decline the LLM-move exception).
+        manager.overlay({"emission": {"scent": "none", "hint": False}})
     if opponent:
         # Late and narrow: only `network.opponent_*`, so a card can never
         # reach a signed game term (see shared/opponents.py).
