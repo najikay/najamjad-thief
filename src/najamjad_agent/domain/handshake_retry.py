@@ -10,13 +10,27 @@ contradictory, which rules 33-35 can void both teams for.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from ..shared.events import Emit
 
+#: Extra attempts reserved for a peer whose gate is merely shut. A refusal
+#: arrives in milliseconds, so these are cheap, and they are what actually
+#: resynchronises two agents that started a few seconds apart. Ten at four
+#: seconds covers about forty seconds of skew — comfortably more than a cold
+#: start — without approaching the opponent's own watchdog.
+BUSY_RETRIES = 10
+BUSY_BACKOFF_SECONDS = 4.0
+
 
 def agree_on_terms(
-    handshake: Any, sub_game: int, retries: int, emit: Emit, role: str = ""
+    handshake: Any,
+    sub_game: int,
+    retries: int,
+    emit: Emit,
+    role: str = "",
+    sleep: Any = None,
 ) -> bool:
     """Run the pre-game handshake, retrying the *same* sub-game on failure.
 
@@ -38,21 +52,46 @@ def agree_on_terms(
     Every attempt is announced; a silent retry hides the tunnel problem an
     operator needs to hear about before it happens mid-series.
     """
+    sleep = sleep or time.sleep
     if handshake is None:
         return True
-    for attempt in range(1 + retries):
+    ordinary = 0
+    busy_seen = 0
+    while True:
         try:
             _invoke(handshake, role)
         except Exception as error:  # noqa: BLE001 - injected boundary, reported
+            # A peer answering "busy, ask again at the boundary" is healthy and
+            # mid-mini-game: our clocks drifted and they started first. That
+            # deserves a short wait, **not** one of the ordinary attempts —
+            # spending the real budget on it is how a few seconds of skew became
+            # a lost series, because the budget ran out long before their
+            # sub-game ended. So the two are counted separately.
+            if type(error).__name__ == "HandshakeBusyError":
+                busy_seen += 1
+                spent = busy_seen > BUSY_RETRIES
+                emit({
+                    "event": "handshake.exhausted" if spent else "handshake.busy_retry",
+                    "sub_game": sub_game,
+                    "attempt": busy_seen,
+                    "error": f"{type(error).__name__}: {error}",
+                })
+                if spent:
+                    return False
+                sleep(BUSY_BACKOFF_SECONDS)
+                continue
+            ordinary += 1
+            spent = ordinary > retries
             emit({
-                "event": "handshake.retry" if attempt < retries else "handshake.exhausted",
+                "event": "handshake.exhausted" if spent else "handshake.retry",
                 "sub_game": sub_game,
-                "attempt": attempt + 1,
+                "attempt": ordinary,
                 "error": f"{type(error).__name__}: {error}",
             })
+            if spent:
+                return False
         else:
             return True
-    return False
 
 
 def _invoke(handshake: Any, role: str) -> Any:

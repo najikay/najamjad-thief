@@ -66,6 +66,7 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 declared if isinstance(declared, dict) else {},
                 role,
                 bus.publish,
+                ours=dict(session["identity"].get("mcp_servers") or {}),
             )
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer

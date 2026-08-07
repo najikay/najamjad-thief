@@ -141,3 +141,52 @@ def test_a_dropped_turn_still_costs_exactly_one_mini_game() -> None:
         EndReason.TIMEOUT.value,
         EndReason.TIMEOUT.value,
     ]
+
+
+def test_a_busy_peer_does_not_spend_the_ordinary_retry_budget() -> None:
+    """Skew must cost a short wait, not the attempts reserved for an outage.
+
+    With `handshake_retries = 2` the ordinary budget is three attempts. A peer
+    who started a few seconds early refuses every one of them in milliseconds,
+    so the budget was gone long before their sub-game ended — which is exactly
+    how a few seconds of drift became a lost series.
+    """
+    from najamjad_agent.domain.handshake_retry import BUSY_RETRIES, agree_on_terms
+    from najamjad_agent.negotiation.handshake import HandshakeBusyError
+
+    events: list[dict] = []
+    calls = {"n": 0}
+    waited: list[float] = []
+
+    def busy_until_the_boundary() -> None:
+        calls["n"] += 1
+        if calls["n"] <= 4:
+            raise HandshakeBusyError("a mini-game is in progress")
+
+    agreed = agree_on_terms(
+        busy_until_the_boundary, sub_game=1, retries=2,
+        emit=events.append, sleep=waited.append,
+    )
+
+    assert agreed, "gave up on a peer that was merely finishing a mini-game"
+    assert calls["n"] == 5
+    assert len(waited) == 4, "a busy retry must pause, or it becomes a spin"
+    assert all(event["event"] == "handshake.busy_retry" for event in events)
+    assert BUSY_RETRIES >= 4
+
+
+def test_an_unreachable_peer_still_exhausts_on_schedule() -> None:
+    """The budget that matters for a real outage is unchanged: 1 + retries."""
+    from najamjad_agent.domain.handshake_retry import agree_on_terms
+
+    events: list[dict] = []
+
+    def always_down() -> None:
+        raise RuntimeError("connection refused")
+
+    assert not agree_on_terms(
+        always_down, sub_game=1, retries=2, emit=events.append, sleep=lambda _s: None
+    )
+    assert [event["event"] for event in events] == [
+        "handshake.retry", "handshake.retry", "handshake.exhausted",
+    ]
