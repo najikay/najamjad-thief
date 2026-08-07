@@ -165,7 +165,7 @@ def build_match(
         params=params,
         tracker=tracker,
         transport=transport,
-        build_state=state_factory(manager),
+        build_state=state_factory(manager, meter, bus.publish),
         build_brain=brain_factory(manager),
         speaker=speaker,
         clock=time.monotonic,

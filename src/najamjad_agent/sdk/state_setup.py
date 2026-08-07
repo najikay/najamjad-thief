@@ -25,24 +25,34 @@ from ..domain.ledger import CommitLedger
 from ..domain.params import GameParams
 from ..domain.scent import ScentField
 from ..domain.scent_models import ScentModel
+from .step_zero_setup import declaration_sealer
 
 
-def state_factory(manager: Any = None) -> Any:
+def state_factory(manager: Any = None, meter: Any = None, emit: Any = None) -> Any:
     """The mini-game builder, honouring the negotiated and configured terms.
 
     Mirrors `brain_factory`: configuration is read **once, at wiring time**, so a
     bad `[emission]` mode stops the agent booting rather than surfacing thirty
     steps into a match.
+
+    The step-0 declaration is sealed here rather than in the runner, because
+    this is where a mini-game's ledger is born and the only place that already
+    holds both the configuration it describes and the ledger it goes into
+    (rule 53). It must happen before the first move, and a state handed back
+    from here has not played one yet.
     """
     pheromones = dict(manager.get("pheromones", {}) or {}) if manager else {}
     emission = EmissionPolicy.from_config(
         dict(manager.get("emission", {}) or {}) if manager else {},
         grid_size=int(pheromones.get("pheromone_grid_size", DEFAULT_GRID_SIZE)),
     )
+    seal_step_zero = declaration_sealer(manager, meter, emit)
 
     def build(params: GameParams, role: Role, sub_game: int) -> GameState:
         """A fresh mini-game state; nothing may leak between sub-games."""
-        return build_state(params, role, sub_game, emission=emission, pheromones=pheromones)
+        state = build_state(params, role, sub_game, emission=emission, pheromones=pheromones)
+        seal_step_zero(state, role, sub_game)
+        return state
 
     return build
 

@@ -111,6 +111,31 @@ running code (rule 53, mandatory; feeds the computational-fairness bonus, rule
 probe should warn the operator, not block a match that is about to start. The
 commit hash is captured with an argument-list subprocess call (never a shell).
 
+**Sealed in `sdk/state_setup.state_factory`**, which is the one place holding
+both the configuration the declaration describes and the ledger it goes into; a
+state handed back from there has not moved yet, so "before the first move" is
+structural rather than a matter of call order. Step 0 is free because
+`GameState.step` starts at 0 and the orchestrator increments *before* it
+commits. Hardware and `git rev-parse` are resolved **once at wiring time**: both
+shell out, and a subprocess between mini-games sits on the path of a watchdog we
+have already agreed to. Nothing in the sealer may raise — a record describes a
+match and is never a reason not to play one.
+
+Until T-2532 this section described a component that existed and was never
+called. Every log we filed opened at step 1, and E07 was marked complete on unit
+tests that could not observe the absence of a caller.
+
+**Reading the other side's.** A peer's `github_commit` (rules 49, 53) and token
+total (rule 54) cannot be computed from anything we hold — they are only in
+*their* step-0 record, which arrives with the rest of their reveals at the audit
+and is carried on every played record as `their_records`.
+`reporting/peer_declaration.py` reads it, matching on `type` rather than
+position so a peer who orders their reveal differently is not treated as having
+lied. Token totals are **running**, so a mini-game's cost is the gap between
+consecutive declarations; the last game has no successor and is reported as 0
+rather than guessed. A peer who declares nothing — most of them today — still
+produces a filable report.
+
 ## 6. Metrics & acceptance
 
 | Metric | Target | Test |
