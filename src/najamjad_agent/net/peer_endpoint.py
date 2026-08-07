@@ -104,10 +104,55 @@ def declared_endpoint(identity: dict[str, Any], our_role: str) -> str:
     return ""
 
 
-def retarget(client: Any, identity: dict[str, Any], our_role: str, emit: Any = None) -> str:
+def _same_endpoint(one: str, other: str) -> bool:
+    """Whether two URLs address the same host and path, ignoring cosmetics."""
+    try:
+        left, right = urlparse(one.strip()), urlparse(other.strip())
+    except ValueError:
+        return False
+    return (
+        (left.hostname or "").lower() == (right.hostname or "").lower()
+        and left.path.rstrip("/") == right.path.rstrip("/")
+    )
+
+
+def is_our_own(url: str, ours: dict[str, Any] | None) -> bool:
+    """Whether a peer just told us to dial an address **we** publish.
+
+    Every other team in this league is running a fork of the reference, and
+    several are running forks of *ours*. A peer who has not edited
+    `[game.mcp_servers]` therefore declares our hostnames as its own, in perfect
+    good faith — and we adopt them, because they are public, well-formed and
+    not loopback, so `_usable` has no reason to object.
+
+    The result is that we send every turn into our own tunnel. Measured against
+    Amjad on 2026-08-06: the handshake locked correctly against his quick
+    tunnel, his first turn arrived, and then we retargeted to
+    `thief.4laboratory.com` — our own address, whose origin was not running —
+    and burned the send budget on a 502 from our own edge before abandoning the
+    mini-game. The fault log said `opponent-unreachable`, which was true of the
+    address and deeply misleading about whose it was.
+
+    Dialling ourselves cannot be correct under any circumstance, so this is a
+    refusal rather than a preference: we keep the address the operator
+    configured, which is the one that just completed a handshake.
+    """
+    if not ours:
+        return False
+    return any(_same_endpoint(url, str(mine)) for mine in ours.values() if mine)
+
+
+def retarget(
+    client: Any,
+    identity: dict[str, Any],
+    our_role: str,
+    emit: Any = None,
+    ours: dict[str, Any] | None = None,
+) -> str:
     """Point `client` at the endpoint the peer just declared, if it moved.
 
-    Input: the live `PeerClient`, their identity block, our role.
+    Input: the live `PeerClient`, their identity block, our role, and the
+    endpoints *we* publish so a peer cannot send us to our own address.
     Output: the URL now in use.
     Setup: call once per sub-game, right after the handshake locks.
 
@@ -118,6 +163,16 @@ def retarget(client: Any, identity: dict[str, Any], our_role: str, emit: Any = N
     fresh = declared_endpoint(identity, our_role)
     current = str(getattr(client, "opponent_url", "") or "")
     if not fresh or fresh == current:
+        return current
+    if is_our_own(fresh, ours):
+        # Loud, because the symptom without this line is a series of timeouts
+        # against an address that looks like the opponent's in every log.
+        publish({
+            "event": "peer.declared_our_own_endpoint",
+            "declared": fresh,
+            "keeping": current,
+            "our_role": our_role,
+        })
         return current
     client.retarget(fresh)
     publish({"event": "peer.endpoint_moved", "was": current, "now": fresh, "our_role": our_role})

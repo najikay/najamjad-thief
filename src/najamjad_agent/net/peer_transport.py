@@ -71,9 +71,17 @@ class PeerTransport:
         )
         return self._as_dict(message)
 
-    def send_negotiate(self, message: dict[str, Any]) -> None:
-        """Deliver our signed terms to the opponent's `negotiate` tool."""
-        self._client.send("negotiate", message)
+    def send_negotiate(self, message: dict[str, Any]) -> Any:
+        """Deliver our signed terms, and hand back whatever the peer answered.
+
+        The reply was discarded, and it is the one piece of information that
+        distinguishes "nobody is there" from "busy, ask again at the boundary".
+        A peer mid-mini-game answers the second — politely, over a working
+        connection, in a normal response body, because `_handle` never raises at
+        a caller. We then waited the full handshake timeout as though we had
+        heard nothing, three times over.
+        """
+        return self._client.send("negotiate", message)
 
     def reset(self) -> None:
         """Clear per-mini-game state between sub-games.
