@@ -29,11 +29,22 @@ def symmetric_outcome(
     rows = []
     for row in sub_games:
         scores = row.get("score", {}) or {}
+        roles = row.get("roles", {}) or {}
         rows.append(
             {
                 "sub_game_number": int(row.get("sub_game_number", 0)),
                 "result": str(row.get("result", "")),
                 "winner_group": row.get("winner_group"),
+                # Keyed by group id, so both peers build the identical mapping —
+                # which is what makes a per-peer fact safe to hash. The reference
+                # includes roles in its preimage and we did not, so our digest
+                # differed from a reference-derived opponent's for the same
+                # series. Under rule 35 a differing sha256 is indistinguishable
+                # from contradictory reports, and being *more* cautious than the
+                # reference cuts the wrong way here: the safety we gained by
+                # omitting a symmetric field cost us agreement with the peers we
+                # most need to agree with.
+                "roles": {group: str(roles.get(group, "")) for group in ordered},
                 "score": {group: int(scores.get(group, 0)) for group in ordered},
             }
         )

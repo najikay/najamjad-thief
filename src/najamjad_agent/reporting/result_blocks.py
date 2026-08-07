@@ -51,9 +51,14 @@ def sub_game_rows(
             "started_at": str(game.get("started_at", "")),
             "ended_at": str(game.get("ended_at", "")),
             "audit": {"log_verified": verified, "tampered": game.get("audit") == "TAMPERED"},
+            # Bare filenames, as the golden writes them. The `<group>/` prefix
+            # named twelve directories that do not exist — artifacts sit flat —
+            # and contradicted `all_logs` in the same file, which lists the same
+            # files unprefixed. `logs/<group_id>/` is where the reference *puts*
+            # its logs on disk, not what it records here.
             "log_files": {
-                ours: f"{ours}/{log_filename(game_id, number)}",
-                theirs: f"{theirs}/{log_filename(game_id, number)}",
+                ours: log_filename(game_id, number),
+                theirs: log_filename(game_id, number),
             },
         })
     return rows
