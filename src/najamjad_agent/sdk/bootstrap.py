@@ -20,7 +20,7 @@ from ..net.inbox import Inboxes
 from ..net.mcp_server import PeerServer
 from ..net.preflight_checks import standard_checks
 from ..net.tunnel import Tunnel
-from ..shared.app_config import load_setup, setting
+from ..shared.app_config import LOOPBACK_HOSTS, dashboard_bind, load_setup, setting
 from ..shared.config import ConfigManager
 from ..shared.environment import load_env
 from ..shared.events import EventBus
@@ -104,6 +104,7 @@ def build_sdk(
     opponent: str | None = None,
     group_id: str | None = None,
     quiet: bool = False,
+    dashboard_host: str = "",
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -201,7 +202,7 @@ def build_sdk(
     sdk = AgentSdk(events=bus, actions=actions, meter=meter, negotiation=talks,
                    controls_enabled=bool(setting(setup, "features.controls", False)))
     if dashboard:
-        _attach_dashboard(sdk, actions, manager, bus)
+        _attach_dashboard(sdk, actions, manager, bus, dashboard_host)
     _attach_match(actions, manager, chosen, bus, inboxes, meter, sdk)
     return sdk
 
@@ -254,7 +255,11 @@ def _attach_match(
 
 
 def _attach_dashboard(
-    sdk: AgentSdk, actions: AgentActions, manager: ConfigManager, bus: EventBus
+    sdk: AgentSdk,
+    actions: AgentActions,
+    manager: ConfigManager,
+    bus: EventBus,
+    host_override: str = "",
 ) -> None:
     """Give the SDK a dashboard that reads it, and subscribe it to the bus.
 
@@ -266,8 +271,19 @@ def _attach_dashboard(
 
     hub = ConnectionHub()
     attach_bus(bus, hub)
-    port = int(setting(load_setup(), "ui.port", 8000))
-    actions.attach_dashboard(DashboardServer(sdk, hub, port=port))
+    # `ui.host` was config nothing read, so the bind was hard-coded whatever the
+    # file said. Honoured now, and still loopback by default. `--dashboard-host`
+    # overrides it for one run only, the same way `--group-id` does: the shipped
+    # config keeps the value a test pins for rules 8-9, and reaching the panel
+    # from another machine never becomes a committed change nobody reviews.
+    host, port = dashboard_bind(load_setup())
+    host = host_override or host
+    if host not in LOOPBACK_HOSTS:
+        # Loud, because the note beside the key is a rules argument rather than
+        # taste: anyone who can reach this sees our belief grid and our sealed
+        # state, which is what commit-reveal exists to hide (rules 8-9).
+        bus.publish({"event": "dashboard.not_loopback", "host": host})
+    actions.attach_dashboard(DashboardServer(sdk, hub, host=host, port=port))
 
 
 def _build_tunnel(manager: ConfigManager, role: Role, bus: EventBus) -> Tunnel | None:

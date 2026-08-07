@@ -64,3 +64,28 @@ def save_setup(setup: dict[str, Any], path: Path | str = DEFAULT_PATH) -> None:
     Path(path).write_text(
         json.dumps(setup, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+
+
+#: The hosts that keep the dashboard on the machine it runs on.
+LOOPBACK = "127.0.0.1"
+LOOPBACK_HOSTS = frozenset({LOOPBACK, "localhost", "::1"})
+
+
+def dashboard_bind(setup: dict[str, Any]) -> tuple[str, int]:
+    """Where the dashboard listens — `ui.host` and `ui.port`, both honoured.
+
+    `ui.host` has sat in `config/setup.json`, with a note explaining why it is
+    loopback, since the file was written; nothing ever read it, so the bind was
+    hard-coded in `ui/server.py` and the key was decoration. It matters on WSL2,
+    where a Windows browser reaches a loopback-bound server only for as long as
+    localhost forwarding holds — and when it stops there was no supported way to
+    move the bind, only editing the source.
+
+    Still defaults to loopback. The note beside the key is a rules argument
+    rather than a preference: the dashboard renders our belief grid and our
+    sealed state, so anything that can reach it gets what commit-reveal exists
+    to hide (rules 8-9). Moving it is a decision the operator makes and the
+    event log records, not something a default should make for them.
+    """
+    host = str(setting(setup, "ui.host", LOOPBACK) or LOOPBACK)
+    return host, int(setting(setup, "ui.port", 8000))

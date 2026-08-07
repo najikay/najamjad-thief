@@ -127,7 +127,7 @@ numbers `scripts/check_file_sizes.py` enforces.
 
 ```
 src/najamjad_agent/
-├── cli.py                     # The command line: argument parsing, one SDK call, an exit co  129
+│   ├── cli.py                     # The command line: argument parsing, one SDK call, an exi  136
 ├── constants.py               # Project-wide immutable enumerations and physical constants.   46
 ├── analysis/
 │   ├── charts.py                  # Figures for the analysis notebook (T-2215, T-2216, T-221  95
@@ -246,7 +246,7 @@ src/najamjad_agent/
 ├── sdk/
 │   ├── actions.py                 # Everything a consumer can ask the agent to *do*.          117
 │   ├── app_paths.py               # Where the dashboard looks for past matches.               18
-│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  130
+│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  147
 │   ├── handshake_setup.py         # Building the pre-game agreement exchange.                 59
 │   ├── llm_setup.py               # Building the hint writer: which models speak, and what t  71
 │   ├── match_filing.py            # Turning a finished series into its artifacts, wired to r  92
@@ -258,7 +258,7 @@ src/najamjad_agent/
 │   ├── state_setup.py             # Building one mini-game's state from the terms both sides  53
 │   ├── step_zero_setup.py         # Sealing the rule-53 declaration that opens every mini-ga  43
 ├── shared/
-│   ├── app_config.py              # App-level settings — where files go and which subsystems  24
+│   ├── app_config.py              # App-level settings — where files go and which subsystems  29
 │   ├── config.py                  # Configuration: private TOML underneath, signed JSON on t  70
 │   ├── environment.py             # Loading `.env`, so a key written there is a key the agen  13
 │   ├── error_detail.py            # Naming the fault when the exception refuses to name itse  34

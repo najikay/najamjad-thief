@@ -75,6 +75,12 @@ GroupIdOption = Annotated[str, typer.Option("--group-id", help="override our gro
 QuietOption = Annotated[bool, typer.Option("--quiet/--talk", help="emit no scent or hints; no LLM")]
 #: Runs this process in practice mode without touching any tracked file.
 PracticeOption = Annotated[bool, typer.Option("--practice/--counted", help="redirect reports to the operator")]
+#: Where the dashboard listens, for one run. `0.0.0.0` is what a Windows
+#: browser needs to reach a WSL2 agent when localhost forwarding is not
+#: working. Not the shipped default and deliberately not a config edit: the
+#: panel renders our belief grid and our sealed state (rules 8-9), so exposing
+#: it is a per-run decision the event log records, not a committed one.
+DashHostOption = Annotated[str, typer.Option("--dashboard-host", help="bind the dashboard elsewhere, e.g. 0.0.0.0")]
 
 
 @app.command()
@@ -86,10 +92,12 @@ def peer(
     opponent: OpponentOption = "",
     group_id: GroupIdOption = "",
     practice: PracticeOption = False,
+    dashboard_host: DashHostOption = "",
 ) -> None:
     """Bring the agent online and serve until interrupted."""
     _practice(practice)
-    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None, group_id=group_id or None)
+    sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
+               group_id=group_id or None, dashboard_host=dashboard_host)
     url = sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)
     typer.echo(f"agent online at {url}")
     _serve_until_interrupted(sdk)
@@ -105,11 +113,12 @@ def match(
     group_id: GroupIdOption = "",
     practice: PracticeOption = False,
     quiet: QuietOption = False,
+    dashboard_host: DashHostOption = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
     _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
-               group_id=group_id or None, quiet=quiet)
+               group_id=group_id or None, quiet=quiet, dashboard_host=dashboard_host)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     from .sdk.actions import OpponentUnreachableError
 
