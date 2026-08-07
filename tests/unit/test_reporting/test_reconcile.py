@@ -44,13 +44,34 @@ def test_both_peers_compute_the_same_signature() -> None:
 
 
 def test_the_symmetric_outcome_excludes_per_peer_facts() -> None:
-    """Hashing our role or token spend would guarantee two different hashes."""
+    """Hashing our token spend or commit would guarantee two different hashes."""
     outcome = symmetric_outcome(GAME_ID, GAME_UID, GROUPS, SUB_GAMES)
     flat = str(outcome)
     assert "tokens" not in flat
     assert "github_commit" not in flat
-    assert "roles" not in flat
     assert outcome["groups"] == ["najamjad", "rival"], "group order is normalised"
+
+
+def test_roles_are_included_because_keyed_by_group_they_are_symmetric() -> None:
+    """Excluded once, and that was over-caution with a real cost.
+
+    A role is per-peer only when recorded as "ours" and "theirs". Keyed by
+    group id both peers build the identical mapping, so it hashes the same on
+    both machines — which is the only property that matters here.
+
+    The reference includes roles in its preimage. Omitting them made our digest
+    differ from a reference-derived opponent's for the very same series, and
+    under rule 35 a differing `sha256` is indistinguishable from contradictory
+    reports. Being more cautious than the reference cut the wrong way: it cost
+    us agreement with the peers we most need to agree with.
+    """
+    outcome = symmetric_outcome(GAME_ID, GAME_UID, GROUPS, SUB_GAMES)
+
+    assert "roles" in outcome["sub_games"][0]
+    # The property that makes it safe: order-independent, both directions.
+    assert agreement_hash(GAME_ID, GAME_UID, ("najamjad", "rival"), SUB_GAMES) == agreement_hash(
+        GAME_ID, GAME_UID, ("rival", "najamjad"), SUB_GAMES
+    )
 
 
 def test_matching_summaries_are_agreed() -> None:

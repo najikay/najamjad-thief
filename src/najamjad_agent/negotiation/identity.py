@@ -42,10 +42,39 @@ def identity_from_config(manager: Any) -> dict[str, Any]:
         "group_name": str(manager.get("game.group_name", "NajAmjad")),
         "members": list(manager.get("game.members", []) or []),
         "repos": dict(manager.get("game.repos", {}) or {}),
-        "mcp_servers": dict(manager.get("game.mcp_servers", {}) or {}),
+        "mcp_servers": served_endpoints(manager),
         "llm_model": str(manager.get("llm.model", "") or "cli-default"),
         "spec": spec_for_declaration(),
     }
+
+
+def served_endpoints(manager: Any) -> dict[str, str]:
+    """Both role keys pointing at the endpoint this process actually serves.
+
+    We used to publish `config`'s `[game.mcp_servers]` verbatim — two permanent
+    hostnames, one per role. But **one match is one process on one port**, so in
+    the mini-games where we hold the other role we were naming a hostname with
+    nothing behind it. An opponent that honours the label — which includes every
+    fork of this repo — dials it and gets a 502 for half the series, and reads
+    the silence as our bug, correctly.
+
+    The reference has always done it this way: its shipped configs point both
+    role keys at the same port. Declaring where we *are* is the honest answer;
+    declaring where a differently-configured sibling would be is not.
+
+    `tunnel.hostname` when a tunnel fronts us, the local port otherwise, so a
+    `--no-tunnel` rehearsal advertises something a peer on the same host can
+    actually reach.
+
+    Note this is **only what we advertise**. `net/peer_endpoint.is_our_own` must
+    keep recognising *both* hostnames as ours, or a peer running our own config
+    could still send us to the sibling address — which is the defect this pairs
+    with, not a duplicate of it.
+    """
+    hostname = str(manager.get("tunnel.hostname", "") or "").strip()
+    port = int(manager.get("network.my_port", 8802))
+    url = f"https://{hostname}/mcp" if hostname else f"http://127.0.0.1:{port}/mcp"
+    return {"cop": url, "thief": url}
 
 
 def spec_for_declaration() -> dict[str, Any]:

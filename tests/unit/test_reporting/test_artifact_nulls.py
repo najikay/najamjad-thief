@@ -57,6 +57,23 @@ def _game(number: int, reason: str) -> dict:
         "failed_steps": [],
         "their_claim": reason,
         "disputed": False,
+        # The opponent's revealed records, carrying the step-0 declaration our
+        # report reads their commit and token total off. Present here because
+        # a fixture without one only ever exercises the "peer declared
+        # nothing" path, which is what let `tokens: {theirs: 0}` ship as a
+        # literal — every generated artifact agreed with the constant.
+        "their_records": [
+            {
+                "payload": {
+                    "step": 0,
+                    "type": "system_spec",
+                    "github_commit": "b0bacafe",
+                    "tokens_total": (number - 1) * 400,
+                },
+                "nonce": "n0",
+                "commit": "c0",
+            }
+        ],
     }
 
 
@@ -179,3 +196,25 @@ def test_the_audit_summary_reports_audited_steps_not_game_length(artifacts) -> N
 
     assert audit["verified_steps"] == 2, "this is the audit's count, not the game's length"
     assert audit["failed_steps"] == []
+
+
+def test_the_result_reports_the_opponents_own_commit_and_spend(artifacts) -> None:
+    """Both fields used to be invented, and generated artifacts agreed with them.
+
+    `github_commit[theirs]` fell back to a `their_commit` key nothing in this
+    project ever wrote, and `tokens[theirs]` was a literal `0` — not a lookup
+    that failed. Read here off the bytes on disk rather than from the row
+    builder, because the defect was that nothing downstream ever disagreed.
+
+    Their declared totals are 0 and 400, so mini-game 1 cost them 400. Game 2
+    is the last and has no successor to subtract from: reported as 0, because
+    understating one game beats inventing a figure they never claimed.
+    """
+    result = next(body for name, body in artifacts.items() if name.startswith("result"))
+    first, second = result["sub_games"]
+
+    assert first["github_commit"]["rival"] == "b0bacafe"
+    assert first["github_commit"]["najamjad"] != "unknown"
+    assert first["tokens"]["rival"] == 400
+    assert second["tokens"]["rival"] == 0
+    assert result["final_result"]["tokens_total_series"]["rival"] == 400

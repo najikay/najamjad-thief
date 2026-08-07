@@ -61,3 +61,17 @@ UOH_SQAK_BASELINE_STEPS = 15
 
 #: Where their sweep caught us, all three times.
 UOH_SQAK_CAPTURE_CELL: Position = (1, 6)
+
+
+#: The cop's true cells from g02 of the 2026-08-06 practice series against
+#: Amjad, lifted from the sealed log rather than invented. Our thief was
+#: captured at step 20 playing this line, and the archive is the only place
+#: that behaviour existed — every synthetic arena we had passed it.
+AMJAD_G02_SWEEP = (
+    (1, 0), (1, 1), (2, 1), (2, 2), (3, 2), (3, 3),
+    (4, 3), (4, 4), (4, 4), (4, 5), (4, 5), (4, 4),
+    (4, 3), (5, 3), (5, 2), (5, 2), (5, 1), (5, 1),
+    (5, 0), (6, 0),
+)
+#: The four walls that cop placed, in the order it placed them.
+AMJAD_G02_BARRIERS = ((5, 4), (5, 5), (6, 2), (6, 1))

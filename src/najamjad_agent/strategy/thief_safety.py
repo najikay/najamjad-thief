@@ -102,6 +102,12 @@ def adversarial_room(board: Board, cell: Position, cuts: frozenset[Position]) ->
     return worst
 
 
+#: Exits beyond which more exits stop buying survival. A cell with three ways
+#: out cannot be sealed by one barrier, which is the threat the count exists to
+#: measure; a fourth adds nothing a thief can spend.
+SAFE_EXITS = 3
+
+
 def rank(
     board: Board,
     origin: Position,
@@ -137,7 +143,26 @@ def rank(
         # budget is spent, because then the geometry is fixed.
         min(adversarial_room(board, landing, cuts), 49),
         min(component_size(board, landing), 49),
-        len(board.neighbours(landing)),
+        # **Saturated, because exits are a threshold and not a maximand.**
+        # Both room keys above are pinned at the component size on an intact
+        # board, so the ranking collapses to this key and then distance — and
+        # an unbounded exit count then outranks *any* amount of distance. From
+        # [5,5] against a cop at [3,2] that made STAY (4 exits, distance 5)
+        # beat moving away (3 exits, distance 6), so we stood still through a
+        # real match while the cop walked 6 squares to 2 for free, got herded
+        # west along row 6, and died in the corner at [6,0] where both exits
+        # were covered. Measured from the sealed log of g02 against Amjad.
+        #
+        # Three exits and four are not a meaningful difference in survivability;
+        # one and three are. Capping here keeps the discrimination the tests
+        # protect — a one-exit cell still loses to a two, a two to a three — and
+        # stops the policy paying real distance for an exit it never uses.
+        #
+        # Room-first ordering was itself introduced to stop us running into a
+        # far corner. It did not: it bought the corner more slowly. The error
+        # was never the order, it was treating a safety floor as something to
+        # maximise.
+        min(len(board.neighbours(landing)), SAFE_EXITS),
         min(reach.get(landing, 0), 12),
     )
 

@@ -238,9 +238,10 @@ src/najamjad_agent/
 │   ├── gmail_auth.py              # Loading Gmail credentials, non-interactively or not at a  36
 │   ├── gmail_sender.py            # Sending the result report — the last thing that has to w  87
 │   ├── mail_message.py            # Building the report email — construction, separate from   25
+│   ├── peer_declaration.py        # Reading the opponent's step-0 declaration out of the rec  31
 │   ├── reconcile.py               # Agreeing the result with the opponent *before* anybody e  82
 │   ├── resilient_filing.py        # Writing what we can, when one artifact cannot be written  26
-│   ├── result_blocks.py           # What the result report *says* — the blocks, separate fro  112
+│   ├── result_blocks.py           # What the result report *says* — the blocks, separate fro  118
 │   ├── step_zero.py               # Step-0: the signed declaration that opens every mini-gam  43
 ├── sdk/
 │   ├── actions.py                 # Everything a consumer can ask the agent to *do*.          117
@@ -254,7 +255,8 @@ src/najamjad_agent/
 │   ├── plugins.py                 # Loading a replacement component named in configuration (  23
 │   ├── queries.py                 # Read models for the dashboard — and the boundary that ke  90
 │   ├── sdk.py                     # The SDK — the single entry point to everything this agen  143
-│   ├── state_setup.py             # Building one mini-game's state from the terms both sides  47
+│   ├── state_setup.py             # Building one mini-game's state from the terms both sides  53
+│   ├── step_zero_setup.py         # Sealing the rule-53 declaration that opens every mini-ga  43
 ├── shared/
 │   ├── app_config.py              # App-level settings — where files go and which subsystems  24
 │   ├── config.py                  # Configuration: private TOML underneath, signed JSON on t  70

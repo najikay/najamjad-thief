@@ -79,10 +79,16 @@ class Orchestrator:
         # the wire carry the same string. Stripping the hint afterwards would
         # leave our own commit describing a turn we did not send, which the audit
         # cannot tell apart from tampering.
-        hint, intent = self._speaker.compose(facts)
         emission = self.state.emission.mirroring(
             self.state.peer_silent_turns >= SILENCE_GRACE_TURNS
         )
+        # **Decided before we speak, not after.** `compose` reaches a vendor and
+        # costs tokens and latency; blanking its result afterwards paid for both
+        # and sent nothing. Against Amjad we spent 23,648 tokens while the peer
+        # spent zero — and a run configured to stay silent would have spent them
+        # too. Asking the policy first is what makes a quiet match genuinely
+        # deterministic rather than merely expensive and mute.
+        hint, intent = self._speaker.compose(facts) if emission.hints else ("", "truth")
         hint = emission.hint(hint)
         self._apply_own_action(move, barrier)
         claim_survival_if_outlasted(self.state)

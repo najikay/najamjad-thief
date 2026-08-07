@@ -14,6 +14,7 @@ from typing import Any
 from ..constants import is_technical
 from ..protocol.schemas_report import log_filename
 from ..shared.sysinfo import git_commit
+from .peer_declaration import UNKNOWN_COMMIT, peer_facts
 
 
 def sub_game_rows(
@@ -30,9 +31,15 @@ def sub_game_rows(
     """
     ours, theirs = groups
     commit = git_commit()
+    # What the other team declared about itself, read from the step-0 records
+    # they revealed at the audit. Both fields used to be invented: the commit
+    # from a `their_commit` key nothing ever set, the token count from a
+    # literal 0 that no honest declaration could have displaced.
+    peer = peer_facts(games)
     rows = []
     for game, outcome in zip(games, outcomes, strict=False):
         number = int(game.get("sub_game", 0))
+        declared = peer.get(number, {})
         role = str(game.get("role", ""))
         verified = game.get("audit") == "Verified OK"
         rows.append({
@@ -46,14 +53,22 @@ def sub_game_rows(
             "tie": outcome.our_score == outcome.their_score
             and not is_technical(game.get("end_reason")),
             "score": {ours: outcome.our_score, theirs: outcome.their_score},
-            "tokens": {ours: int(game.get("tokens", 0)), theirs: 0},
-            "github_commit": {ours: commit, theirs: str(game.get("their_commit", "unknown"))},
+            "tokens": {ours: int(game.get("tokens", 0)), theirs: int(declared.get("tokens", 0))},
+            "github_commit": {
+                ours: commit,
+                theirs: str(declared.get("commit") or UNKNOWN_COMMIT),
+            },
             "started_at": str(game.get("started_at", "")),
             "ended_at": str(game.get("ended_at", "")),
             "audit": {"log_verified": verified, "tampered": game.get("audit") == "TAMPERED"},
+            # Bare filenames, as the golden writes them. The `<group>/` prefix
+            # named twelve directories that do not exist — artifacts sit flat —
+            # and contradicted `all_logs` in the same file, which lists the same
+            # files unprefixed. `logs/<group_id>/` is where the reference *puts*
+            # its logs on disk, not what it records here.
             "log_files": {
-                ours: f"{ours}/{log_filename(game_id, number)}",
-                theirs: f"{theirs}/{log_filename(game_id, number)}",
+                ours: log_filename(game_id, number),
+                theirs: log_filename(game_id, number),
             },
         })
     return rows

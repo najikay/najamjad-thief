@@ -66,7 +66,14 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 declared if isinstance(declared, dict) else {},
                 role,
                 bus.publish,
-                ours=dict(session["identity"].get("mcp_servers") or {}),
+                # The **configured** pair, not what we advertise. Since
+                # `served_endpoints` we publish only the address this process
+                # serves — but a peer running our config still declares both
+                # `4laboratory.com` hostnames, and the sibling is exactly the
+                # one we must refuse to be sent to. Reading `ours` from the
+                # identity would have quietly narrowed this guard at the moment
+                # we narrowed the declaration.
+                ours=dict(manager.get("game.mcp_servers", {}) or {}),
             )
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
