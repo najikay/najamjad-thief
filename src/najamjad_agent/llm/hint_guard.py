@@ -54,6 +54,27 @@ def enforce_word_cap(text: str, limit: int) -> tuple[str, bool]:
     return " ".join(words[:limit]), True
 
 
+def looks_like_machinery(text: str) -> bool:
+    """Whether this is a model's plumbing rather than a sentence.
+
+    A hint is free natural language the opponent reads. When a provider answers
+    with JSON — or with a JSON reply that was truncated in transit — we used to
+    seal it and send it: mini-game 2 against Amjad carries the literal hint
+    `{"message": "New`, which is now in an audited log a grader reads, and in
+    our own sealed record where it cannot be edited out.
+
+    Nothing upstream catches it. `strip_coordinates` removes digits and
+    `enforce_word_cap` counts words; neither has any opinion about syntax, and
+    a three-token fragment passes a fifteen-word cap comfortably.
+
+    Deliberately narrow. A colon is ordinary English — "Heading north: the park
+    is behind me" must survive — so only a leading brace or bracket, or a
+    quoted key immediately followed by a colon, counts as machinery.
+    """
+    stripped = (text or "").strip()
+    return bool(stripped.startswith(("{", "[")) or re.search(r'"\s*:', stripped))
+
+
 def guard_hint(
     text: str,
     intent: str,
@@ -65,6 +86,9 @@ def guard_hint(
     candidate = (text or "").strip()
     if not candidate:
         problems.append("empty hint replaced with a neutral line")
+        candidate = fallback
+    if looks_like_machinery(candidate):
+        problems.append("model syntax leaked into the hint; neutral line used")
         candidate = fallback
     candidate, had_coordinates = strip_coordinates(candidate)
     if had_coordinates:
