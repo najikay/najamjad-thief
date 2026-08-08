@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://bulk-motorcycles-missile-article.trycloudflare.com/mcp"
+url      = "https://kitty-solomon-booking-vocals.trycloudflare.com/mcp"
 group_id = "najamjad-b"
 name     = "amjad"
-notes    = ""
+notes    = "practice 2026-08-07"

@@ -1,0 +1,9 @@
+# uoh-ay26
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://cop.uohay26game.com/mcp"
+group_id = "uoh-ay26"
+name     = "uoh-ay26"
+notes    = "Aisha Abu Dahesh, Yousef Asadi. TWO endpoints: cop=https://cop.uohay26game.com/mcp, thief=https://theif.uohay26game.com/mcp (their spelling: 'theif'). This url is the g01 dial target — we open as thief, so they are police first. From g02 on, retarget follows whatever their handshake declares in mcp_servers, per role. If g02 deadlocks again, check the handshake.locked event: our THIEF_KEYS accepts only the key 'thief', so a declaration keyed 'theif' would not be found and we would keep dialling the cop URL. Repos: github.com/aishadahesh/uoh-ay26-final-project-{cop,thief}"
