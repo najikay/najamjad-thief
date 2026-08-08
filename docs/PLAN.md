@@ -127,7 +127,7 @@ numbers `scripts/check_file_sizes.py` enforces.
 
 ```
 src/najamjad_agent/
-│   ├── cli.py                     # The command line: argument parsing, one SDK call, an exi  136
+│   ├── cli.py                     # The command line: argument parsing, one SDK call, an exi  141
 ├── constants.py               # Project-wide immutable enumerations and physical constants.   46
 ├── analysis/
 │   ├── charts.py                  # Figures for the analysis notebook (T-2215, T-2216, T-221  95
@@ -141,7 +141,7 @@ src/najamjad_agent/
 │   ├── capture.py                 # Capture rules and the thief's cryptographically-enforced  35
 │   ├── cop_sighting.py            # Reading the opponent's position out of the things the ru  44
 │   ├── crypto.py                  # Commit-reveal sealing over SHA-256 — the game's integrit  57
-│   ├── emission.py                # How much of our own evidence we put on the wire, as one   57
+│   ├── emission.py                # How much of our own evidence we put on the wire, as one   69
 │   ├── endings.py                 # Deciding when a mini-game is over.                        59
 │   ├── fair_play.py               # Watching the opponent for rule violations, across a whol  101
 │   ├── freeze_guard.py            # Arming rule 7 freeze detection for one mini-game.         27
@@ -246,7 +246,8 @@ src/najamjad_agent/
 ├── sdk/
 │   ├── actions.py                 # Everything a consumer can ask the agent to *do*.          117
 │   ├── app_paths.py               # Where the dashboard looks for past matches.               18
-│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  147
+│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  139
+│   ├── config_overrides.py        # Everything one run may change about the configuration it  25
 │   ├── handshake_setup.py         # Building the pre-game agreement exchange.                 59
 │   ├── llm_setup.py               # Building the hint writer: which models speak, and what t  71
 │   ├── match_filing.py            # Turning a finished series into its artifacts, wired to r  92

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from .params import Position
 
@@ -166,3 +167,38 @@ def _within(key: str, centre: Position, reach: int) -> bool:
     except ValueError:
         return False
     return max(offset) <= reach
+
+
+def emission_overlay(
+    quiet: bool = False, scent: str = "", hints: bool | None = None
+) -> dict[str, Any]:
+    """The `[emission]` overlay a run's flags imply; empty when none are set.
+
+    Two independent dials were reachable only through one switch. `--quiet` set
+    scent *and* hints off together, and `--talk` set both on, so the middle
+    ground could be described in `config/<role>/game.toml` and not asked for on
+    a command line — the two-switch setup that has cost this project games.
+
+    The middle ground is the case that actually occurs. uoh-ay26 sent a hint on
+    every one of 135 sealed records and **not one scent cell**, across all six
+    mini-games; uoh-sqak sent neither. Mirroring the first needs
+    `--scent none --hints`, which no combination of `--quiet`/`--talk` could
+    express.
+
+    `--quiet` stays as a preset rather than a third mode, and the explicit
+    flags win over it: `--quiet --hints` is "match a peer who speaks but does
+    not emit", not a contradiction worth rejecting.
+
+    Returns `{}` when nothing is passed, so a bare command is unchanged and the
+    shipped config keeps deciding. The mode string is *not* validated here —
+    `from_config` already refuses an unknown one by name, and duplicating that
+    list is how the two get to disagree.
+    """
+    section: dict[str, Any] = (
+        {"scent": ScentEmission.NONE.value, "hint": False} if quiet else {}
+    )
+    if scent:
+        section["scent"] = scent.strip().lower()
+    if hints is not None:
+        section["hint"] = bool(hints)
+    return {"emission": section} if section else {}

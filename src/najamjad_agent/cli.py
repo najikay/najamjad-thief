@@ -73,6 +73,12 @@ GroupIdOption = Annotated[str, typer.Option("--group-id", help="override our gro
 #: mirroring a peer who transmits nothing — several do — and for a run whose
 #: cost and timing are entirely predictable.
 QuietOption = Annotated[bool, typer.Option("--quiet/--talk", help="emit no scent or hints; no LLM")]
+#: The two dials `--quiet` presets together, reachable one at a time. The
+#: middle ground is the case that occurs: uoh-ay26 sent a hint on every one
+#: of 135 sealed records and not one scent cell, so mirroring them is
+#: `--scent none --hints`. Explicit flags win over the preset.
+ScentOption = Annotated[str, typer.Option("--scent", help="full | window | none")]
+HintsOption = Annotated[bool | None, typer.Option("--hints/--no-hints", help="send hints")]
 #: Runs this process in practice mode without touching any tracked file.
 PracticeOption = Annotated[bool, typer.Option("--practice/--counted", help="redirect reports to the operator")]
 #: Where the dashboard listens, for one run. `0.0.0.0` is what a Windows
@@ -113,12 +119,15 @@ def match(
     group_id: GroupIdOption = "",
     practice: PracticeOption = False,
     quiet: QuietOption = False,
+    scent: ScentOption = "",
+    hints: HintsOption = None,
     dashboard_host: DashHostOption = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
     _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
-               group_id=group_id or None, quiet=quiet, dashboard_host=dashboard_host)
+               group_id=group_id or None, quiet=quiet, scent=scent, hints=hints,
+               dashboard_host=dashboard_host)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     from .sdk.actions import OpponentUnreachableError
 

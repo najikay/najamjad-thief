@@ -37,7 +37,13 @@ def test_the_guard_is_actually_wired_into_agent_construction() -> None:
     repo has found 20+ finished-but-unreferenced components; this is how one
     stops being another.
     """
-    source = Path("src/najamjad_agent/sdk/bootstrap.py").read_text(encoding="utf-8")
+    root = Path("src/najamjad_agent/sdk")
+    bootstrap = (root / "bootstrap.py").read_text(encoding="utf-8")
+    overrides = (root / "config_overrides.py").read_text(encoding="utf-8")
 
-    assert "_guard_counted_strength(manager)" in source
-    assert "guard_counted" in source
+    # Two links, because the guard moved out of `bootstrap` when that file hit
+    # its line cap. Checking only the first would pass while the second was
+    # gutted, which is the exact failure this test exists for.
+    assert "guard_counted_strength(manager)" in bootstrap
+    assert "def guard_counted_strength" in overrides
+    assert "guard_counted(" in overrides
