@@ -22,7 +22,7 @@ from ..domain.emission import DEFAULT_GRID_SIZE, EmissionPolicy
 from ..domain.fair_play import FairPlayMonitor
 from ..domain.game_state import GameState
 from ..domain.ledger import CommitLedger
-from ..domain.params import GameParams
+from ..domain.params import GameParams, Position
 from ..domain.scent import ScentField
 from ..domain.scent_models import ScentModel
 from .step_zero_setup import declaration_sealer
@@ -100,7 +100,11 @@ def build_state(
         role=role,
         sub_game=sub_game,
         own_position=start,
-        belief=BeliefGrid(board),
+        # Seeded with where the opponent actually starts. Both starts are signed
+        # terms of `config/game.json`, so this is knowledge the rules give us,
+        # not an assumption — and opening uniform instead let a thief walk into
+        # a cop standing beside it on turn one.
+        belief=BeliefGrid(board, start=opponent_start(params, role)),
         own_scent=scent(),
         opponent_scent=scent(),
         ledger=CommitLedger(sub_game=sub_game),
@@ -111,3 +115,13 @@ def build_state(
         # and this is the only thing that asks whether they were allowed to.
         fair_play=FairPlayMonitor(max_barriers=params.max_barriers),
     )
+
+
+def opponent_start(params: GameParams, role: Role) -> Position:
+    """Where the other side begins, from the agreed terms rather than a guess.
+
+    Both starts are fixed in the signed `config/game.json` and byte-identical on
+    both sides, so this is information the rules hand us at step 0. Keyed off
+    our own role so the two repos cannot disagree about whose cell is whose.
+    """
+    return params.cop_start if role is Role.THIEF else params.thief_start

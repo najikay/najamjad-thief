@@ -16,52 +16,23 @@ import json
 import re
 from typing import Any
 
-from ..constants import Move
-from ..domain.hint_evidence import HintClaim
+# `parse_locally` and its keyword table moved to the domain, so `turn_ingress`
+# can read an opponent's words without importing the llm layer — book rule 25,
+# enforced structurally by `test_the_domain_never_imports_an_llm_provider`.
+# Re-exported here because callers (and tests) already import them from this
+# module, and the model-reply parser below still uses them.
+from ..domain.hint_evidence import (  # noqa: F401
+    DIRECTION_WORDS,
+    HintClaim,
+    _words,
+    parse_locally,
+)
 
-DIRECTION_WORDS: dict[str, Move] = {
-    "north": Move.NORTH,
-    "northward": Move.NORTH,
-    "up": Move.NORTH,
-    "uptown": Move.NORTH,
-    "south": Move.SOUTH,
-    "southward": Move.SOUTH,
-    "down": Move.SOUTH,
-    "downtown": Move.SOUTH,
-    "east": Move.EAST,
-    "eastward": Move.EAST,
-    "right": Move.EAST,
-    "west": Move.WEST,
-    "westward": Move.WEST,
-    "left": Move.WEST,
-    "stay": Move.STAY,
-    "still": Move.STAY,
-    "holding": Move.STAY,
-}
 # A hint naming a direction is worth acting on; one that only names a landmark
 # is weaker evidence, and credibility weighting downstream scales both.
 DIRECTION_CONFIDENCE = 0.75
 LANDMARK_CONFIDENCE = 0.5
 NEGATION_WORDS = ("not", "never", "nowhere", "away from", "no longer")
-
-
-def _words(text: str) -> list[str]:
-    return re.findall(r"[a-z']+", text.lower())
-
-
-def parse_locally(text: str, landmarks: dict[str, tuple[int, int]] | None = None) -> HintClaim:
-    """Extract a claim using keywords alone — free, instant, no hallucination."""
-    words = _words(text or "")
-    direction: Move | None = None
-    for word in words:
-        if word in DIRECTION_WORDS:
-            direction = DIRECTION_WORDS[word]
-            break
-    named: list[tuple[int, int]] = []
-    for name, cell in (landmarks or {}).items():
-        if name.lower() in (text or "").lower():
-            named.append(cell)
-    return HintClaim(direction=direction, landmark_cells=tuple(named), text=text or "")
 
 
 def local_confidence(claim: HintClaim, text: str) -> float:

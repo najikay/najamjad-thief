@@ -10,6 +10,7 @@ cells read 0.00 and a fresh 0.81 trail sits to the south-east. The claim is
 refuted, credibility drops, and the belief map stays anchored on the scent mass.
 """
 
+import re
 from dataclasses import dataclass
 
 from ..constants import Move
@@ -133,3 +134,52 @@ def scent_consistency(
     if component < -DISPLACEMENT_TOLERANCE:
         return "refuted"
     return "unknown"
+
+
+DIRECTION_WORDS: dict[str, Move] = {
+    "north": Move.NORTH,
+    "northward": Move.NORTH,
+    "up": Move.NORTH,
+    "uptown": Move.NORTH,
+    "south": Move.SOUTH,
+    "southward": Move.SOUTH,
+    "down": Move.SOUTH,
+    "downtown": Move.SOUTH,
+    "east": Move.EAST,
+    "eastward": Move.EAST,
+    "right": Move.EAST,
+    "west": Move.WEST,
+    "westward": Move.WEST,
+    "left": Move.WEST,
+    "stay": Move.STAY,
+    "still": Move.STAY,
+    "holding": Move.STAY,
+}
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-z']+", text.lower())
+
+
+def parse_locally(text: str, landmarks: dict[str, tuple[int, int]] | None = None) -> HintClaim:
+    """Extract a claim using keywords alone — free, instant, no hallucination.
+
+    Lives in the domain, not in `llm/`, because it *is* domain logic: a keyword
+    table and a regex, with no vendor anywhere near it. It was in the llm layer
+    only because that is where the model-reply parser needed it, and importing
+    it from `turn_ingress` therefore tripped `test_the_domain_never_imports_an_
+    llm_provider` — the guard that makes book rule 25 structural rather than a
+    promise. Reading an opponent's words must never require the ability to call
+    a model, and now it does not.
+    """
+    words = _words(text or "")
+    direction: Move | None = None
+    for word in words:
+        if word in DIRECTION_WORDS:
+            direction = DIRECTION_WORDS[word]
+            break
+    named: list[tuple[int, int]] = []
+    for name, cell in (landmarks or {}).items():
+        if name.lower() in (text or "").lower():
+            named.append(cell)
+    return HintClaim(direction=direction, landmark_cells=tuple(named), text=text or "")
