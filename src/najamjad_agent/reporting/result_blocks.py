@@ -56,7 +56,15 @@ def sub_game_rows(
             "tokens": {ours: int(game.get("tokens", 0)), theirs: int(declared.get("tokens", 0))},
             "github_commit": {
                 ours: commit,
-                theirs: str(declared.get("commit") or UNKNOWN_COMMIT),
+                # Step-0 first, then what they declared at the handshake.
+                # uoh-ay26 send `git_commit_hash` in their identity and omit
+                # it from step-0, so reading only the sealed record filed
+                # `"unknown"` about a peer who had told us plainly.
+                theirs: str(
+                    declared.get("commit")
+                    or game.get("their_commit")
+                    or UNKNOWN_COMMIT
+                ),
             },
             "started_at": str(game.get("started_at", "")),
             "ended_at": str(game.get("ended_at", "")),

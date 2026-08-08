@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..shared.sysinfo import collect_spec
+from ..shared.sysinfo import collect_spec, git_commit
 
 
 def identity_from_config(manager: Any) -> dict[str, Any]:
@@ -44,6 +44,23 @@ def identity_from_config(manager: Any) -> dict[str, Any]:
         "repos": dict(manager.get("game.repos", {}) or {}),
         "mcp_servers": served_endpoints(manager),
         "llm_model": str(manager.get("llm.model", "") or "cli-default"),
+        # The commit we are playing this match with (rule 53). We sealed it into
+        # every step-0 record and wrote it into every result artifact, and never
+        # once put it in the handshake — so a peer validating the *negotiated
+        # identity* found ours empty and refused to file the series.
+        #
+        # uoh-ay26 blocked their own submission over exactly this on 2026-08-08:
+        # "the opponent negotiated without providing a valid 40-character Git
+        # commit SHA". They were right. It cost them a report and us nothing
+        # visible, which is the worst shape a defect can have.
+        #
+        # Both spellings, deliberately. `git_commit_hash` is what the
+        # reference-derived peers send us and therefore what their readers look
+        # for; `github_commit` is the name the book gives the same value in the
+        # result email (rule 53). Two keys carrying one value cost a few bytes
+        # and remove a whole class of "which name did they use" failure.
+        "git_commit_hash": git_commit(),
+        "github_commit": git_commit(),
         "spec": spec_for_declaration(),
     }
 
