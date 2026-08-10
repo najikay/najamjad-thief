@@ -33,12 +33,18 @@ def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
     publish = emit or (lambda _event: None)
 
     def _handle(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
-        """Validate, enqueue, and answer the peer — never raise at them."""
+        """Validate, enqueue, and answer the peer — never raise at them.
+
+        Answered under **both** names: we say `accepted`, the reference reads
+        `ok`, and a client that cannot see its own success key concludes we
+        refused it and re-sends forever. Same trade as `_body` taking either
+        argument name; see `tests/integration/test_ack_both_names.py`.
+        """
         result = inboxes.accept(kind, payload)
         if not result.ok:
             publish({"event": "server.rejected", "tool": kind, "errors": result.errors})
             return result.error_response(kind)
-        return {"accepted": True, "kind": kind}
+        return {"ok": True, "accepted": True, "kind": kind}
 
     def _body(message: dict | None, payload: dict | None) -> dict:
         """Whichever argument name the caller used.

@@ -29,8 +29,17 @@ class ParseResult:
         return self.model is not None and not self.errors
 
     def error_response(self, message_kind: str) -> dict[str, Any]:
-        """A structured reply telling the peer exactly what was wrong."""
+        """A structured reply telling the peer exactly what was wrong.
+
+        `ok` mirrors `accepted` so a client reading either key reaches the same
+        verdict. Stating the rejection under both names matters more than
+        stating the acceptance: an absent `ok` is falsy, so a client that only
+        checks `ok` would read a *missing* key and a deliberate refusal
+        identically, and never learn why. The `errors` list is the part worth
+        reading, and it is only reached by a peer that got as far as looking.
+        """
         return {
+            "ok": False,
             "accepted": False,
             "kind": message_kind,
             "errors": self.errors,
