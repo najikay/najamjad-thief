@@ -45,7 +45,7 @@ warm-up, not to start counting.**
 |---|---|
 | Create the match folder | `cp -r matches/_template matches/<opponent>` |
 | Fill the profile before playing | edit `matches/<opponent>/profile.md` |
-| Play the warm-up | as §4, with `num_games` lowered if they prefer |
+| Play the warm-up | as §6, with `num_games` lowered if they prefer |
 | Log everything live | `matches/<opponent>/incidents.md` |
 | Mark them `warmed` | `matches/opponents.md` |
 
@@ -72,44 +72,101 @@ uv run najamjad-cop peer          # serves; prints the URL peers should use
 
 Wait for `Uvicorn running`. That, not the first log line, is readiness.
 
-## 2. Preflight — do not play on a red line
+## 2. Write the opponent card
+
+Their URL and `group_id` go in a card, not in a tracked config file. One command
+writes it into **both** repos:
 
 ```bash
-uv run najamjad-cop preflight
+uv run python scripts/match_day.py card --team <name> \
+    --url https://their.host/mcp --group-id <id-their-handshake-declares>
+```
+
+A wrong `group_id` is survivable — the filer renames it to whatever their
+identity actually declares — but a wrong URL is not. Quick-tunnel addresses
+rotate, so re-ask before every match.
+
+## 3. Arm the run
+
+```bash
+uv run python scripts/match_day.py practice   # draft email + FULL strength
+uv run python scripts/match_day.py warmup     # draft email + SANDBAGGED
+uv run python scripts/match_day.py counted    # send email + FULL strength
+```
+
+These write `strength.level` and `email.mode` into **both** repos' private
+config. After a `warmup` you are sandbagged until you say otherwise — that has
+already cost one series, played at the deliberately weak brain without noticing.
+
+## 4. Preflight — do not play on a red line
+
+```bash
+uv run najamjad-cop preflight --opponent <name> --practice
 ```
 
 Exit `0` means ready. Exit `1` prints which check failed:
 
 | Failing check | Fix |
 |---|---|
-| `opponent_url` | Not yet exchanged. Set it in `config/police/game.toml`. |
+| `opponent_url` | No card, or a mistyped `--opponent`. The error names the cards that exist. |
+| `opponent_tools` | Their agent is not up. `502` = tunnel alive, origin down; wait and re-run. |
 | `port` | Another agent is running; stop it or change `network.my_port`. |
 | `config` | Version mismatch — do not hand-edit `game.json` mid-match. |
 | `email_recipient` | Must be the address in Appendix F Table 20. |
 | `tunnel` | Not applicable for local play; red only if a hostname is configured and wrong. |
 
-## 3. Exchange URLs and agree terms
+Drop `--practice` for a counted run; the guard refuses a counted match unless
+`email.mode` reads `send` and `strength.level` reads `full`.
 
-1. Send the opponent our public URL: `https://cop.4laboratory.com/mcp`.
-2. Put theirs into `network.opponent_url`.
+## 5. Exchange URLs and agree roles
+
+1. Send the opponent the URL **the repo you will run** serves:
+   `https://cop.4laboratory.com/mcp` from `najamjad-cop`,
+   `https://thief.4laboratory.com/mcp` from `najamjad-thief`.
+2. **Agree who opens as cop.** Roles are *not* negotiated — each side picks
+   `first_role` locally from its config directory, and we bind
+   `expected_sender` to the opposite. If both sides open as cop, every inbound
+   turn and audit reveal is refused and neither side can move. Run the thief
+   repo to open as thief.
 3. Re-run preflight — it must now be **exit 0**.
 4. Both peers must hold a **byte-identical** `config/game.json`. The handshake
    verifies a SHA-256 signature over the terms and refuses to play on mismatch.
    Terms may be raised, never lowered (rule 12).
 
-## 4. Play
+## 6. Play
 
 ```bash
-uv run najamjad-cop match         # serves, then plays the agreed series
+uv run najamjad-cop match --opponent <name> --tunnel --dashboard \
+    --dashboard-host 0.0.0.0 --practice --talk
 ```
 
+`--tunnel` and `--dashboard` default **off** on `match` (they default on for
+`peer`), and a run is **counted** unless `--practice` is passed. A bare
+`uv run najamjad-cop match` is therefore a counted, tunnel-less, blind run.
+
+Choose what we transmit to match the opponent:
+
+| They send | Use |
+|---|---|
+| scent and hints | `--talk` (the shipped default) |
+| hints, no scent | `--scent none --hints` |
+| nothing | `--quiet` |
+
+`--quiet` also skips the vendor call, so it costs zero tokens. None of these
+change the move: emission is a disclosure dial, never a strategy one.
+
 Watch the dashboard at http://127.0.0.1:8000/ — turn banner, belief heatmap,
-dialogue, token budget, and the report panel.
+dialogue, token budget, and the report panel. On WSL2, pass
+`--dashboard-host 0.0.0.0` and open it on the WSL address if a Windows browser
+cannot reach loopback. Put it back to loopback for a counted match (rules 8-9).
+
+**Ctrl+C when you have finished reading the panels.** The process keeps serving
+after the series ends, and a forgotten run holds the port against the next one.
 
 Per mini-game the console prints role, end reason and the audit banner. **Every
 game must read `Verified OK`.**
 
-## 5. If something goes wrong mid-match
+## 7. If something goes wrong mid-match
 
 | Symptom | What it means | Action |
 |---|---|---|
@@ -123,7 +180,7 @@ game must read `Verified OK`.**
 **Never** hand-edit a log, a config, or an artifact mid-match. Every one of them
 is signed or hashed, and editing turns a clean result into a provable forgery.
 
-## 6. Audit
+## 8. Audit
 
 Automatic after each mini-game: we reveal our records, they reveal theirs, and
 each side re-hashes the other's. To re-check afterwards:
@@ -134,7 +191,7 @@ uv run najamjad-cop replay workspace/artifacts/log_<game_id>_g01.json
 
 Exit `0` = `Verified OK`. Exit `1` = `TAMPERED`, with the failing step named.
 
-## 7. Reconcile and report
+## 9. Reconcile and report
 
 1. Compare our result with theirs; the dashboard's report panel shows the state.
 2. `agreement` is `null` only while genuinely undecided — never as a stand-in for
@@ -146,7 +203,7 @@ Exit `0` = `Verified OK`. Exit `1` = `TAMPERED`, with the failing step named.
 If sending fails, the report panel turns red and names the reason. The artifact
 is written regardless; a dead letter is recoverable, a missing artifact is not.
 
-## 8. Archive and commit
+## 10. Archive and commit
 
 ```bash
 uv run najamjad-cop archive workspace/match-<opponent>-<date>.zip
@@ -160,7 +217,7 @@ recorded in step zero resolves (rule 53).
 git add config/ && git commit -m "match vs <opponent>: agreed config" && git push
 ```
 
-## 9. After the match
+## 11. After the match
 
 Run the mechanical half first — it re-hashes every log, checks the games share a
 `game_uid`, and refuses if the working tree is dirty:

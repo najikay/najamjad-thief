@@ -92,10 +92,68 @@ def test_the_flag_reaches_the_config() -> None:
     import ast
     import inspect
 
-    from najamjad_agent.sdk import bootstrap
+    from najamjad_agent.sdk import bootstrap, config_overrides
 
     source = inspect.getsource(bootstrap.build_sdk)
 
     assert "quiet" in inspect.signature(bootstrap.build_sdk).parameters
-    assert "emission" in source, "build_sdk no longer overlays an emission policy"
+    assert "apply_overrides(" in source, "build_sdk no longer applies run overrides"
+    assert "emission_overlay" in inspect.getsource(config_overrides), (
+        "the override layer no longer resolves an emission policy"
+    )
     ast.parse(source)
+
+
+def test_the_two_dials_reach_a_built_mini_game_separately() -> None:
+    """`--scent`/`--hints` down the real chain: overlay -> config -> mini-game.
+
+    `emission_overlay` has its own unit tests and every one of them would pass
+    in a world where nothing applied the result — which is exactly how
+    `ui.host`, `step_zero`, `reconcile` and `attach_game` all shipped. So this
+    runs the production `state_factory` over a real role config and reads the
+    policy off a state the runner would actually play.
+
+    The middle setting is asserted hardest: scent off, hints on — how uoh-ay26
+    played all six mini-games against us, and the one combination
+    `--quiet`/`--talk` could not express.
+    """
+    from najamjad_agent.constants import Role
+    from najamjad_agent.domain.emission import emission_overlay
+    from najamjad_agent.domain.params import GameParams
+    from najamjad_agent.sdk.state_setup import state_factory
+    from tests.role_config import load_role_config
+
+    def policy_for(**flags):
+        manager = load_role_config()
+        if overlay := emission_overlay(**flags):
+            manager.overlay(overlay)
+        params = GameParams.from_config(manager.as_dict())
+        return state_factory(manager)(params, Role.THIEF, 1).emission
+
+    mirror = policy_for(scent="none", hints=True)
+    assert mirror.scent_mode.value == "none"
+    assert mirror.hints is True, "a peer who speaks but does not emit must be matchable"
+
+    assert policy_for(hints=False).scent_mode.value == "full", "one dial must not move the other"
+    assert policy_for(quiet=True).hints is False
+    assert policy_for().scent_mode.value == "full", "a bare run must keep the shipped default"
+
+
+def test_both_new_dials_are_actually_passed_on() -> None:
+    """The seam again, for the two parameters added beside `quiet`.
+
+    A parameter can be accepted and dropped on the floor; the signature alone
+    proves nothing. This pins that `build_sdk` hands all three to the resolver.
+    """
+    import inspect
+
+    from najamjad_agent.sdk import bootstrap, config_overrides
+
+    params = inspect.signature(bootstrap.build_sdk).parameters
+
+    assert {"quiet", "scent", "hints"} <= set(params)
+    # Both links: build_sdk must hand all three on, and the override layer must
+    # feed all three to the resolver. Either half alone passes while the other
+    # drops them on the floor.
+    assert "quiet, scent, hints" in inspect.getsource(bootstrap.build_sdk)
+    assert "emission_overlay(quiet, scent, hints)" in inspect.getsource(config_overrides)

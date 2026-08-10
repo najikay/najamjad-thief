@@ -37,9 +37,14 @@ export function renderStandings(node, table) {
   if (table.tampered && table.tampered.length) {
     warnings.push(`<span class="tag bad">tampered: ${table.tampered.join(", ")}</span>`);
   }
+  // "counted" here was a lie: standings() counts every result artifact on
+  // disk, practice and warm-ups included. The number we *declare* under
+  // rules 37-38 comes from the counted-match ledger and is a different
+  // figure entirely. An operator who reads this panel and repeats it is how
+  // a team ends up declaring a false count.
   node.innerHTML = `
     <div class="row">
-      <span class="tag">${table.matches} counted</span>
+      <span class="tag">${table.matches} series filed</span>
       <span class="tag">${table.distinct_opponents} distinct opponents</span>
       <span class="tag">${table.won} won</span>
       <span class="tag">${table.points} points</span>

@@ -66,6 +66,22 @@ Every value is at or above the Appendix F minimum. Rule 12 says a term may be
 | Token budget per series | 200,000 |
 | Map area (for hint flavour) | New York · hints ≤ 15 words |
 | Pheromone | centre 0.9, decay 0.10, grid 5 |
+| What we transmit | scent and hints by default — **may be either or neither** |
+
+### What we put on the wire, declared rather than sprung
+
+The agreed pheromone maths is fixed and hashed into the handshake; how much of
+our own field we *transmit* is not a term, and teams in this league differ. Some
+send a full scent map every turn, one sent us a truthful hint on every record
+and no scent at all, and one sent nothing whatever.
+
+So we match what you send: `--scent full|window|none` and `--hints/--no-hints`
+move independently. A silent series from us is legal — the book forbids planting
+a *fake* trail, not declining to publish a real one (p. 22) — and we would
+rather say so here than have you read an empty `smell_grid` as a bug. The key is
+always present; only its contents change. None of this touches the move: our
+moves are plain Python either way, and we decline the rule 25 LLM-move
+exception.
 
 ### The exact object we sign
 

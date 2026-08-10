@@ -58,7 +58,18 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
         """Called once, after the last mini-game."""
         ours = str(manager.get("game.group_id", "najamjad"))
         peer = session.get("peer") or {}
-        theirs = str((peer.get("identity") or {}).get("group_id", "opponent"))
+        identity = peer.get("identity") or {}
+        theirs = str(identity.get("group_id", "opponent"))
+        # Their commit as declared at the handshake, carried onto every game
+        # so the report can fall back to it when their step-0 record omits
+        # one. Rule 53 wants the commit each side played; a peer that states
+        # it in only one of the two places has still stated it.
+        peer_commit = str(
+            identity.get("git_commit_hash") or identity.get("github_commit") or ""
+        ).strip()
+        if peer_commit:
+            for game in games:
+                game.setdefault("their_commit", peer_commit)
         terms = session.get("terms") or {}
         game_id, game_uid = derive_game_ids(terms, ours, theirs)
         filer = MatchFiler(

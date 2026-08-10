@@ -23,6 +23,7 @@ from typing import Any
 
 from . import cop_sighting
 from .game_state import GameState
+from .hint_evidence import claim_likelihood, parse_locally, scent_consistency
 from .ledger import ProtocolOrderError
 
 
@@ -263,6 +264,7 @@ def decay_after_full_turn(state: GameState) -> None:
     observed = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}
     state.belief.update_scent(observed)
     _fuse_sighting(state)
+    _fuse_hint(state)
     state.belief.exclude((state.own_position,))
     # With no transmitted position, our estimate of them IS our belief peak.
     state.opponent_estimate = state.belief.peak()
@@ -290,3 +292,51 @@ def _fuse_sighting(state: GameState) -> None:
         return
     state.belief.observe_reach(sighting.cells, sighting.confidence)
     state.last_sighting = sighting
+
+
+def _fuse_hint(state: GameState) -> None:
+    """Apply what the opponent *said*, weighted by what their word is worth.
+
+    Testimony, so it goes last — after diffusion, scent and any declared
+    position. A hint is the weakest evidence on the board and must never
+    displace a direct observation; `claim_likelihood` is a multiplicative
+    nudge, not a relocation.
+
+    **This was the most expensive unwired component in the project.** The parser,
+    the claim, the likelihood, the lie-detector and the credibility tracker were
+    all built and tested, `belief.py`'s own docstring described this as step 3 of
+    the update, and nothing ever called any of it. Measured against uoh-ay26 on
+    2026-08-07: they sent a hint on every one of 135 sealed records, **134 of
+    134 direction claims truthful** against their own sealed move — and they
+    emitted no scent at all, so `update_scent` received nothing and our cop
+    played six mini-games on diffusion alone while they narrated their position
+    every turn.
+
+    **It does not trust them.** `credibility` starts neutral and moves only
+    through `record`, fed by cross-examining each claim against the scent trail:
+    a claim the trail refutes cuts their weight, one it confirms raises it, and
+    a perpendicular claim the trail cannot speak to changes nothing. At zero
+    credibility `claim_likelihood` returns all-ones — an identity update — so a
+    peer we have caught lying is heard and disbelieved rather than silenced.
+    Against a peer with no scent the verdict is "unknown" every turn and the
+    weight simply stays where it started, which is the honest answer when we
+    have no way to check them.
+
+    The reference cell is where we thought they were *before* this move, because
+    a direction claim describes the move they just made.
+    """
+    text = str(state.last_opponent_hint or "").strip()
+    reference = state.opponent_estimate
+    if not text or reference is None:
+        return
+    claim = parse_locally(text)
+    if not claim.is_informative:
+        return
+    intensities = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}
+    verdict = scent_consistency(claim, intensities, reference)
+    if verdict != "unknown":
+        state.credibility.record(verdict == "consistent")
+    cells = tuple(cell for cell in state.board.cells() if state.board.is_open(cell))
+    state.belief.apply_likelihood(
+        claim_likelihood(cells, claim, reference, state.credibility.coefficient)
+    )

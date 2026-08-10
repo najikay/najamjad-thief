@@ -12,6 +12,7 @@ from ..constants import EndReason, Move, Role
 from .belief import BeliefGrid
 from .board import Board
 from .emission import EmissionPolicy
+from .hint_evidence import CredibilityTracker
 from .ledger import CommitLedger
 from .params import Position
 from .scent import ScentField
@@ -73,6 +74,11 @@ class GameState:
     # previous sighting and a peer that stops declaring must not reset that.
     cop_sighting: Any = None
     last_sighting: Any = None
+    # How much this opponent's words have been worth so far. Lives on the
+    # state rather than in `hint_evidence` so it accumulates across the
+    # whole mini-game: a peer caught lying once is discounted for the rest
+    # of it, and one telling the truth earns weight it did not start with.
+    credibility: CredibilityTracker = field(default_factory=CredibilityTracker)
     # How much of our own evidence we disclose each turn (`domain/emission.py`).
     # Defaulted rather than required so every existing construction keeps the
     # behaviour it had: full scent, hints spoken.

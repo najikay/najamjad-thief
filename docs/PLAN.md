@@ -127,7 +127,7 @@ numbers `scripts/check_file_sizes.py` enforces.
 
 ```
 src/najamjad_agent/
-├── cli.py                     # The command line: argument parsing, one SDK call, an exit co  129
+│   ├── cli.py                     # The command line: argument parsing, one SDK call, an exi  141
 ├── constants.py               # Project-wide immutable enumerations and physical constants.   46
 ├── analysis/
 │   ├── charts.py                  # Figures for the analysis notebook (T-2215, T-2216, T-221  95
@@ -136,19 +136,19 @@ src/najamjad_agent/
 │   ├── datasets.py                # Typed readers for the measurement files the notebook plo  69
 ├── domain/
 │   ├── audit.py                   # End-of-game mutual audit — cryptography decides, not hum  67
-│   ├── belief.py                  # Bayesian belief over the opponent's position — the core   98
+│   ├── belief.py                  # Bayesian belief over the opponent's position — the core   107
 │   ├── board.py                   # The playing grid: bounds, neighbours, distance, and barr  43
 │   ├── capture.py                 # Capture rules and the thief's cryptographically-enforced  35
 │   ├── cop_sighting.py            # Reading the opponent's position out of the things the ru  44
 │   ├── crypto.py                  # Commit-reveal sealing over SHA-256 — the game's integrit  57
-│   ├── emission.py                # How much of our own evidence we put on the wire, as one   57
+│   ├── emission.py                # How much of our own evidence we put on the wire, as one   69
 │   ├── endings.py                 # Deciding when a mini-game is over.                        59
 │   ├── fair_play.py               # Watching the opponent for rule violations, across a whol  101
 │   ├── freeze_guard.py            # Arming rule 7 freeze detection for one mini-game.         27
 │   ├── fsm.py                     # The game state machine — illegal transitions raise rathe  73
-│   ├── game_state.py              # Mutable per-mini-game state, owned exclusively by the or  82
+│   ├── game_state.py              # Mutable per-mini-game state, owned exclusively by the or  84
 │   ├── handshake_retry.py         # Agreeing terms before a mini-game, retrying the same one  28
-│   ├── hint_evidence.py           # Turning an opponent's words into evidence — and catching  80
+│   ├── hint_evidence.py           # Turning an opponent's words into evidence — and catching  114
 │   ├── ledger.py                  # The per-mini-game commit ledger enforcing the four-step   61
 │   ├── match.py                   # Driving a whole match: six mini-games, alternating roles  144
 │   ├── match_audit.py             # The end-of-game reveal exchange (book rules 18-20).       49
@@ -165,7 +165,7 @@ src/najamjad_agent/
 │   ├── series.py                  # Series bookkeeping: 6 mini-games against one opponent, w  67
 │   ├── settle.py                  # Letting a peer finish burying a mini-game before we offe  22
 │   ├── turn_egress.py             # Composing our own turn — the half of the protocol we are  47
-│   ├── turn_ingress.py            # Absorbing the opponent's turn — the untrusted half of th  124
+│   ├── turn_ingress.py            # Absorbing the opponent's turn — the untrusted half of th  142
 │   ├── turn_loop.py               # Alternating with the peer until someone's move ends the   19
 │   ├── who_failed.py              # Which side of the wire failed, established while it is s  18
 ├── llm/
@@ -173,7 +173,7 @@ src/najamjad_agent/
 │   ├── base.py                    # The provider contract every LLM backend satisfies.        48
 │   ├── deepseek_provider.py       # DeepSeek backend — the fallback tier, and our workhorse   85
 │   ├── hint_guard.py              # The last check before a hint leaves us.                   52
-│   ├── hint_parser.py             # Decoding what the opponent said — deterministically firs  77
+│   ├── hint_parser.py             # Decoding what the opponent said — deterministically firs  48
 │   ├── injection_guard.py         # Treating the opponent's words as hostile input, because   50
 │   ├── prompts.py                 # Prompt builders — every instruction the model ever recei  68
 │   ├── router.py                  # The provider chain: Anthropic → DeepSeek → template (ADR  115
@@ -246,7 +246,8 @@ src/najamjad_agent/
 ├── sdk/
 │   ├── actions.py                 # Everything a consumer can ask the agent to *do*.          117
 │   ├── app_paths.py               # Where the dashboard looks for past matches.               18
-│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  130
+│   ├── bootstrap.py               # The composition root: build a wired SDK from configurati  139
+│   ├── config_overrides.py        # Everything one run may change about the configuration it  25
 │   ├── handshake_setup.py         # Building the pre-game agreement exchange.                 59
 │   ├── llm_setup.py               # Building the hint writer: which models speak, and what t  71
 │   ├── match_filing.py            # Turning a finished series into its artifacts, wired to r  92
@@ -255,10 +256,10 @@ src/najamjad_agent/
 │   ├── plugins.py                 # Loading a replacement component named in configuration (  23
 │   ├── queries.py                 # Read models for the dashboard — and the boundary that ke  90
 │   ├── sdk.py                     # The SDK — the single entry point to everything this agen  143
-│   ├── state_setup.py             # Building one mini-game's state from the terms both sides  53
+│   ├── state_setup.py             # Building one mini-game's state from the terms both sides  55
 │   ├── step_zero_setup.py         # Sealing the rule-53 declaration that opens every mini-ga  43
 ├── shared/
-│   ├── app_config.py              # App-level settings — where files go and which subsystems  24
+│   ├── app_config.py              # App-level settings — where files go and which subsystems  29
 │   ├── config.py                  # Configuration: private TOML underneath, signed JSON on t  70
 │   ├── environment.py             # Loading `.env`, so a key written there is a key the agen  13
 │   ├── error_detail.py            # Naming the fault when the exception refuses to name itse  34
