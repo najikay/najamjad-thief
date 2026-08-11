@@ -31,6 +31,11 @@ from .plugins import resolve
 from .state_setup import state_factory
 
 
+def _accepts(brain: Any, field: str) -> bool:
+    """Whether this brain declares `field`, so we never pass one it lacks."""
+    return is_dataclass(brain) and any(each.name == field for each in fields(brain))  # type: ignore[arg-type]
+
+
 def brain_factory(manager: Any = None) -> Any:
     """The policy for each role, honouring a brain named in configuration.
 
@@ -48,6 +53,20 @@ def brain_factory(manager: Any = None) -> Any:
         Role.COP: _tuning(manager, "cop", cop),
         Role.THIEF: _tuning(manager, "thief", thief),
     }
+    # `strength.level` lives in its own config section, and `_tuning` only ever
+    # read `[strategy.<side>]` — so `ThiefBrain.strength` kept its dataclass
+    # default `"full"` no matter what `match_day.py warmup` wrote. Every
+    # "sandbagged" warm-up this project has played was played at full strength,
+    # and the switch that exists to *stop* us showing our real policy to a team
+    # we may meet again did nothing at all.
+    #
+    # Passed only to brains that declare the field, so a replacement brain
+    # loaded through `strategy.thief_class` is not handed an argument it never
+    # asked for — the same rule `_tuning` applies to every other dial.
+    level = str(manager.get("strength.level", "full")) if manager else "full"
+    for role, brain in ((Role.COP, cop), (Role.THIEF, thief)):
+        if _accepts(brain, "strength"):
+            tuning[role]["strength"] = level
 
     def build(role: Role, state: GameState) -> Any:
         """Instantiate the brain for one mini-game."""
