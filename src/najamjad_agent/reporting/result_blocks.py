@@ -14,6 +14,7 @@ from typing import Any
 from ..constants import is_technical
 from ..protocol.schemas_report import log_filename
 from ..shared.sysinfo import git_commit
+from .consensus import settlement_signature
 from .peer_declaration import UNKNOWN_COMMIT, peer_facts
 
 
@@ -212,13 +213,43 @@ def declaration_group(identity: dict[str, Any]) -> dict[str, Any]:
     block = dict(identity or {})
     spec = block.get("hardware_spec") or block.get("spec")
     if not spec:
-        return block
+        return _signed(block)
     normalised = normalise_spec(spec)
     if normalised is None:
         block.pop("hardware_spec", None)
-        return block
+        return _signed(block)
     block["hardware_spec"] = normalised
-    return block
+    return _signed(block)
+
+
+def _signed(block: dict[str, Any]) -> dict[str, Any]:
+    """Seal a group's declaration block against later alteration (rule 24).
+
+    `signature` has been in the schema, defaulted to `""`, since the artifact
+    was written, and nothing produced one — so the computational-fairness
+    declaration carried hardware specs and no proof they had not been edited
+    afterwards.
+
+    **Self-integrity, not consensus.** It covers one group's own block, so the
+    opponent never recomputes it and a construction they do not share cannot
+    put the two reports in contradiction — unlike the commit hash, where a
+    divergent form is a mutual `tamper_forfeit`. That asymmetry is what makes
+    this safe to add: the worst case is a field a reader ignores.
+
+    Signed over the block *without* its own signature, so a reader verifies by
+    popping the key and re-hashing — the same sign-then-insert discipline as
+    `consensus.settlement_signature`, and computed here, before
+    `validate_egress` sees the artifact. A first attempt at a signature
+    elsewhere in this project inserted it *after* validation and produced the
+    one artifact we ever emailed that had never passed its own schema.
+
+    The real fairness guarantee remains the step-0 record: hardware sealed
+    under commit-reveal before the first move, where it cannot be revised once
+    results are known. This is the wrapper, not the evidence.
+    """
+    if block.get("signature"):
+        return block
+    return {**block, "signature": settlement_signature(block)}
 
 
 def repository_links(identities: dict[str, dict[str, Any]]) -> dict[str, dict[str, str]]:
