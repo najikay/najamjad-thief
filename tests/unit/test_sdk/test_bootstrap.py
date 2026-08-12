@@ -15,6 +15,26 @@ from najamjad_agent.sdk.bootstrap import build_sdk, default_config_path, resolve
 REPO = Path(__file__).resolve().parents[3]
 
 
+@pytest.fixture(autouse=True)
+def _not_a_counted_run(monkeypatch):
+    """Build the SDK as a practice run, so arming cannot decide this suite.
+
+    These tests are about composition — is the SDK wired, does the dashboard
+    attach, does preflight read the real config. None of them is about match-day
+    arming. But `build_sdk` applies the counted-strength guard, so with
+    `strength.level = "sandbagged"` on disk every one of them failed, and the
+    whole gate suite went red purely because an operator had armed a warm-up.
+
+    That coupling is worse than untidy: it makes green depend on being armed at
+    full strength, which is pressure to leave it there — and a warm-up played at
+    full strength is the exact defect we fixed on 2026-08-12. The guard stays
+    strict in production; `test_counted_strength_guard.py` is what covers it.
+    """
+    from najamjad_agent.shared.practice import PRACTICE_ENV
+
+    monkeypatch.setenv(PRACTICE_ENV, "1")
+
+
 @pytest.fixture()
 def workspace(tmp_path) -> Path:
     return tmp_path / "ws"

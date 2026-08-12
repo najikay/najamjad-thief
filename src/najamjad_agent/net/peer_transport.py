@@ -99,6 +99,19 @@ class PeerTransport:
         dropped = self._inboxes.begin_sub_game()
         self._emit({"event": "transport.reset", "dropped": dropped})
 
+    def new_session(self) -> None:
+        """Drop the outbound MCP session so the next sub-game opens its own.
+
+        Deliberately separate from `reset`, and deliberately called *earlier*.
+        `reset` throws away queued inbound messages, which must not happen
+        before a handshake — the peer re-pushes its agreement every second or
+        so, and discarding those is discarding the thing we are waiting for.
+        The session, by contrast, has to be replaced *before* the first
+        negotiate of the sub-game, because the handshake is the first call that
+        would otherwise ride a socket attached to the peer's previous process.
+        """
+        self._client.drop_session()
+
     def finish_sub_game(self) -> None:
         """Reopen the handshake gate now the mini-game has resolved.
 

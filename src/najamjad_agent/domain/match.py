@@ -129,6 +129,14 @@ class MatchRunner:
         while not self.tracker.is_complete:
             sub_game = self.tracker.next_sub_game
             role = role_for(sub_game, self.first_role)
+            # A fresh outbound session BEFORE the handshake, not after it. The
+            # peer may run each sub-game as its own process — the pinned wire
+            # shape asks for exactly that — so the socket we held through the
+            # last game is attached to a process that no longer exists. The
+            # handshake is the first call of the sub-game and would be the one
+            # to discover it, by hanging until the per-call cap fires, once per
+            # attempt, until the sub-game is scored unplayed.
+            self._transport.new_session()
             if not agree_on_terms(
                 self._handshake, sub_game, self._handshake_retries, self._emit, role.value
             ):

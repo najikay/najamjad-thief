@@ -48,7 +48,17 @@ max_retries = 3
 # T-2447: a failed agreement exchange retries the SAME sub-game this many
 # times before resolving it as a technical outcome. Advancing on failure is
 # what desynchronised our numbering from the opponent's (rules 33-35).
-handshake_retries = 2
+# Each ordinary attempt costs ~40 s, so this is patience measured in minutes:
+# 8 retries is 9 attempts, a little over six minutes.
+#
+# It is set for a peer that runs each sub-game as a FRESH process. Between
+# sub-games their door is legitimately 502 while the next process binds, and
+# dialling into that gap is not a failure — it is a peer mid-teardown. imreeyal's
+# gap measured 131 s (18:40:57 -> 18:43:08); our old value of 2 gave 121 s of
+# patience and burned three sub-games in two minutes by missing it by ten
+# seconds. Their design is proven across four counted series and ours bounded
+# the wait too tightly, so the margin belongs here.
+handshake_retries = 8
 # How long to wait for the opponent to come up before giving up. Two teams
 # agreeing "20:00" do not both start within two minutes — the old default —
 # and a wait that expires now stops the match with a message rather than
@@ -129,7 +139,7 @@ horizon = 3
 stall_trigger = 3
 
 [strength]
-level = "full"
+level = "sandbagged"
 
 # How much of our own evidence we hand the opponent each turn.
 #

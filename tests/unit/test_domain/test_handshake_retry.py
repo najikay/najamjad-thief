@@ -32,6 +32,10 @@ class QuietPeer:
 
     def reset(self) -> None: ...
 
+    #: Real transports replace the outbound session before each sub-game's
+    #: handshake, because the peer may have been a different process last game.
+    def new_session(self) -> None: ...
+
     def finish_sub_game(self) -> None: ...
 
     def send_turn(self, message: dict[str, Any]) -> bool:

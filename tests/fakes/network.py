@@ -26,6 +26,7 @@ class BlockingLink:
         self.peer: BlockingLink | None = None
         self.sent_turns = 0
         self.resets = 0
+        self.new_sessions = 0
         self.boundaries = 0
         self.in_play = False
         self.rejected_stale = 0
@@ -114,6 +115,17 @@ class BlockingLink:
         for message in kept:
             self.turns.put(message)
         self._sequence.begin_sub_game(bool(kept))
+
+    def new_session(self) -> None:
+        """Replace the outbound session, as the real transport does.
+
+        Counted rather than ignored: the real one must do this *before* each
+        sub-game's handshake, because a peer running a fresh process per
+        sub-game leaves our held socket attached to a process that is gone. A
+        fake that quietly accepted the call would let that ordering regress
+        without a single test noticing.
+        """
+        self.new_sessions += 1
 
     def finish_sub_game(self) -> None:
         """Reopen the handshake gate, as the real transport does.
