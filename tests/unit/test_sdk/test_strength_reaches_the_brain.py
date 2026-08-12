@@ -102,3 +102,28 @@ def test_the_two_levels_actually_choose_different_moves() -> None:
         differences += full != weak
 
     assert differences >= 3, "sandbagged still plays the full-strength line"
+
+
+def test_the_levels_differ_even_when_the_opponent_emits_no_scent() -> None:
+    """The case the first fix missed, and the one that actually occurs.
+
+    Gating on `cop = located if full else None` only skipped the safety
+    invariant. Against a peer emitting no scent the belief is flat, `_cop_cell`
+    returns None regardless, and both levels fell through to the identical blind
+    move — so a warm-up against exactly the opponents we most wanted to hide
+    from was played at full strength, indistinguishably. uoh-ay26 sent zero
+    scent cells across 135 sealed records; this is their regime, not a corner.
+    """
+    board = Board(PARAMS)
+    flat = dict.fromkeys([cell for cell in board.cells() if board.is_open(cell)], 1 / 49)
+
+    differences = 0
+    for position in ((4, 4), (1, 1), (5, 2), (6, 6), (0, 3)):
+        facts = _Facts(legal=legal_moves(board, position), belief=flat,
+                       own_position=position, step=5, sub_game=1,
+                       own_scent={}, scent={}, barriers_left=0)
+        full = ThiefBrain(board_supplier=lambda: board, strength="full").pick_move(facts)
+        weak = ThiefBrain(board_supplier=lambda: board, strength="sandbagged").pick_move(facts)
+        differences += full != weak
+
+    assert differences >= 3, "flat belief still collapses both levels onto one policy"

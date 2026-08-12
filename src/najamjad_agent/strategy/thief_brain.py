@@ -107,8 +107,23 @@ class ThiefBrain:
         # to read a belief it can plainly see would be a different agent, not a
         # weaker one, and the fallback below still needs to know whether the
         # distribution means anything.
-        located = self._cop_cell(belief)
-        cop = located if plays_full_strength(self.strength) else None
+        if not plays_full_strength(self.strength):
+            # Reduced strength has to be a *different policy*, not a withheld
+            # input. It used to be `cop = None`, which only skipped the safety
+            # invariant — and against a peer who emits no scent the belief is
+            # flat, `_cop_cell` returns None anyway, and both levels fell
+            # through to the identical blind move. So a "warm-up" against
+            # exactly the opponents we most wanted to hide from was played at
+            # full strength, indistinguishably. Naji caught it twice from the
+            # moves before this was believed.
+            #
+            # The weighted sum is the honest weak policy: it is the objective
+            # this brain replaced, it lost three games out of three to uoh-sqak
+            # as a policy (T-2457), and it is still real play rather than a
+            # handicap we invented. Chosen unconditionally here, so the level
+            # holds whatever the opponent does or does not transmit.
+            return self._weighted_move(board, origin, legal, belief, facts)
+        cop = self._cop_cell(belief)
         if cop is not None:
             # No `barriers_left` argument: `facts.barriers_left` is *our* quota,
             # and a thief's is always zero, so passing it disabled the cut-cell
@@ -131,6 +146,23 @@ class ThiefBrain:
         # and the leak term asks where **we** have already been — a different
         # question, and one that was being answered with the wrong agent's data
         # for as long as this policy has existed.
+        return self._weighted_move(board, origin, legal, belief, facts)
+
+    def _weighted_move(
+        self,
+        board: Board,
+        origin: Position,
+        legal: tuple[Move, ...],
+        belief: dict[Position, float],
+        facts: Any,
+    ) -> Move:
+        """The weighted-sum objective: our fallback, and our reduced-strength play.
+
+        `facts.scent` is the *opponent's* field; the leak term asks where **we**
+        have already been, so it reads `own_scent` — a different question, and
+        one this policy answered with the wrong agent's data for as long as it
+        existed.
+        """
         scent = dict(getattr(facts, "own_scent", {}) or {})
         endgame = self.is_endgame(facts)
         return max(
