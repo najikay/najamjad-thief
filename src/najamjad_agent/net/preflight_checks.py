@@ -16,6 +16,7 @@ from typing import Any
 
 from ..shared.config import ConfigManager
 from .preflight_opponent import opponent_tools_check
+from .preflight_tunnel import tunnel_check
 
 
 def required_setting(manager: ConfigManager, dotted: str) -> Callable[[], str]:
@@ -58,18 +59,9 @@ def port_check(server: Any) -> Callable[[], str]:
     return probe
 
 
-def tunnel_check(tunnel: Any) -> Callable[[], Any]:
-    """Report the public hostname, or mark the check not applicable.
-
-    Returning `None` when no tunnel is configured is the honest answer: local
-    play is a legitimate setup, not a failure.
-    """
-
-    def probe() -> Any:
-        """Confirm the tunnel hostname resolves to a live endpoint."""
-        return tunnel.public_url if tunnel is not None else None
-
-    return probe
+# Re-exported so every existing caller and test keeps importing it from here,
+# while the check itself lives in the module that can afford to explain it.
+__all__ = ["tunnel_check"]
 
 
 def gmail_check(load: Callable[[], Any] | None = None) -> Callable[[], str]:

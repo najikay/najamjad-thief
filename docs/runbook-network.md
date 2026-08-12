@@ -107,15 +107,33 @@ It prints one checklist and exits nonzero if anything is red:
 
 | Check | What a red line means |
 |---|---|
-| `tunnel` | our own MCP tool answered **through the public URL** — not localhost |
+| `tunnel` | the public hostname could not be reached at all — a missing DNS route |
 | `clock` | skew is inside tolerance, so deadlines fire when they should |
-| `gmail-token` | the stored token refreshes without interactive consent (A6's silent killer) |
+| `gmail-token` | the stored token **refreshed for real**, not merely parsed (A6's silent killer) |
 | `llm-providers` | Anthropic and DeepSeek answer through the gatekeeper |
 | `tokens` | enough budget remains to finish a whole match |
 | `contract` | the signed `game.json` hash matches what we agreed |
 
 Every check runs even if an earlier one fails, so one run shows the whole
 picture.
+
+### What the `tunnel` line does and does not prove
+
+Read this one carefully, because until 2026-08-12 it lied: the check returned
+the configured hostname unchanged, so it printed `PASS` for a name with nothing
+behind it while this page claimed it performed a self-call.
+
+It now probes the hostname and reports one of three things:
+
+| Line | Meaning |
+|---|---|
+| `our server answered through … (HTTP 406)` | **Proof.** Our agent replied through the public name. |
+| `… resolves but nothing is serving it (HTTP 502/530)` | DNS and the tunnel edge exist; nothing is behind them. **Not a failure** — it is the normal state before you start the agent, which is when preflight is designed to run (`port` passes only while the port is still *free*). |
+| `could not be reached` | **Red.** No such host or no DNS route. Starting the agent will not fix it. |
+
+So a green preflight is *not* a promise that an opponent can reach you. Bring
+the agent and the tunnel up, then curl the public URL yourself before the T —
+which is what the agreed T protocol has both sides do anyway.
 
 ## 7. When the tunnel misbehaves mid-match
 
