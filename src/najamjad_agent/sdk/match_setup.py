@@ -31,6 +31,11 @@ from .plugins import resolve
 from .state_setup import state_factory
 
 
+def _accepts(brain: Any, field: str) -> bool:
+    """Whether this brain declares `field`, so we never pass one it lacks."""
+    return is_dataclass(brain) and any(each.name == field for each in fields(brain))  # type: ignore[arg-type]
+
+
 def brain_factory(manager: Any = None) -> Any:
     """The policy for each role, honouring a brain named in configuration.
 
@@ -48,6 +53,20 @@ def brain_factory(manager: Any = None) -> Any:
         Role.COP: _tuning(manager, "cop", cop),
         Role.THIEF: _tuning(manager, "thief", thief),
     }
+    # `strength.level` lives in its own config section, and `_tuning` only ever
+    # read `[strategy.<side>]` — so `ThiefBrain.strength` kept its dataclass
+    # default `"full"` no matter what `match_day.py warmup` wrote. Every
+    # "sandbagged" warm-up this project has played was played at full strength,
+    # and the switch that exists to *stop* us showing our real policy to a team
+    # we may meet again did nothing at all.
+    #
+    # Passed only to brains that declare the field, so a replacement brain
+    # loaded through `strategy.thief_class` is not handed an argument it never
+    # asked for — the same rule `_tuning` applies to every other dial.
+    level = str(manager.get("strength.level", "full")) if manager else "full"
+    for role, brain in ((Role.COP, cop), (Role.THIEF, thief)):
+        if _accepts(brain, "strength"):
+            tuning[role]["strength"] = level
 
     def build(role: Role, state: GameState) -> Any:
         """Instantiate the brain for one mini-game."""
@@ -108,8 +127,23 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
     dns_cache.install()
     dns_cache.warm(opponent, emit=bus.publish)
     limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
+    response_timeout = float(manager.get("network.response_timeout_seconds", 30))
+    call_timeout = float(manager.get("network.call_timeout_seconds", 10))
+    # A per-call cap equal to the signed deadline is not a cap at all. One
+    # delivered-but-unanswered push, one backoff sleep and a retry is already
+    # past 30 s, so we can breach a deadline we signed while every individual
+    # call looks healthy in the log. imreeyal lost two sub-games to exactly
+    # this and wrote up the arithmetic; the cap has to be strictly under the
+    # deadline for the retry to fit inside it at all.
+    if call_timeout >= response_timeout:
+        raise ValueError(
+            f"network.call_timeout_seconds={call_timeout} must be strictly under "
+            f"network.response_timeout_seconds={response_timeout}: a per-call cap at or "
+            "above the signed deadline lets one retry breach terms we agreed to"
+        )
     client = PeerClient(
         opponent_url=opponent,
+        call_timeout=call_timeout,
         # `mcp_peer`, the name the config actually declares. Asking for "peer"
         # fell through to `default` — 30 requests a minute, one message every
         # two seconds — and the opponent is not a quota-limited third-party
@@ -122,7 +156,7 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
         emit=bus.publish,
     )
     deadlines = DeadlineTracker(
-        response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
+        response_timeout=response_timeout,
         max_retries=int(manager.get("network.max_retries", 3)),
         emit=bus.publish,
     )

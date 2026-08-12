@@ -59,7 +59,7 @@ def agree_on_terms(
     busy_seen = 0
     while True:
         try:
-            _invoke(handshake, role)
+            _invoke(handshake, role, sub_game)
         except Exception as error:  # noqa: BLE001 - injected boundary, reported
             # A peer answering "busy, ask again at the boundary" is healthy and
             # mid-mini-game: our clocks drifted and they started first. That
@@ -94,18 +94,29 @@ def agree_on_terms(
             return True
 
 
-def _invoke(handshake: Any, role: str) -> Any:
-    """Call the handshake, passing the role only if it accepts one.
+def _invoke(handshake: Any, role: str, sub_game: int) -> Any:
+    """Call the handshake with whichever of `role` and `sub_game` it accepts.
 
     The injected callable is a boundary and older ones take no arguments. A
     `TypeError` from the call itself would be indistinguishable from one raised
     *inside* the handshake, so capability is inspected rather than guessed at
     from an exception.
+
+    Arguments are matched **by name** rather than by position. `sub_game` was
+    added after `role`, and a positional call would have handed the sub-game
+    number to any existing two-parameter callable that spelled its parameters
+    differently — silently, and only visible in the declaration a peer refuses.
     """
     import inspect
 
     try:
-        takes_role = bool(inspect.signature(handshake).parameters)
+        accepted = set(inspect.signature(handshake).parameters)
     except (TypeError, ValueError):
-        takes_role = False
-    return handshake(role) if takes_role else handshake()
+        return handshake()
+    available = {"role": role, "sub_game": sub_game}
+    kwargs = {name: value for name, value in available.items() if name in accepted}
+    if kwargs:
+        return handshake(**kwargs)
+    # A callable that takes something we cannot name still gets the role, which
+    # is the argument every pre-existing handshake took positionally.
+    return handshake(role) if accepted else handshake()

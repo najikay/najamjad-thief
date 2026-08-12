@@ -35,14 +35,20 @@ opponent_url = "https://mask-matching-stevens-omissions.trycloudflare.com/mcp"
 opponent_group_id = "them"
 # How long to wait for their signed terms before giving up on the handshake.
 handshake_timeout_seconds = 60
+# Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
+response_timeout_seconds = 30
+# Cap on ONE outbound MCP call, and it must stay strictly under the signed
+# response timeout above — `build_transport` refuses to start otherwise. The
+# MCP SDK's own default is 30 s, so a push that is delivered but never answered
+# plus one retry breaches a 30 s deadline we signed, with no single call in the
+# log looking slow.
+call_timeout_seconds = 10
+watchdog_threshold_seconds = 60
+max_retries = 3
 # T-2447: a failed agreement exchange retries the SAME sub-game this many
 # times before resolving it as a technical outcome. Advancing on failure is
 # what desynchronised our numbering from the opponent's (rules 33-35).
 handshake_retries = 2
-# Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
-response_timeout_seconds = 30
-watchdog_threshold_seconds = 60
-max_retries = 3
 # How long to wait for the opponent to come up before giving up. Two teams
 # agreeing "20:00" do not both start within two minutes — the old default —
 # and a wait that expires now stops the match with a message rather than

@@ -1,0 +1,9 @@
+# sparring
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "http://127.0.0.1:8931/mcp"
+group_id = "sparring-local"
+name     = "sparring"
+notes    = "kit sparring peer, uncounted, Haifa terms"

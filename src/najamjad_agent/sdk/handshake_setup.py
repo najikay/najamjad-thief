@@ -19,16 +19,22 @@ from ..shared.config import ConfigManager
 
 def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
     """The pre-game agreement swap, as a callable the match runs first."""
+    from ..negotiation.declarations import negotiate_declarations
     from ..negotiation.handshake import exchange_agreement
     from ..negotiation.identity import identity_from_config
     from ..negotiation.terms import terms_from_config
 
-    def run(role: str = ""):
+    def run(role: str = "", sub_game: int = 0):
         """Sign, swap and verify the terms, then dial where they say they are.
 
         `role` is the one we hold this mini-game. It decides which of the
         opponent's declared endpoints is theirs to answer on, since they are
         always playing the other side.
+
+        `sub_game` is declared beside the terms so that two peers who disagree
+        about which mini-game they are playing refuse at the handshake. One game
+        carrying two sub-game indices is exactly the shape that makes two honest
+        reports contradictory, and rules 33-35 void such a game for both teams.
         """
         from ..net.peer_endpoint import retarget
 
@@ -38,6 +44,7 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         peer = exchange_agreement(
             terms=terms,
             identity=session["identity"],
+            declarations=negotiate_declarations(manager, terms, role, sub_game),
             send=lambda payload: transport.send_negotiate(payload),
             # The inbox hands back a validated pydantic model; the handshake and
             # the contract both work in plain dicts, and `verify_peer` indexes
