@@ -107,7 +107,14 @@ def build_turn_message(
     (scent), free-language (the hint), or mandatory to declare (a barrier, a
     capture claim naming the cell it asserts).
     """
-    message: dict[str, Any] = {
+    # All ten keys, every turn, with unset optionals as explicit `null` rather
+    # than absent. The league's pinned wire shape spells the message as exactly
+    # these ten, and a peer that validates on presence refuses a message whose
+    # optional is missing — a refusal that surfaces minutes later as a timeout
+    # with no visible cause. Sending the key with a null value satisfies both
+    # readings: a presence check passes, and a value check sees "unset", which
+    # is what absence meant anyway.
+    return {
         "step": state.step,
         "sender": state.role.value,
         "commit": commit,
@@ -116,18 +123,13 @@ def build_turn_message(
         # Mandatory per move (book), and a *required* field in the reference's
         # parser — omitting it made every one of our turns unreadable to it.
         "timestamp": datetime.now(UTC).isoformat(),
-    }
-    if "barrier_placed" in payload:
-        message["barrier_placed"] = payload["barrier_placed"]
-    if payload.get("capture_claim"):
+        "barrier_placed": payload.get("barrier_placed"),
         # The claim IS the cell — that is the reference's shape, and it is the
         # better one: a bare `true` plus a separate `claimed_cell` field made
         # the message unparseable by a reference peer, whose parser rejects any
         # field it does not declare. Claiming still discloses where we stand,
         # which is what stops a cop claiming speculatively every turn.
-        message["capture_claim"] = list(payload["capture_claim"])
-    if payload.get("claim_response") is not None:
-        message["claim_response"] = payload["claim_response"]
-    if payload.get("win_claim"):
-        message["win_claim"] = payload["win_claim"]
-    return message
+        "capture_claim": list(payload["capture_claim"]) if payload.get("capture_claim") else None,
+        "claim_response": payload.get("claim_response"),
+        "win_claim": payload.get("win_claim") or None,
+    }

@@ -90,7 +90,7 @@ def test_thief_never_places_a_barrier() -> None:
         role=Role.THIEF, moves=[Move.SOUTH], barriers=[(3, 4)]
     )
     orchestrator.take_turn()
-    assert "barrier_placed" not in transport.sent[0]
+    assert transport.sent[0]["barrier_placed"] is None
 
 
 def test_capture_claim_is_only_made_from_our_own_cell() -> None:
@@ -99,9 +99,12 @@ def test_capture_claim_is_only_made_from_our_own_cell() -> None:
     orchestrator.state.opponent_estimate = (5, 5)
     orchestrator.take_turn()
 
-    # No claim at all, rather than `false`: the reference's claim field carries
-    # the cell being claimed, so "not claiming" is simply its absence.
-    assert "capture_claim" not in transport.sent[0]
+    # No cell claimed, rather than `false`: the claim field carries the cell
+    # being claimed, so "not claiming" is the absence of a cell. It now travels
+    # as an explicit `null` rather than an absent key — the league's pinned wire
+    # shape spells the message as ten keys, and a peer validating on presence
+    # refuses a message whose optional is missing.
+    assert transport.sent[0]["capture_claim"] is None
 
 
 def test_receive_turn_absorbs_hint_and_scent() -> None:
@@ -182,7 +185,7 @@ def test_a_barrier_on_the_believed_thief_is_claimed_not_concluded() -> None:
     assert orchestrator.take_turn() is None, "their answer ends the game, not our belief"
     sent = transport.sent[-1]
     assert sent["barrier_placed"] == [0, 1], "the barrier is declared (rules 15-16)"
-    assert "capture_claim" not in sent, "we do not claim a cell we are not standing on"
+    assert sent["capture_claim"] is None, "we do not claim a cell we are not standing on"
 
 
 def test_survival_threshold_ends_the_game() -> None:

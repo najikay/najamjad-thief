@@ -36,7 +36,12 @@ class PeerClient:
         opponent_url: str,
         gatekeeper: ApiGatekeeper,
         emit: Emit | None = None,
-        call_timeout: float = 30.0,
+        # Strictly under the signed 30 s response deadline, never equal to it:
+        # the cap has to leave room for a retry to complete inside the deadline.
+        # `build_transport` passes the configured value and refuses a config
+        # where it is not under the deadline; this default matches it so a
+        # directly-constructed client is not the one place that still breaches.
+        call_timeout: float = 10.0,
     ) -> None:
         """Prepare the client; the loop thread starts on first use."""
         self.opponent_url = opponent_url

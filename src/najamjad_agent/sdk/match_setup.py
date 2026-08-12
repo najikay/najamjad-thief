@@ -127,8 +127,23 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
     dns_cache.install()
     dns_cache.warm(opponent, emit=bus.publish)
     limits = load_rate_limits(Path(str(manager.get("paths.rate_limits", "config/rate_limits.json"))))
+    response_timeout = float(manager.get("network.response_timeout_seconds", 30))
+    call_timeout = float(manager.get("network.call_timeout_seconds", 10))
+    # A per-call cap equal to the signed deadline is not a cap at all. One
+    # delivered-but-unanswered push, one backoff sleep and a retry is already
+    # past 30 s, so we can breach a deadline we signed while every individual
+    # call looks healthy in the log. imreeyal lost two sub-games to exactly
+    # this and wrote up the arithmetic; the cap has to be strictly under the
+    # deadline for the retry to fit inside it at all.
+    if call_timeout >= response_timeout:
+        raise ValueError(
+            f"network.call_timeout_seconds={call_timeout} must be strictly under "
+            f"network.response_timeout_seconds={response_timeout}: a per-call cap at or "
+            "above the signed deadline lets one retry breach terms we agreed to"
+        )
     client = PeerClient(
         opponent_url=opponent,
+        call_timeout=call_timeout,
         # `mcp_peer`, the name the config actually declares. Asking for "peer"
         # fell through to `default` — 30 requests a minute, one message every
         # two seconds — and the opponent is not a quota-limited third-party
@@ -141,7 +156,7 @@ def build_transport(manager: Any, bus: EventBus, inboxes: Any) -> PeerTransport:
         emit=bus.publish,
     )
     deadlines = DeadlineTracker(
-        response_timeout=float(manager.get("network.response_timeout_seconds", 30)),
+        response_timeout=response_timeout,
         max_retries=int(manager.get("network.max_retries", 3)),
         emit=bus.publish,
     )

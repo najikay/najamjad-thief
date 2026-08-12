@@ -33,6 +33,9 @@ MINIMUMS = {
     "survival_threshold": MIN_SURVIVAL_THRESHOLD,
 }
 FIXED_TERMS = {"num_agents": 2, **FIXED_SCORES}
+#: The four keys the reference agreement message owns. A declaration may never
+#: take one of these names.
+_RESERVED = frozenset({"terms", "nonce", "signature", "identity"})
 
 
 class ContractError(Exception):
@@ -71,11 +74,14 @@ def contract_hash(terms: dict) -> str:
 class Contract:
     """One peer's side of the agreement handshake."""
 
-    def __init__(self, terms: dict, identity: dict | None = None) -> None:
+    def __init__(
+        self, terms: dict, identity: dict | None = None, declarations: dict | None = None
+    ) -> None:
         """Validate our own terms before offering them to anybody."""
         validate_terms(terms)
         self.terms = terms
         self.identity = identity or {}
+        self.declarations = declarations or {}
         self._nonce = secrets.token_hex(16)
         self.peer_identity: dict = {}
         self.verified = False
@@ -90,12 +96,21 @@ class Contract:
 
         Identity is deliberately outside the signature: it differs per group, so
         it is not a must-match term — the *terms* are what both peers verify.
+
+        Declarations sit outside it for the same reason and one more: they are
+        guards a peer may or may not implement, so covering them would make our
+        signature unverifiable to anyone who does not send them. They cannot
+        collide with the four reference keys — `_RESERVED` is enforced here
+        rather than trusted, because a declaration overwriting `signature` would
+        be a self-inflicted refusal at the one moment nothing can be debugged.
         """
+        extra = {k: v for k, v in self.declarations.items() if k not in _RESERVED}
         return {
             "terms": self.terms,
             "nonce": self._nonce,
             "signature": commit_of(self.terms, self._nonce),
             "identity": self.identity,
+            **extra,
         }
 
     def verify_peer(self, message: dict) -> None:

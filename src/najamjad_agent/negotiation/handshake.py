@@ -62,6 +62,7 @@ def exchange_agreement(
     receive: Any,
     timeout: float = 60.0,
     emit: Emit | None = None,
+    declarations: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Sign our terms, swap with the opponent, and verify they signed the same.
 
@@ -71,7 +72,7 @@ def exchange_agreement(
     different responses from an operator.
     """
     announce = emit or (lambda _event: None)
-    contract = Contract(terms, identity=identity)
+    contract = Contract(terms, identity=identity, declarations=declarations)
     ours = contract.signed()
 
     announce({"event": "handshake.sending", "sha256": contract.sha256})
