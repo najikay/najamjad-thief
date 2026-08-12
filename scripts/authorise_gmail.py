@@ -36,7 +36,19 @@ CALLBACK_PORT = 8765
 
 
 def inspect(path: Path) -> int:
-    """Report what a stored token grants, without printing the secret."""
+    """Report what a stored token grants, and whether it still works.
+
+    This printed `refreshable: True` for a token Google had already revoked,
+    because it read whether a `refresh_token` *field was present* rather than
+    trying to use it. The RUNBOOK tells an operator to run this the evening
+    before a match, so a dead token passed its own check and the failure
+    surfaced only when a report did not send — which rules 33-35 score as not
+    having played at all.
+
+    The refresh is now attempted through `load_credentials`, the same function
+    the agent itself uses, so this check and the real send path cannot disagree
+    again by construction.
+    """
     if not path.exists():
         print(f"no token at {path} — run this script without --check to create one")
         return 1
@@ -44,12 +56,24 @@ def inspect(path: Path) -> int:
     scopes = data.get("scopes", [])
     print(f"token      : {path}")
     print(f"scopes     : {scopes}")
-    print(f"refreshable: {bool(data.get('refresh_token'))}")
     if scopes != SCOPES:
         print(f"WRONG SCOPE: need exactly {SCOPES}")
         print("Re-run without --check to consent again with send-only access.")
         return 1
     print("scope is correct (send-only, book rule 30)")
+
+    sys.path.insert(0, str(SECRETS.parent / "src"))
+    try:
+        from najamjad_agent.reporting.gmail_auth import load_credentials
+
+        credentials = load_credentials(path)
+    except Exception as error:  # noqa: BLE001 - the reason is the whole output
+        print(f"\nREFRESH FAILED: {type(error).__name__}: {error}")
+        print("The token is present but unusable — a match would write its artifacts")
+        print("and fail to deliver the report. Re-run this script without --check.")
+        return 1
+    print(f"refresh    : OK (valid={getattr(credentials, 'valid', True)})")
+    print("this token can actually send")
     return 0
 
 

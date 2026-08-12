@@ -78,10 +78,25 @@ def test_a_taken_port_fails_the_check():
         port_check(FakeServer(free=False))()
 
 
-def test_the_tunnel_check_reports_the_public_url():
-    tunnel = type("T", (), {"public_url": "https://cop.4laboratory.com/mcp"})()
+def test_the_tunnel_check_reports_what_the_hostname_answered(monkeypatch):
+    """It used to return the configured URL unchanged, which proved nothing.
 
-    assert tunnel_check(tunnel)() == "https://cop.4laboratory.com/mcp"
+    Echoing the setting back made the checklist read `PASS` for a hostname with
+    nothing behind it. The full three-state contract is pinned in
+    `test_tunnel_check_probes.py`; this keeps the original call site honest.
+    """
+    from najamjad_agent.net.http_probe import ProbeResult
+
+    tunnel = type("T", (), {"public_url": "https://cop.4laboratory.com/mcp"})()
+    monkeypatch.setattr(
+        "najamjad_agent.net.http_probe.probe",
+        lambda _url, **_k: ProbeResult(True, status=406),
+    )
+
+    detail = tunnel_check(tunnel)()
+
+    assert detail != "https://cop.4laboratory.com/mcp"
+    assert "406" in detail
 
 
 def test_no_tunnel_is_not_applicable_rather_than_a_failure():
