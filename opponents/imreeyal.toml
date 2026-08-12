@@ -1,0 +1,9 @@
+# imreeyal
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://cop.imreeyal.com/mcp"
+group_id = "imreeyal"
+name     = "imreeyal"
+notes    = "ImreEyal-Police (Imree Cohen, Eyal Shtinmetz). No LLM, pure Python. Both their hostnames terminate on one process; thief endpoint https://thief.imreeyal.com/mcp. Their runner takes police in odd sub-games, so we run najamjad-thief. Refuses handshakes outside an agreed window. 2 counted series played (anrbj666, uoh-sqak)."
