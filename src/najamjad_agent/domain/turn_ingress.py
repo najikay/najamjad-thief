@@ -63,6 +63,10 @@ def absorb_turn(
     state.last_opponent_hint = str(message.get("hint", "") or "")
     _watch_silence(state, message)
     grid = message.get("smell_grid") or {}
+    # Kept as sent, before absorption merges it into our field: the audit
+    # compares what they *claimed* per step against the cell they reveal,
+    # and a merged field no longer says which frame carried what.
+    state.opponent_frames.record(step, grid)
     problems = state.opponent_scent.absorb(grid)
     for problem in problems:
         event("scent.rejected", reason=problem)
