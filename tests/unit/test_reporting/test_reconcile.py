@@ -49,7 +49,13 @@ def test_the_symmetric_outcome_excludes_per_peer_facts() -> None:
     flat = str(outcome)
     assert "tokens" not in flat
     assert "github_commit" not in flat
-    assert outcome["groups"] == ["najamjad", "rival"], "group order is normalised"
+    # `groups` and `game_uid` were in the preimage and are not any more. Both are
+    # symmetric, so hashing them looked free — but the reference signs exactly
+    # three keys and a peer computing the league's construction cannot reproduce
+    # a digest over more. Group order still has to be normalised, and now shows
+    # up where it is load-bearing: the aggregate's per-group maps.
+    assert set(outcome) == {"game_id", "aggregate", "sub_games"}
+    assert sorted(outcome["aggregate"]["total_score"]) == ["najamjad", "rival"]
 
 
 def test_roles_are_included_because_keyed_by_group_they_are_symmetric() -> None:
@@ -142,7 +148,10 @@ def test_a_summary_without_a_hash_falls_back_to_field_comparison() -> None:
 def test_the_summary_we_send_carries_hash_and_outcome() -> None:
     summary = _summary()
     assert len(summary["sha256"]) == 64
-    assert summary["outcome"]["game_uid"] == GAME_UID
+    # The outcome we hand a peer is the signed preimage itself, so they can
+    # recompute our digest rather than take it. `game_id` identifies the series;
+    # `game_uid` is no longer part of it (see the preimage test above).
+    assert summary["outcome"]["game_id"] == GAME_ID
 
 
 def test_sub_game_order_does_not_affect_the_signature() -> None:

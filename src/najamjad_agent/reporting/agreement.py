@@ -15,7 +15,8 @@ won. Group ids are sorted, and scores are keyed by group rather than by "us" and
 import hashlib
 from typing import Any
 
-from ..protocol.canonical import canonical_json
+from ..domain.scoring import FIXED_SCORES
+from ..protocol.canonical import spaced_json
 
 
 def symmetric_outcome(
@@ -48,12 +49,52 @@ def symmetric_outcome(
                 "score": {group: int(scores.get(group, 0)) for group in ordered},
             }
         )
+    ordered_rows = sorted(rows, key=lambda row: row["sub_game_number"])
+    # `game_uid` and `groups` are deliberately NOT in the preimage. Both are
+    # symmetric, so hashing them looked harmless — but the reference
+    # implementation signs exactly three keys, and a peer computing the
+    # league's construction cannot reproduce a digest over a fourth. The
+    # opponent's file is the thing this has to equal, not our idea of what is
+    # fair game. `report/emit.py` in the lecturer's simulator builds this
+    # object; imreeyal's opponents matched it byte-equal in three of four
+    # counted series, and our own value matched nobody.
     return {
         "game_id": game_id,
-        "game_uid": game_uid,
-        "groups": ordered,
-        "sub_games": sorted(rows, key=lambda row: row["sub_game_number"]),
+        "aggregate": _aggregate(ordered_rows, ordered),
+        "sub_games": ordered_rows,
     }
+
+
+def _aggregate(rows: list[dict[str, Any]], groups: list[str]) -> dict[str, Any]:
+    """The series totals, as the reference's `scoring.aggregate` computes them.
+
+    Derived from the same rows the digest already carries rather than taken
+    from our own result block, so the two can never drift apart — and so a peer
+    reproducing this from the file we send them gets our number by arithmetic
+    rather than by trust.
+    """
+    total = {group: sum(int(row["score"].get(group, 0)) for row in rows) for group in groups}
+    won = dict.fromkeys(groups, 0)
+    ties = 0
+    for row in rows:
+        scores = row["score"]
+        top = max(scores.values(), default=0)
+        leaders = [group for group, value in scores.items() if value == top]
+        if len(leaders) == 1:
+            won[leaders[0]] += 1
+        else:
+            ties += 1
+    if len(groups) == 2 and total[groups[0]] == total[groups[1]]:
+        # The book's tie rule pays each side `tie_score`, and the reference adds
+        # it to the totals *inside* the signed aggregate — so a series tie whose
+        # bonus we applied elsewhere would hash differently on the two machines.
+        for group in groups:
+            total[group] += FIXED_SCORES["tie_score"]
+        return {"total_score": total, "sub_games_won": won, "ties": ties,
+                "winner_group": None, "series_tie": True}
+    winner = max(total, key=lambda group: total[group]) if total else None
+    return {"total_score": total, "sub_games_won": won, "ties": ties,
+            "winner_group": winner, "series_tie": False}
 
 
 def agreement_hash(
@@ -62,9 +103,16 @@ def agreement_hash(
     groups: tuple[str, str],
     sub_games: list[dict[str, Any]],
 ) -> str:
-    """SHA-256 over the symmetric outcome — identical on both peers."""
+    """SHA-256 over the symmetric outcome — identical on both peers.
+
+    **Spaced**, not compact. The reference signs with `json.dumps(sort_keys=
+    True, ensure_ascii=False)` and no `separators` argument, so it gets Python's
+    defaults — `", "` and `": "`. Our compact form produced a different digest
+    for a byte-identical outcome, which is the whole trap: everything about the
+    series agreed and only the signature over it did not.
+    """
     payload = symmetric_outcome(game_id, game_uid, groups, sub_games)
-    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+    return hashlib.sha256(spaced_json(payload).encode("utf-8")).hexdigest()
 
 
 def agreement_block(
