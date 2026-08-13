@@ -47,6 +47,18 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         # holds the PREVIOUS sub-game's role and refuses the one turn that
         # matters. See `_bind_expected_role`.
         _bind_expected_role(inboxes, manager, terms, session["identity"], role, bus.publish)
+        # Dial the door THIS role needs, before the handshake rather than after.
+        # Against a peer that runs cop and thief as two processes on two URLs,
+        # the address we hold is the one their *previous* role answered on: we
+        # would send sub-game 2's negotiate to the process playing cop while
+        # they play thief, and the handshake fails against a door that is not
+        # in this game. Uses the identity they declared last sub-game, which is
+        # the same source the post-handshake retarget below uses — this one is
+        # simply early enough to matter. A no-op on the first sub-game, and on
+        # any peer serving every role from one address.
+        if role and isinstance(session.get("peer"), dict):
+            retarget(transport.client, session["peer"].get("identity") or {}, role,
+                     bus.publish, ours=dict(manager.get("game.mcp_servers", {}) or {}))
         peer = exchange_agreement(
             terms=terms,
             identity=session["identity"],
