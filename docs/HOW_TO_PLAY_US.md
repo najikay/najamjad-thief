@@ -83,6 +83,24 @@ always present; only its contents change. None of this touches the move: our
 moves are plain Python either way, and we decline the rule 25 LLM-move
 exception.
 
+**Which snapshot crosses the wire — ask us, and here is our answer.** The locked
+model doc carries two fields for the same example, `emit_field` (0.9 peak) and
+`after_one_decay` (0.8 peak), and it never pins which one is transmitted. Two
+teams in this league sit on opposite sides of that, so it is worth settling in
+writing rather than discovering at settlement.
+
+**We transmit the pre-decay emission snapshot: 0.9 peak, 0.6/0.3 rings.** Our
+field is deposited and only decays once both agents have moved, so the grid we
+send is the field as it stands at send time.
+
+If your receiver decays an arriving grid once — the model doc's
+`receiver_side_decay: true` — then our trail nets exactly one decay in your
+field, which is what the physics asks for. If your receiver instead takes frames
+as-is, tell us and we will send the decayed form, because then the one decay has
+to come from our side. A peer that transmits post-decay *and* decays on receipt
+ages a trail twice; that is worth checking on both sides before a series rather
+than after.
+
 ### The exact object we sign
 
 `verify_peer` compares the peer's `terms` against ours for **byte-identical**
