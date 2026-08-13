@@ -1,0 +1,9 @@
+# vibecode
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "http://62.56.220.143:61223/mcp"
+group_id = "vibecode"
+name     = "vibecode"
+notes    = "Ron Marom, Amit Kuperminz. TWO processes, TWO ports (cop :61224, thief :61223), static IP, no tunnel — the first genuinely role-split opponent, which the pre-handshake retarget exists for. We open as COP (najamjad cop in 1/3/5), so sub-game 1 dials their THIEF door :61223 and the retarget swaps per sub-game. No LLM. Terms byte-identical: game_uid eb6ddfa3 verified both ways."
