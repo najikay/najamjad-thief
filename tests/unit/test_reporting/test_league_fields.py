@@ -14,7 +14,7 @@ counted file would have said 0 where the truth is 2.
 
 from __future__ import annotations
 
-from najamjad_agent.reporting.result_blocks import league_block
+from najamjad_agent.reporting.league import league_block
 
 OURS, THEIRS = "najamjad", "imreeyal"
 
@@ -67,15 +67,30 @@ def test_first_meeting_is_true_until_one_side_has_counted_the_other() -> None:
     assert met["first_meeting_between_groups"] is False
 
 
-def test_the_diversity_reward_is_never_claimed_in_our_own_file() -> None:
-    """All-false is always legal; claiming it for ourselves is not ours to do.
+def test_the_diversity_reward_is_derived_not_claimed() -> None:
+    """Counted AND first meeting AND this group won — no self-crowning in it.
 
-    The reward belongs to the winner of a first meeting, and a false claim here
-    is the same rule-38 exposure pointing the other way.
+    We emitted all-false first, reasoning that awarding ourselves a bonus was
+    not ours to do. imreeyal's correction was better: a value that follows from
+    three shared facts is no more a claim than a score, and all-false would make
+    the two counted files visibly disagree on a +10 line while every other
+    difference between them is a declared per-side one.
     """
-    block = league_block(_blocks(1, 4), counted=True, groups=(OURS, THEIRS))
+    won = league_block(_blocks(1, 4), True, (OURS, THEIRS), winner=OURS)
+    lost = league_block(_blocks(1, 4), True, (OURS, THEIRS), winner=THEIRS)
 
-    assert block["diversity_reward_applied"] == {OURS: False, THEIRS: False}
+    assert won["diversity_reward_applied"] == {OURS: True, THEIRS: False}
+    assert lost["diversity_reward_applied"] == {OURS: False, THEIRS: True}, "it crowns whoever won"
+
+
+def test_no_reward_on_a_friendly_or_a_rematch() -> None:
+    """All three conditions must hold, not just the win."""
+    friendly = league_block(_blocks(1, 4), False, (OURS, THEIRS), winner=OURS)
+    rematch = league_block(_blocks(1, 4, met=[THEIRS]), True, (OURS, THEIRS), winner=OURS)
+    drawn = league_block(_blocks(1, 4), True, (OURS, THEIRS), winner=None)
+
+    for block in (friendly, rematch, drawn):
+        assert block["diversity_reward_applied"] == {OURS: False, THEIRS: False}
 
 
 def test_the_declaration_carries_both_spellings_of_the_count() -> None:

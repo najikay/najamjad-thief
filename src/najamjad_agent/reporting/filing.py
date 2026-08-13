@@ -25,12 +25,12 @@ from ..constants import is_technical
 from ..shared.events import Emit
 from ..shared.practice import current
 from .artifacts import ArtifactWriter
+from .league import league_block
 from .mail_message import report_subject
 from .reconcile import MISMATCH, from_recorded_games
 from .resilient_filing import attempt, missing
 from .result_blocks import (
     final_result_block,
-    league_block,
     repository_links,
     series_tokens,
     sub_game_rows,
@@ -171,15 +171,19 @@ class MatchFiler:
                 ),
                 self._emit,
             ))
-        # Outside every hash, but rule 38 judges counted-match declarations on
-        # consistency between the two teams' files — a missing count is not
-        # cosmetic. A practice run is not a counted one; that decides the +1.
-        league = league_block(groups_block or {}, not current().enabled, self._groups)
         written["result"] = attempt(
             "result",
             lambda: self._writer.write_result(
                 rows,
-                final_result_block(result, series_tokens(rows), self.rename, league),
+                # The league fields are outside every hash, but rule 38 judges
+                # counted-match declarations on consistency between the two
+                # teams' files, so a missing count is not cosmetic. Computed
+                # here, inside `attempt`, because it reads `result` — which a
+                # caller may not have, and one block failing must never take the
+                # rest of the filing with it.
+                final_result_block(result, series_tokens(rows), self.rename, league_block(
+                    groups_block or {}, not current().enabled, self._groups,
+                    result=result, rename=self.rename)),
                 theirs,
                 confirmed,
                 repositories=repository_links(groups_block or {}),

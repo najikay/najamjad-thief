@@ -125,49 +125,6 @@ def series_tokens(rows: list[dict[str, Any]]) -> dict[str, int]:
     return totals
 
 
-#: The count keys a peer may declare. Ours has always been the first; the
-#: league's readers look for the second, and a peer finding neither prints zero.
-COUNT_KEYS = ("counted_matches_played", "counted_games_played")
-
-
-def league_block(
-    groups_block: dict[str, Any], counted: bool, groups: tuple[str, str] | None = None
-) -> dict[str, Any]:
-    """The three template fields a league table reads, per group.
-
-    Absent from our result until now, so a grader building standings from our
-    file found nothing where the template says to look. They are outside every
-    hash — the agreement digest covers the symmetric outcome only — but rule 38
-    judges counted-match declarations on *mutual consistency between the two
-    teams' files*, which makes a missing or wrong count a project-level matter
-    rather than a cosmetic one.
-
-    `games_played_including_this` counts the series being filed, so a counted
-    match is the declared total plus one and a friendly is the total unchanged.
-    Read from whichever spelling the peer declared, because assuming ours is
-    exactly the bug this fixes.
-
-    `diversity_reward_applied` is all-false. The reward belongs to the winner of
-    a first meeting and all-false is always legal; claiming it in our own file
-    is not ours to do, and a false claim here is the same rule-38 exposure in
-    the other direction.
-    """
-    names = list(groups or tuple(groups_block)) or list(groups_block)
-    played: dict[str, int] = {}
-    met_before = False
-    for name in names:
-        block = dict(groups_block.get(name) or {})
-        declared = next((int(block[key]) for key in COUNT_KEYS if key in block), 0)
-        played[name] = declared + (1 if counted else 0)
-        if [other for other in (block.get("opponents_already_counted") or []) if other in names]:
-            met_before = True
-    return {
-        "games_played_including_this": played,
-        "first_meeting_between_groups": not met_before,
-        "diversity_reward_applied": dict.fromkeys(names, False),
-    }
-
-
 def final_result_block(
     result: Any,
     tokens: dict[str, int] | None = None,
@@ -192,7 +149,13 @@ def final_result_block(
         # report against the opponent's needs to see that three mini-games
         # ended off the board, not that three of them were drawn.
         "technical_endings": int(getattr(result, "technical", 0)),
-        "winner_group": result.winner_group,
+        # Relabelled like the score maps beside it. It was not, and the gap only
+        # opens when we LOSE: the tracker scores against its `"them"` placeholder
+        # until the handshake names the opponent, so a defeat would have filed
+        # `winner_group: "them"` next to a `total_score` keyed by their real
+        # group id — our own artifact contradicting itself, on the one field a
+        # league table reads first. Five straight wins is why nothing showed it.
+        "winner_group": swap.get(result.winner_group, result.winner_group),
         "series_tie": bool(result.series_tie),
         "tokens_total_series": dict(tokens or {}),
         **({"tie_award": award} if result.series_tie and (award := getattr(
