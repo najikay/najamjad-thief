@@ -108,7 +108,7 @@ project_token_budget = 5000000
 # Book Appendix F Table 20: the ONLY permitted destination for agent reports.
 recipient = "rmisegal+uoh26finalgame@gmail.com"
 # "draft" while developing; the league requires "send".
-mode = "send"
+mode = "draft"
 
 [strategy]
 # Scalars first: a bare key belongs to the most recent table header, so putting
@@ -139,7 +139,7 @@ horizon = 3
 stall_trigger = 3
 
 [strength]
-level = "full"
+level = "sandbagged"
 
 # How much of our own evidence we hand the opponent each turn.
 #
