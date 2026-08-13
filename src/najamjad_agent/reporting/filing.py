@@ -23,11 +23,14 @@ from typing import Any
 
 from ..constants import is_technical
 from ..shared.events import Emit
+from ..shared.practice import current
 from .artifacts import ArtifactWriter
+from .mail_message import report_subject
 from .reconcile import MISMATCH, from_recorded_games
 from .resilient_filing import attempt, missing
 from .result_blocks import (
     final_result_block,
+    league_block,
     repository_links,
     series_tokens,
     sub_game_rows,
@@ -168,11 +171,15 @@ class MatchFiler:
                 ),
                 self._emit,
             ))
+        # Outside every hash, but rule 38 judges counted-match declarations on
+        # consistency between the two teams' files — a missing count is not
+        # cosmetic. A practice run is not a counted one; that decides the +1.
+        league = league_block(groups_block or {}, not current().enabled, self._groups)
         written["result"] = attempt(
             "result",
             lambda: self._writer.write_result(
                 rows,
-                final_result_block(result, tokens=series_tokens(rows), rename=self.rename),
+                final_result_block(result, series_tokens(rows), self.rename, league),
                 theirs,
                 confirmed,
                 repositories=repository_links(groups_block or {}),
@@ -229,7 +236,18 @@ class MatchFiler:
         if self._sender is None:
             self._emit({"event": "report.not_sent", "reason": "no mail sender configured"})
             return None
-        sent = self._sender.send_report(Path(result_path), subject=self._game_id)
+        # Body = the attachment's exact bytes, not a re-serialization of the
+        # same object. Graders compare emails, and a body derived from parsed
+        # content can differ from the attachment while every hash still agrees —
+        # two teams looking identical by digest and different on screen. The
+        # subject is the reference's verbatim form, which names the winner; ours
+        # named only the game. Both are outside every hash and refuse nothing.
+        report = Path(result_path)
+        sent = self._sender.send_report(
+            report,
+            subject=report_subject(report, self._groups[0], self._game_id),
+            body=report.read_text(encoding="utf-8"),
+        )
         #: Kept so the caller can hand it to the dashboard's report panel,
         #: which needs the delivery object rather than just the id.
         self.last_send = sent

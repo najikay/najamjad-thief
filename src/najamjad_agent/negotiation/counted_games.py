@@ -110,9 +110,25 @@ class CountedGames:
         return self.count
 
     def declaration(self) -> dict[str, Any]:
-        """The block we send the opponent at match start (rules 37-38)."""
+        """The block we send the opponent at match start (rules 37-38).
+
+        The count goes out under **both** spellings. Ours has always been
+        `counted_matches_played`; the league's league-block readers look for
+        `counted_games_played`, so a peer building its report from our identity
+        found nothing and printed zero — imreeyal's friendly artifact stated
+        `najamjad: 0` against a truth of 1, and their counted file would have
+        said 0 where the truth is 2.
+
+        That is not a cosmetic mismatch. Rule 38 judges counted-match
+        declarations on *mutual consistency between the two teams' files* and
+        treats a false one as project-level, so our key name would have put a
+        wrong number in an honest opponent's report. Both spellings carry the
+        same integer from the same tracker, so they cannot disagree, and a peer
+        reading either one is correct.
+        """
         return {
             "counted_matches_played": self.count,
+            "counted_games_played": self.count,
             "counted_matches_remaining": self.remaining,
             "opponents_already_counted": list(self.opponents),
         }

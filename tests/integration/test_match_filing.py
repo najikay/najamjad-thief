@@ -163,17 +163,27 @@ def test_the_result_is_sent_through_the_configured_sender(tmp_path):
     put the whole object into a JSON event. The fake modelled the *buggy*
     contract, so the test agreed with the bug and stayed green.
     """
-    sent: list[Path] = []
+    sent: list[tuple[Path, str, str]] = []
 
     class Sender:
-        def send_report(self, path, subject):
-            sent.append(path)
+        def send_report(self, path, subject, body=""):
+            sent.append((path, subject, body))
             return SendResult(message_id="msg-1", mode="send", recipient="me@example.invalid")
 
+    # A real result file, because the body is now the attachment's exact bytes
+    # rather than a re-serialization — so the sender has something to read.
+    report = tmp_path / "result.json"
+    report.write_text(json.dumps({
+        "final_result": {"winner_group": GROUPS[0]},
+        "sub_games": [{"roles": {GROUPS[0]: "thief", GROUPS[1]: "police"}}],
+    }), encoding="utf-8")
     filer = MatchFiler(tmp_path, GAME_ID, "uid", GROUPS, sender=Sender())
 
-    assert filer.send(tmp_path / "result.json") == "msg-1", "the id, not the object"
+    assert filer.send(report) == "msg-1", "the id, not the object"
     assert sent
+    path, subject, body = sent[0]
+    assert body == report.read_text(encoding="utf-8"), "body must be the attachment's bytes"
+    assert subject == f"Police-Thief series result: winner {GROUPS[0]} (reported by thief)"
 
 
 # --------------------------------------------------------------- the parity test
