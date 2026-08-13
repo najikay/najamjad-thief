@@ -95,7 +95,16 @@ uv run python scripts/match_day.py counted    # send email + FULL strength
 ```
 
 These write `strength.level` and `email.mode` into **both** repos' private
-config. After a `warmup` you are sandbagged until you say otherwise — that has
+config, and the level now reaches **both brains**. The cop had no strength dial
+at all until 2026-08-13, so a sandbagged warm-up played our real cop policy in
+three of six sub-games; at reduced strength the cop now walks the belief peak
+instead of intercepting, lays no barriers and demands 3x the belief before it
+claims. Note what sandbagging still cannot hide: on a 7x7 board every sane
+pursuit walks toward the peak, so the reduced cop picks a different *move* in
+only about 3 of 49 positions. The weakening is in barriers and claims, which is
+where a cop's strength actually lives.
+
+After a `warmup` you are sandbagged until you say otherwise — that has
 already cost one series, played at the deliberately weak brain without noticing.
 
 ## 4. Preflight — do not play on a red line
@@ -170,6 +179,9 @@ game must read `Verified OK`.**
 
 | Symptom | What it means | Action |
 |---|---|---|
+| Long silence *between* sub-games | Their next process is binding | **Expected. Do not Ctrl-C.** A peer that runs each sub-game as a fresh process leaves its door 502 for a minute or two at every boundary. `network.handshake_retries = 8` gives ~6 minutes of patience against a gap measured at 131 s, so quiet here is the fix working. |
+| `client.session_dropped` at a boundary | Our own session being replaced | Expected, once per sub-game, before the handshake. A peer's fresh process makes the socket we held a corpse; reusing it hangs every call to the cap while a bare `curl` reads a healthy 406. |
+| `Session termination failed: 502` | The far process was already gone | Harmless SDK warning from that same drop. We are closing a session to a peer that has already torn down, which is why we are closing it. |
 | Repeated `turn.timeout` | Opponent is slow or gone | The deadline path resolves it; do not restart. Their silence becomes their forfeit, not ours. |
 | `TAMPERED` on a game | Their revealed records do not re-hash | Do **not** argue live. It is recorded; rule 19 voids the game for them. Keep the log. |
 | Dashboard blank / red banner | Our UI only | Ignore during play. It cannot affect the game. |

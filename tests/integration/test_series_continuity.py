@@ -33,6 +33,13 @@ class RecordingTransport:
     def __init__(self) -> None:
         self.resets = 0
         self.boundaries = 0
+        self.new_sessions = 0
+
+    def new_session(self) -> None:
+        """Counted, because the real transport must do this before each
+        handshake — a peer running a fresh process per sub-game leaves our held
+        socket pointing at a process that is gone."""
+        self.new_sessions += 1
 
     def reset(self) -> None:
         self.resets += 1

@@ -41,6 +41,12 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         terms = terms_from_config(manager)
         session["terms"] = terms
         session["identity"] = identity_from_config(manager)
+        # Expect their role BEFORE the exchange, not after it. A peer whose
+        # fresh process fires its opening turn the instant the handshake returns
+        # lands in the gap between "agreed" and "bound", where the guard still
+        # holds the PREVIOUS sub-game's role and refuses the one turn that
+        # matters. See `_bind_expected_role`.
+        _bind_expected_role(inboxes, manager, terms, session["identity"], role, bus.publish)
         peer = exchange_agreement(
             terms=terms,
             identity=session["identity"],
@@ -86,6 +92,48 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         return peer
 
     return run
+
+
+def _bind_expected_role(inboxes, manager, terms, identity, our_role: str, emit) -> None:
+    """Bind the guard to their role before the agreement exchange, not after.
+
+    The window this closes is milliseconds wide and cost three sub-games a
+    night, three nights running. The guard pins `expected_sender` to the role
+    the opponent holds *this* mini-game. We bound it after `exchange_agreement`
+    returned — but a peer that runs each sub-game as a fresh process sends its
+    opening turn the instant its own handshake completes, which is before our
+    call has returned. The turn arrives while the guard still holds the previous
+    sub-game's role, is refused as `sender 'thief' is not the negotiated
+    opponent 'police'`, and we bind to the right role a beat later, having
+    already thrown away the only turn that would have started the game.
+
+    It bites exactly the sub-games where the opponent opens — for us the ones we
+    play as police, since the thief opens — which is why it looks like a broken
+    police role and is not one: our police captured 3 of 3 against the kit's
+    sparring peer, whose opener is a fraction slower and lands after the bind.
+
+    Nothing here waits on the peer. Our role for this mini-game gives theirs,
+    and the token comes from the terms plus the two group ids, the opponent's
+    read from the card — the same values `_bind_session` derives afterwards from
+    their declared identity. So the later bind stays, as a correction rather
+    than the first word, and this one is safe to be wrong: it can only ever
+    expect the role the rules say they hold.
+    """
+    from ..negotiation.contract import contract_hash, derive_game_ids
+    from ..net.peer_endpoint import OPPOSITE_ROLE
+
+    theirs = OPPOSITE_ROLE.get(str(our_role).lower(), "")
+    their_group = str(manager.get("network.opponent_group_id", "") or "").strip()
+    our_group = str((identity or {}).get("group_id", ""))
+    if not theirs or not their_group or their_group == "them":
+        # Without a role we cannot name their sender, and without their group we
+        # cannot derive the token. Staying unbound is the safe answer: an
+        # unbound guard admits, which costs a guard we did not have anyway
+        # rather than the turn that starts the game.
+        emit({"event": "session.early_bind_skipped", "role": our_role, "group": their_group})
+        return
+    _, game_uid = derive_game_ids(dict(terms), our_group, their_group)
+    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid)
 
 
 def _bind_session(inboxes, session: dict, declared: Any, emit, our_role: str = "") -> None:

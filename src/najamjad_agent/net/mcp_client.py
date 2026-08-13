@@ -144,6 +144,20 @@ class PeerClient:
         with contextlib.suppress(Exception):
             asyncio.run_coroutine_threadsafe(self._session.drop(), loop).result(timeout=5)
 
+    # Correctness at a sub-game boundary, not hygiene. Against a peer running
+    # each sub-game as its own process, a reused session dials a corpse: nothing
+    # refuses, every call hangs to the per-call cap, and a bare `curl` reads a
+    # healthy 406 off their *new* process meanwhile — so the tunnel and the peer
+    # both look fine and only the session is dead. It cost a whole friendly on
+    # 2026-08-12. Full story in tests/unit/test_net/test_fresh_session_per_sub_game.py
+    def drop_session(self) -> None:
+        """Release the held session so the next call opens a fresh one."""
+        if not self._session.connected:
+            return
+        self._release_session()
+        self._session = PeerSession(self.opponent_url, emit=self._emit)
+        self._emit({"event": "client.session_dropped", "url": self.opponent_url})
+
     def retarget(self, opponent_url: str) -> None:
         """Move to a new opponent address, dropping the session held on the old one.
 

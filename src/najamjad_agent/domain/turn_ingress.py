@@ -62,9 +62,25 @@ def absorb_turn(
     _watch_fair_play(state, step, message, event)
     state.last_opponent_hint = str(message.get("hint", "") or "")
     _watch_silence(state, message)
-    problems = state.opponent_scent.absorb(message.get("smell_grid") or {})
+    grid = message.get("smell_grid") or {}
+    problems = state.opponent_scent.absorb(grid)
     for problem in problems:
         event("scent.rejected", reason=problem)
+    # What arrived, not merely what was wrong with it. Absorbing silently made
+    # a peer sending 29 cells and a peer sending none indistinguishable in our
+    # own logs, so "do they emit scent at all?" has been unanswerable against
+    # two opponents — the sealed records cannot settle it either, because the
+    # league's default `smell_binding: none` puts no grid in them by design.
+    # Their transmitted form also decides whether decaying their frames on
+    # receipt is right or double-ages their trail, so this is the measurement
+    # that has to exist before that question can be answered honestly.
+    # The peak is computed over numbers only. A hostile or merely broken peer
+    # may send a string intensity, and `max` over mixed types raises — which
+    # would turn an observability line into the one thing this whole path exists
+    # to prevent: a peer crashing our turn.
+    numeric = [value for value in grid.values() if isinstance(value, int | float)]
+    event("scent.absorbed", step=step, cells=len(grid),
+          peak=max(numeric, default=0.0), rejected=len(problems))
     _absorb_barrier(state, message, event)
     _absorb_capture_claim(state, message, event)
     return None
