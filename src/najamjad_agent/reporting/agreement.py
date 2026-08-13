@@ -105,11 +105,14 @@ def agreement_hash(
 ) -> str:
     """SHA-256 over the symmetric outcome — identical on both peers.
 
-    **Spaced**, not compact. The reference signs with `json.dumps(sort_keys=
-    True, ensure_ascii=False)` and no `separators` argument, so it gets Python's
+    **Spaced**, not compact. The reference serialises with sorted keys, raw
+    UTF-8 and no `separators` argument at all, so it gets the interpreter's
     defaults — `", "` and `": "`. Our compact form produced a different digest
     for a byte-identical outcome, which is the whole trap: everything about the
     series agreed and only the signature over it did not.
+
+    Serialisation itself stays in `protocol/canonical.py`; this module names the
+    form and calls it, so the one-encoder rule keeps holding.
     """
     payload = symmetric_outcome(game_id, game_uid, groups, sub_games)
     return hashlib.sha256(spaced_json(payload).encode("utf-8")).hexdigest()
