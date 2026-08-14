@@ -135,3 +135,29 @@ def test_the_log_forgets_between_mini_games() -> None:
     log.clear()
 
     assert verify_trail(log, _records((1, (3, 3)))).checked == 0
+
+
+def test_the_hint_that_rode_with_each_frame_is_kept() -> None:
+    """We judged a peer as sending no hints from their *revealed records*.
+
+    A build whose commit preimage omits the hint text structurally cannot carry
+    one there — exactly as the league's default `smell_binding: none` puts no
+    grid in a sealed record. We already knew that about grids and did not apply
+    it to hints, so we measured their sealing choice and called it their wire.
+    """
+    log = FrameLog()
+    log.record(1, _trail((3, 3)), "far to the north east")
+    log.record(2, _trail((3, 4)), "")
+    log.record(3, _trail((4, 4)), "still moving")
+
+    assert log.spoke() == 2, "a silent step must not count as speech"
+    assert log.hints[1] == "far to the north east"
+    assert log.hints[2] == ""
+
+
+def test_clearing_forgets_the_hints_too() -> None:
+    log = FrameLog()
+    log.record(1, _trail((3, 3)), "north")
+    log.clear()
+
+    assert log.spoke() == 0 and log.hints == {}

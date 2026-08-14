@@ -78,14 +78,27 @@ class FrameLog:
     """
 
     frames: dict[int, dict[str, float]] = field(default_factory=dict)
+    #: The hint text that rode with each frame. Kept for the same reason as the
+    #: grid and learned the same way: we judged a peer as sending no hints from
+    #: their *revealed records*, and a build whose commit preimage omits the hint
+    #: text structurally cannot carry one there — exactly as the league's default
+    #: `smell_binding: none` puts no grid in a sealed record. The wire is the only
+    #: place either claim can be settled, and we were not keeping it.
+    hints: dict[int, str] = field(default_factory=dict)
 
-    def record(self, step: int, grid: dict[str, float]) -> None:
-        """Keep one arriving grid. An empty grid is recorded as an empty grid."""
+    def record(self, step: int, grid: dict[str, float], hint: str = "") -> None:
+        """Keep one arriving frame. An empty grid is recorded as an empty grid."""
         self.frames[int(step)] = dict(grid or {})
+        self.hints[int(step)] = str(hint or "")
+
+    def spoke(self) -> int:
+        """How many steps carried a non-empty hint."""
+        return sum(1 for text in self.hints.values() if text.strip())
 
     def clear(self) -> None:
         """Forget the mini-game just played."""
         self.frames.clear()
+        self.hints.clear()
 
 
 def _peak_cells(grid: dict[str, float]) -> tuple[Position, ...]:
