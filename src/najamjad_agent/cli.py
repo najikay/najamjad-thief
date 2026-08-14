@@ -137,7 +137,23 @@ def match(
         typer.echo(str(absent), err=True)
         raise typer.Exit(code=UNUSABLE_INPUT) from absent
     for game in sdk.actions.games:
-        typer.echo(f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} {game['audit']}")
+        # `disputed` belongs on this line, and leaving it off hid the only
+        # thing that decides `mutual_agreement.confirmed`. The 2026-08-14
+        # vibecode friendly printed six `Verified OK` while the opponent had
+        # contradicted our ending in three of them, so the operator read
+        # agreement off the console and filed `confirmed: false` — the two
+        # checks are orthogonal and the console showed one of them. An audit
+        # verifies nobody rewrote history; a dispute is the peer disagreeing
+        # about what happened, which is what rules 33-35 void a match for.
+        clash = (
+            f"  DISPUTED — they claim {game.get('their_claim') or 'something else'}"
+            if game.get("disputed")
+            else ""
+        )
+        typer.echo(
+            f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} "
+            f"{game['audit']}{clash}"
+        )
     typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
     if dashboard:
         # The process used to exit here, taking the dashboard with it — so the

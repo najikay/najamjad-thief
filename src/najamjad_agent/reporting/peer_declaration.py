@@ -55,16 +55,40 @@ def peer_facts(games: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
     return facts
 
 
+#: What a step-0 record calls itself, across the implementations we have met.
+#: Ours and the reference say `system_spec`; vibecode say `step_zero`. The book
+#: names the *record* and not the string, so neither is wrong.
+STEP_ZERO_TYPES = frozenset({RECORD_TYPE, "step_zero", "step0", "declaration"})
+
+
 def _declaration(records: Any) -> dict[str, Any]:
     """Their step-0 payload from one mini-game's revealed records, or empty.
 
-    Matched on `type` rather than on position or step number: the record is
-    only meaningful if it says what it is, and a peer who orders their reveal
-    differently is not thereby lying about their hardware.
+    **Matched on more than our own spelling.** This looked only for
+    `type == "system_spec"`, which is what *we* call the record — vibecode call
+    theirs `step_zero`, so the lookup missed every time and both fields this
+    module exists to read came back empty. Their commit was written into six
+    filed sub-games as `"unknown"` and their token spend as `0`, while the
+    values sat in our own log the whole series.
+
+    That is the `counted_games_played` bug again: a field read under the name we
+    happen to use rather than the name the wire happens to carry. It put a wrong
+    number in an honest opponent's report last time and a wrong string in ours
+    this time.
+
+    `step == 0` is the fallback, because a peer may spell the type anything at
+    all and the step number is structural. Type first, so a peer who sends
+    several records at step 0 still gets the one that says what it is.
     """
-    for record in records or []:
-        payload = record.get("payload") if isinstance(record, dict) else None
-        if isinstance(payload, dict) and payload.get("type") == RECORD_TYPE:
+    candidates = [
+        record.get("payload") for record in (records or []) if isinstance(record, dict)
+    ]
+    payloads = [payload for payload in candidates if isinstance(payload, dict)]
+    for payload in payloads:
+        if str(payload.get("type", "")).lower() in STEP_ZERO_TYPES:
+            return payload
+    for payload in payloads:
+        if payload.get("step") == 0:
             return payload
     return {}
 

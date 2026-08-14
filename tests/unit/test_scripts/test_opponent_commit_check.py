@@ -89,3 +89,22 @@ def test_no_expectation_reports_what_they_declared_rather_than_failing() -> None
     note = check_commit({}, {"cop": COP}, "cop")
 
     assert "none on record" in note and COP in note
+
+
+def test_the_newest_archive_is_chosen_by_timestamp_not_by_name() -> None:
+    """The armed pair describes what they will play *next*.
+
+    Both repos hold copies of the same series and the name prefixes differ
+    ("friendly-abandoned" vs "practice"), so picking the last path
+    alphabetically pointed the commit check at an older archive and reported a
+    rule-53 mismatch against a team that had done nothing wrong. Archives carry
+    a trailing `-YYYYMMDDTHHMMSSZ`; that is the only ordering that means
+    anything.
+    """
+    from audit_opponent import _stamp
+
+    older = Path("matches/vibecode-practice-20260814T082818Z")
+    newer = Path("matches/vibecode-friendly-abandoned-20260814T162006Z")
+
+    assert max([older, newer], key=_stamp) == newer
+    assert _stamp(Path("matches/imreeyal")) == "", "a hand-named directory has no stamp"

@@ -145,8 +145,14 @@ def audit_game(config: dict, log: dict) -> dict:
     }
 
 
-def audit_archive(directory: Path, card: dict | None = None) -> int:
-    """Report every mini-game in one archived series."""
+def audit_archive(directory: Path, card: dict | None = None, current: bool = True) -> int:
+    """Report every mini-game in one archived series.
+
+    `current` says whether this directory is the latest series against them, and
+    it decides only how the commit line reads: the armed pair on the card is what
+    they say they will play *next*, so checking it against an older archive is a
+    category error rather than a finding.
+    """
     logs = sorted(directory.glob("log_*.json"))
     if not logs:
         print(f"no logs in {directory}")
@@ -158,7 +164,16 @@ def audit_archive(directory: Path, card: dict | None = None) -> int:
         # bury the findings that really are per-game.
         declared = declared_commits(logs, str(card.get("group_id", "")))
         for role in ("cop", "thief"):
-            print(f"  their {role:<5} commit: {check_commit(card, declared, role)}")
+            if current:
+                print(f"  their {role:<5} commit: {check_commit(card, declared, role)}")
+            else:
+                # An older archive was played on whatever they were running
+                # then, so comparing it against the pair they have *since* armed
+                # reports a rule-53 mismatch for a team that did nothing wrong.
+                # A check that cries wolf on every historical directory is one
+                # an operator learns to scroll past.
+                print(f"  their {role:<5} commit (as played): "
+                      f"{declared.get(role) or 'not declared'}")
     total = 0
     for log_path in logs:
         log = json.loads(log_path.read_text(encoding="utf-8"))
@@ -181,6 +196,12 @@ def audit_archive(directory: Path, card: dict | None = None) -> int:
                   f"{', '.join(report['not_checkable'])} — needs wire frames from a live match")
     print(f"  --- {total} violation(s) across the series")
     return 0
+
+
+def _stamp(directory: Path) -> str:
+    """The archive's trailing timestamp, or empty for a hand-named directory."""
+    tail = directory.name.rsplit("-", 1)[-1]
+    return tail if tail.endswith("Z") and tail[:8].isdigit() else ""
 
 
 def _card(team: str) -> dict | None:
@@ -210,8 +231,13 @@ def main() -> int:
     if not found:
         print(f"no archives matching {args.team!r}")
         return 1
+    # By the trailing `-YYYYMMDDTHHMMSSZ`, not by path: the two repos hold
+    # copies of the same series and the name prefixes differ, so a plain sort
+    # made "newest" mean "last alphabetically" and pointed the commit check at
+    # an older archive.
+    newest = max(found, key=_stamp) if found else None
     for directory in found:
-        audit_archive(directory, card)
+        audit_archive(directory, card, current=directory == newest)
     return 0
 
 
