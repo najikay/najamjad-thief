@@ -51,6 +51,62 @@ from najamjad_agent.domain.params import GameParams  # noqa: E402
 WIRE_ONLY = ("smell_grid", "capture_claim", "hint", "response_seconds")
 
 
+#: Their step-0 `role` as they spell it, mapped to the card's key.
+_ROLE_KEYS = {"police": "cop", "cop": "cop", "thief": "thief"}
+
+
+def declared_commits(logs: list[Path], group: str) -> dict[str, str]:
+    """The commit their step-0 declares, **per role they played**.
+
+    Per role, not per series, because a role-split opponent is two processes
+    with two checkouts. vibecode's archive proves it: their thief declared
+    `ee853d79…` and their cop `1ab98583…` in the same six sub-games. Reading one
+    commit for the series would report one of them as the other's, which is the
+    same class of wrong answer as reading our own self-play log for theirs.
+    """
+    found: dict[str, str] = {}
+    for path in logs:
+        log = json.loads(path.read_text(encoding="utf-8"))
+        if group and group not in str(log.get("game_id", "")):
+            continue
+        for record in log.get("opponent_records", []):
+            payload = record.get("payload", {})
+            key = _ROLE_KEYS.get(str(payload.get("role", "")).lower())
+            if key and payload.get("github_commit"):
+                found.setdefault(key, str(payload["github_commit"]))
+    return found
+
+
+def check_commit(card: dict, declared: dict[str, str], role_key: str) -> str | None:
+    """Compare what they *told* us they were playing against what they declared.
+
+    Their commit reaches the result artifact on its own — it rides in their
+    step-0 record and `peer_declaration.peer_facts` reads it — so nothing here
+    is needed to *file* a match. What is missing without this is a control: a
+    hash a team sends in a message is only worth having if something compares it
+    to the hash their agent actually declares, and until now the messaged value
+    sat in a `notes` string that no code ever read.
+
+    A mismatch is a rule-53 finding and is reported as evidence, never acted on.
+    The likeliest cause by far is an honest team pushing a fix and forgetting to
+    resend, which is a message to them and not an accusation.
+
+    An empty expectation is skipped rather than failed. We usually do not have
+    one, and a check that goes red for the normal case teaches people to ignore
+    it — the same reason `counted_ledger_check` reports instead of repairing.
+    """
+    expected = str((card.get("armed_commits") or {}).get(role_key, "")).strip()
+    actual = declared.get(role_key, "")
+    if not expected:
+        return f"none on record; they declared {actual or 'nothing'}"
+    if not actual:
+        return f"they declared none; we were told {expected}"
+    if expected != actual:
+        return (f"MISMATCH — told {expected}, declared {actual} (rule 53). "
+                "Most likely they pushed after messaging us; ask before assuming.")
+    return f"matches what they told us ({actual[:12]}…)"
+
+
 def _records(log: dict) -> list[dict]:
     """Their revealed step records, in step order, step 0 dropped."""
     steps = {}
@@ -89,13 +145,20 @@ def audit_game(config: dict, log: dict) -> dict:
     }
 
 
-def audit_archive(directory: Path) -> int:
+def audit_archive(directory: Path, card: dict | None = None) -> int:
     """Report every mini-game in one archived series."""
     logs = sorted(directory.glob("log_*.json"))
     if not logs:
         print(f"no logs in {directory}")
         return 1
     print(f"\n=== {directory.name}")
+    if card is not None:
+        # Once per series per role, not per mini-game: a step-0 declaration is a
+        # property of the process they ran, and repeating it six times would
+        # bury the findings that really are per-game.
+        declared = declared_commits(logs, str(card.get("group_id", "")))
+        for role in ("cop", "thief"):
+            print(f"  their {role:<5} commit: {check_commit(card, declared, role)}")
     total = 0
     for log_path in logs:
         log = json.loads(log_path.read_text(encoding="utf-8"))
@@ -120,14 +183,25 @@ def audit_archive(directory: Path) -> int:
     return 0
 
 
+def _card(team: str) -> dict | None:
+    """Their card, when one exists. A missing card is not an audit failure."""
+    from najamjad_agent.shared.opponents import OpponentError, load_opponent
+
+    try:
+        return load_opponent(team)
+    except OpponentError:
+        return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--team", help="audit every archive whose name contains this")
     parser.add_argument("--archive", help="audit one archive directory")
     args = parser.parse_args()
 
+    card = _card(args.team) if args.team else None
     if args.archive:
-        return audit_archive(Path(args.archive))
+        return audit_archive(Path(args.archive), card)
     if not args.team:
         parser.error("pass --team or --archive")
     found = sorted({Path(path) for repo in ("najamjad-cop", "najamjad-thief")
@@ -137,7 +211,7 @@ def main() -> int:
         print(f"no archives matching {args.team!r}")
         return 1
     for directory in found:
-        audit_archive(directory)
+        audit_archive(directory, card)
     return 0
 
 
