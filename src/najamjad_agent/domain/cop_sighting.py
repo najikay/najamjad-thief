@@ -92,7 +92,26 @@ class Sighting:
 
 
 def from_claim(cell: Position, step: int) -> Sighting:
-    """A capture claim: the cop's exact cell, disclosed by the cop (rules 21-22)."""
+    """A capture claim read as a position fix. **Deliberately never called.**
+
+    This docstring used to say "the cop's exact cell", and that is wrong: a claim
+    names the cell where the cop asserts **the thief** is. `answer_capture_claim(
+    true_thief_cell, claimed_cell)` settles it from our own code — the claim is
+    compared against the *thief's* position. It coincides with the cop's own cell
+    only for a claim that lands, and uoh-sqak claiming only their own cell is the
+    sole reason believing otherwise ever looked right.
+
+    Wiring it in was measured and reverted **twice**. Against a cop claiming one
+    row off, the thief went from surviving 35/35 to captured at step 13; against
+    one claiming our own cell we were blinded every turn, because 0.99 of the
+    mass landed on our own square and the next `exclude()` deleted it. Both are
+    worse than ignoring claims outright.
+
+    Kept rather than deleted because the shape is right and the *evidence* is
+    real — it is the reading of it that is wrong, and a future session that
+    deletes this will reach for it again. `test_a_capture_claim_is_not_treated_
+    as_a_cop_position_fix` is the guard; read it before touching this.
+    """
     return Sighting((cell,), CLAIM_CONFIDENCE, "capture_claim", step)
 
 

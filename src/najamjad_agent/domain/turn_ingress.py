@@ -242,19 +242,6 @@ def _absorb_capture_claim(
     # The reference sends the cell as the claim itself; our earlier form sent
     # `true` beside a separate `claimed_cell`. Read whichever arrived.
     state.claimed_cell = _parse_cell(claim) or _parse_cell(message.get("claimed_cell"))
-    # And it goes into the belief, which it did not. `cop_sighting.from_claim`
-    # was written, tested and never called: only `from_barrier` was wired, so we
-    # banked the weaker five-cell inference and threw away the exact one beside
-    # it. A claim names the cop's own cell under rules 21-22 — the single most
-    # precise piece of position evidence this game produces, and the only one an
-    # opponent is obliged to give us truthfully. We parsed it to answer the
-    # claim, then discarded it.
-    #
-    # `_record_sighting` already prefers an exact sighting over an inexact one,
-    # so a claim outranks a barrier declared the same turn, which is the right
-    # order: the barrier says "within one step", the claim says "here".
-    if (seen := state.claimed_cell) is not None:
-        _record_sighting(state, cop_sighting.from_claim(seen, _step_of(message, state.step)), event)
     # The answer is decided HERE, against the cell we occupy at the moment the
     # claim is made — not when we get round to replying. Deciding it later meant
     # answering from the cell we had already moved to, so a claim that truly
