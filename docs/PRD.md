@@ -180,6 +180,15 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
 - **FR-NEG-6 (M)** LLM-move exception requests from opponents are **politely declined** (team
   red line — our edge is deterministic strategy; see PLAN §4). The decline path is a tested
   negotiation flow, and the stance is recorded in an ADR.
+- **FR-NEG-7 (M)** **Appendix F minimums are enforced at the point of signature, not only
+  during negotiation.** Rule 12 makes every minimum raisable by agreement and lowerable by
+  nobody, and that includes Table 19's clock: `response_timeout_sec` ≥ 30, `watchdog_timeout_sec`
+  ≥ 60. Longer is signable — our moves are deterministic Python and take milliseconds, so extra
+  time costs us nothing and buys a peer resilience on a slow link. Shorter is refused outright.
+  The negotiation playbook held these lines from the start; `validate_terms` did not, so a peer
+  whose opening proposal we simply accepted could have signed us to a one-second turn clock and
+  won every mini-game on `EndReason.TIMEOUT` without playing a move. The playbook governs terms
+  we argue about; this governs terms we sign, and the two are not the same gate.
 
 ### 3.4 Commit-Reveal integrity (`FR-CRY`)
 
@@ -307,6 +316,53 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
   fallback, timeout, queue backpressure).
 - **FR-OBS-3 (S)** Match-day runbook + incident playbook in docs; post-match archive command
   bundling all artifacts + logs.
+
+### 3.11 Opponent auditing & fair play (`FR-AUD`)
+
+Added 2026-08-14, during the league phase rather than before it, because the need
+was discovered rather than designed: we had lost a friendly to vibecode and could
+not say from our own records whether their play was legal. Commit-reveal proves a
+peer did not *rewrite* history; none of it proves a peer played by the rules, and
+those are different guarantees.
+
+Auditing is **post-match by design**. Deciding a live match on our own accusation
+is the contradiction rules 33-35 void *both* teams for, so everything here
+records evidence and nothing changes our play or forfeits their game.
+
+- **FR-AUD-1 (M)** Replay an opponent's revealed records against the rules they
+  are bound by: movement legality (no diagonals, no teleports, no walking through
+  a declared barrier), the Barrier Law (in lieu of moving, own cell or one
+  orthogonal step), the barrier budget, step order and the hint word cap.
+  `FairPlayMonitor` holds the logic; it runs live *and* offline, and only the
+  offline pass can reach its movement checks — the protocol seals positions, so
+  during play a peer sends none. `scripts/audit_opponent.py`.
+- **FR-AUD-2 (M)** Verify a capture claim names the cell the claimer later
+  reveals standing on. We read a claim as an exact fix on the cop (see
+  `FR-STR`), which is sound only while peers fill that field with their own
+  position — so it must keep being measured, not assumed. Every claim is kept as
+  sent and compared at the audit (`scent_audit.verify_trail`).
+- **FR-AUD-3 (M)** Verify an opponent's transmitted scent field is centred where
+  they later reveal standing. The argmax, not a re-simulation: teams legitimately
+  differ on which snapshot they transmit, and a re-simulation would have to know
+  which.
+- **FR-AUD-4 (S)** Instrument **both** directions of emission on the same terms
+  (`scent.emitted` / `scent.absorbed`: cell count, peak value, peak cell), so
+  "are we disclosing on the same terms they are?" is answerable from our own
+  event log. `scripts/scent_parity.py`. The handshake's `model_fingerprint`
+  covers the emission *maths* and not the transmitted snapshot, which is how two
+  agreeing fingerprints produced trails that age at different rates.
+- **FR-AUD-5 (M)** An archived event log must be auditable on its own, months
+  later, without the live in-memory frame log — which is why the peak *cell* is
+  recorded per frame and not merely the peak value. **Inbound only.** The centre
+  of our own freshest deposit is our own current cell, and the event stream is
+  served to a dashboard that a practice run binds to `0.0.0.0`, so recording
+  ours would publish the position commit-reveal exists to seal (caught by
+  `test_nothing_the_dashboard_shows_discloses_the_thiefs_position` the day the
+  field was added). It costs the audit nothing: our own emission is checkable
+  against our own sealed records, and theirs is not.
+- **FR-AUD-6 (M)** Distinguish "we checked and agreed" from "there was nothing to
+  check". A peer that transmits nothing is legal and must never score the same as
+  a peer that was verified; every audit output reports what it could not check.
 
 ---
 

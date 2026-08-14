@@ -25,6 +25,7 @@ from .declarations import absorb_barrier, absorb_capture_claim, step_of
 from .game_state import GameState
 from .hint_evidence import claim_likelihood, parse_locally, scent_consistency
 from .ledger import ProtocolOrderError
+from .scent_audit import peak_cell
 
 
 def absorb_turn(
@@ -85,6 +86,14 @@ def absorb_turn(
     numeric = [value for value in grid.values() if isinstance(value, int | float)]
     event("scent.absorbed", step=step, cells=len(grid),
           peak=max(numeric, default=0.0), rejected=len(problems),
+          # The peak *cell*, not just its value. `verify_trail` settles scent
+          # honesty during the match, but opponent auditing actually happens
+          # afterwards, from an archive — and the peak value alone cannot say
+          # whether their field was centred where they later admit standing.
+          # Without this the vibecode friendly left 68 frames whose honesty is
+          # permanently unknowable: we recorded that they emitted, and nothing
+          # about where. One cell per frame makes an archive self-sufficient.
+          peak_cell=list(peak_cell(grid) or ()),
           # The hint as sent. A peer whose commit preimage omits the hint text
           # carries none in its revealed records, so judging "do they hint?"
           # from an audit trail measures their sealing choice, not their wire.

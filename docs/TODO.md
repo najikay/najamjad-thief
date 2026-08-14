@@ -716,6 +716,26 @@
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]
 - [ ] **T-2324** (P1) Run the weekly interop regression vs the reference simulator during the league window — DoD: regression log green each week [ADR-012; deps: T-2111]
 
+## E25 — Opponent auditing & fair play verification (12 tasks)
+
+Added 2026-08-14, mid-league. Every task here exists because a question was asked
+during a match and our own records could not answer it. See PLAN ADR-019 and
+PRD §3.11 (`FR-AUD`).
+
+- [x] **T-2501** (P0) Read a capture claim as an exact position fix on the cop, settled by measuring senders rather than arguing from our receiver: both reference repos send `list(rt.state.position)` on every police MOVE, and 323/323 sealed claims in `matches/` name the claimer's own revealed cell — DoD: `scripts/claim_evidence.py` reproduces the count and both outcome tables; `tests/regression/test_claim_evidence_on_a_real_line.py` gates the archived line and its counterfactual [FR-AUD-2, FR-STR-1, rules 21-22]
+- [x] **T-2502** (P0) Never hold a claim naming our own cell: it evicts the same turn's barrier sighting under exact-beats-inexact and is then deleted by `exclude()`, which is the whole of the "blinding" both earlier removals recorded — DoD: belief identical to ignoring claims under that attack (mean error 2.04 vs 3.73 unguarded); gated in `test_silent_opponent.py` [FR-AUD-2]
+- [x] **T-2503** (P0) Gate capture claims on the role: a *thief* peer sending `capture_claim` was able to write its own choice of cell into the belief our cop hunts with — DoD: `test_a_thief_peer_cannot_inject_a_sighting_with_a_claim` [FR-AUD-2, rules 21-22]
+- [x] **T-2504** (P0) Compare every capture claim against the cell the claimer reveals at the audit, so reading claims as position fixes stays a measurement instead of an inherited premise — DoD: `verify_trail` reports `claims_checked` / `claim_mismatches`; rides the existing call site [FR-AUD-2]
+- [x] **T-2505** (P0) Check an opponent's transmitted scent field against their revealed positions by argmax, independent of which snapshot they transmit — DoD: `scent_audit.verify_trail`; `tests/integration/test_trail_verification_runs.py` proves it runs in a played series [FR-AUD-3]
+- [x] **T-2506** (P0) Replay an opponent's revealed records offline through the fair-play rules — movement, Barrier Law, budget, step order, hint cap — since the protocol seals positions and those checks cannot fire on live input — DoD: `scripts/audit_opponent.py`; reports what it could not check rather than scoring silence as clean [FR-AUD-1, FR-AUD-6]
+- [x] **T-2507** (P1) Instrument our **own** emission on the same terms as theirs (`scent.emitted`: cells, peak, peak cell, mode) — DoD: `tests/integration/test_emission_is_instrumented.py` drives the real `MatchRunner` and asserts both directions carry the same keys [FR-AUD-4]
+- [x] **T-2508** (P1) Compare the two sides' emission profiles from the event log — DoD: `scripts/scent_parity.py`; measured us at peak 0.9 pre-decay against vibecode's 0.8 post-decay, and 25 vs 30 median cells [FR-AUD-4, open item §5.2]
+- [x] **T-2509** (P1) Record the peak *cell* on **inbound** scent frames so an archived event log is auditable on its own, and never on outbound — the centre of our own field is our own position and the event stream reaches a dashboard bound to `0.0.0.0` in practice runs — DoD: `peak_cell` on `scent.absorbed` only; one shared argmax in `scent_audit.peak_cell`; `test_their_peak_cell_is_recorded_and_ours_never_is` pins both halves [FR-AUD-5]
+- [x] **T-2510** (P0) Enforce Appendix F Table 19's clock at the point of signature, not only in the playbook: `response_timeout_sec` ≥ 30, `watchdog_timeout_sec` ≥ 60, longer signable, shorter refused — DoD: `tests/unit/test_negotiation/test_timing_floors.py`; `validate_terms` accepted `response_timeout_sec: 1` before this [FR-NEG-7, rule 12]
+- [x] **T-2511** (P0) Keep the two repos' counted-match ledgers consistent, since only the repo that played a series writes one — DoD: `scripts/reconcile_counted.py` merges the machine-written ledgers by `game_uid` and refuses entries no archive corroborates; `counted_ledger_check` fails preflight on divergence [FR-NEG-3, rules 37-38]
+- [ ] **T-2512** (P1) Play a vibecode practice series with the full audit recording in place, then run `audit_opponent.py`, `scent_parity.py` and the trail/claim verdicts over the fresh archive — DoD: a verdict for every mini-game, and every "not checkable" line from the 2026-08-13 friendly closed [FR-AUD-1..6]
+
+
 ## E24 — Submission & freeze (70 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
@@ -900,7 +920,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E22 | Documentation deliverables | M2–M7 | 33 | 33 | 0 |
 | E23 | League operations | M6 | 24 | 9 | 15 |
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
-| **Total** | | | **669** | **609** | **60** |
+| E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
+| **Total** | | | **681** | **620** | **61** |
 
 
 

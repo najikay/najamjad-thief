@@ -17,7 +17,7 @@ from typing import Any
 from ..shared.config import ConfigManager
 
 
-def counted_ledger_check(manager: ConfigManager, sibling: Any = None) -> Callable[[], str | None]:
+def counted_ledger_check(manager: ConfigManager, sibling: Any = None) -> Callable[[], str]:
     """Confirm both repos would declare the same counted-match count (rules 37-38).
 
     A series is played from **one** repo — whichever role we open on — and only
@@ -33,27 +33,36 @@ def counted_ledger_check(manager: ConfigManager, sibling: Any = None) -> Callabl
     number that disqualifies a team for being wrong should not be changed by a
     check that runs automatically before every match.
 
-    A missing sibling is *not applicable* rather than a failure: the repos are
-    submitted standalone (ADR-002) and a grader unpacking one of them alone must
-    not see a red preflight for it.
+    **With no sibling it still reports the figure, and that is the point.** The
+    first version returned `None` here, which `run_preflight` records as *not
+    applicable* — and CI, which checks out one repo, went red on
+    `test_every_check_actually_proves_something`. That test was right and the
+    check was wrong. Only `tunnel` may prove nothing, and a check that goes
+    quiet in exactly the environment it is not run in is decoration. Reading the
+    ledger and naming the count we are about to declare proves something on its
+    own; the cross-repo comparison is an extra assertion on top, not the only
+    one. It is also what an operator actually wants to see on the line above
+    "READY" — the number that is about to go out on the wire.
     """
 
-    def probe() -> str | None:
-        """Compare our declared count against the sibling repo's."""
+    def probe() -> str:
+        """Report our declared count, and compare it against the sibling's."""
         from ..negotiation.counted_games import DEFAULT_PATH, CountedGames
 
         here = Path(str(manager.get("paths.counted_games", DEFAULT_PATH) or DEFAULT_PATH))
+        ours = CountedGames.load(here)
+        summary = f"declaring {ours.count} counted ({', '.join(ours.opponents) or 'none'})"
         root = sibling if sibling is not None else _sibling_repo()
         if root is None or not (root / DEFAULT_PATH).exists():
-            return None
-        ours, theirs = CountedGames.load(here), CountedGames.load(root / DEFAULT_PATH)
+            return f"{summary} — no sibling repo beside us to cross-check"
+        theirs = CountedGames.load(root / DEFAULT_PATH)
         if sorted(ours.opponents) != sorted(theirs.opponents):
             raise ValueError(
                 f"this repo declares {ours.count} counted ({ours.opponents}), "
                 f"{root.name} declares {theirs.count} ({theirs.opponents}) — "
                 "run scripts/reconcile_counted.py before the match"
             )
-        return f"{ours.count} counted, agreed with {root.name}"
+        return f"{summary}, agreed with {root.name}"
 
     return probe
 

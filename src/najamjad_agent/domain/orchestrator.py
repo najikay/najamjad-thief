@@ -21,7 +21,7 @@ from .game_state import GameState, TurnFacts
 from .movement import apply_move, legal_moves, place_barrier
 from .params import Position
 from .ports import Brain, Clock, Speaker, Transport
-from .turn_egress import build_turn_message, outgoing_extras
+from .turn_egress import build_turn_message, outgoing_extras, record_emission
 from .turn_ingress import absorb_turn, decay_after_full_turn
 
 THIEF_MOVES_FIRST = True
@@ -92,6 +92,8 @@ class Orchestrator:
         hint = emission.hint(hint)
         self._apply_own_action(move, barrier)
         claim_survival_if_outlasted(self.state)
+        extras = outgoing_extras(self.state, barrier, self._capture_claim(barrier), emission)
+        record_emission(self.state, extras, emission, self.event)
         payload = step_payload(
             step=self.state.step,
             role=self.state.role.value,
@@ -101,9 +103,7 @@ class Orchestrator:
             intent=intent,
             hint=hint,
             state=self.state.state_string(),
-            extra=outgoing_extras(
-                self.state, barrier, self._capture_claim(barrier), emission
-            ),
+            extra=extras,
         )
         self._commit_and_send(payload)
         announced = self.state.pending_end

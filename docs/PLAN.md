@@ -545,6 +545,37 @@ asyncio task name. `drop()` reports `client.drop_failed` and *then* discards. Th
 generalises: a caught exception that is not re-raised must leave its message somewhere a
 person will read.
 
+### ADR-019 — Opponent auditing is post-match, and evidence never becomes a verdict *(status: accepted, 2026-08-14)*
+Commit-reveal proves a peer did not *rewrite* history. It proves nothing about whether they
+played by the rules, and we conflated the two for the whole league phase: after losing a
+friendly to vibecode we could not say from our own records whether their play was legal.
+
+**Post-match, not live.** Rules 33-35 void a match for *contradictory reports*, so an agent
+that acts on its own accusation mid-game converts a suspicion into a mutual zero. Every check
+here records the step and the two facts that conflict, and changes nothing about our play.
+That is also why the offline pass is the *only* place some of it can run: the protocol seals
+positions, so a peer transmits none, and `FairPlayMonitor`'s movement and Barrier-Law checks
+have nothing to read until the reveal. They were live code that could not fire on live input.
+
+**What a reveal can settle, and what only the wire can.** A peer's sealed record holds what
+that peer chose to seal. vibecode's carry `position`, `move` and `barrier_placed` — enough for
+movement legality, the Barrier Law, the budget and step order. They carry no `smell_grid`, no
+`capture_claim`, no `hint` and no timings, and the league's default `smell_binding: none` means
+that is normal rather than evasive. Those four are checkable only against what arrived on the
+wire, which is why `FrameLog` keeps frames, hints and claims *as sent*, and why an audit must
+report what it **could not** check rather than scoring silence as clean.
+
+**Both directions, on the same terms.** We instrumented inbound emission the day a peer sending
+29 cells and a peer sending none became indistinguishable in our logs, and never instrumented
+our own. So "are we disclosing on the same terms they are?" was unanswerable from our own
+event log — and the answer is no: we transmit pre-decay at peak 0.9, imreeyal and vibecode
+post-decay at 0.8. The handshake's `model_fingerprint` did not catch it because it locks the
+emission *maths*, not the transmitted snapshot.
+
+**Archives must be self-sufficient.** Live checks read frames held in memory for one mini-game;
+auditing happens months later from a directory. Recording a peak *value* without its *cell*
+left 68 vibecode frames whose honesty is now permanently unknowable.
+
 ---
 
 ## 4. Interop & negotiation playbook (summary; full doc `docs/PRD_negotiation.md` at build time)

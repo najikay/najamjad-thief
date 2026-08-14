@@ -96,8 +96,20 @@ def without_inferences(payload):
     thief's real cell is the engine working, not a disclosure. Scanning them for
     the true position would test our accuracy, not our honesty — the leak test
     below needs everything else.
+
+    `peak_cell` joined them on 2026-08-14: it is the argmax of the field the
+    opponent *chose to transmit*, recorded so an archived event log can settle
+    their scent honesty on its own. The line this guard draws is disclosure
+    versus inference, and an argmax we computed from their voluntary emission
+    falls on the same side as `belief_peak`.
+
+    The mirror case is a genuine leak and is handled where it belongs, in the
+    code rather than here: `scent.emitted` deliberately carries **no** cell,
+    because the centre of our own freshest deposit is our own current position
+    and this event stream is served to a dashboard a practice run binds to
+    `0.0.0.0`. This test caught that within a day of the field being added.
     """
-    inferred = {"belief", "belief_peak", "opponent_scent", "opponent_estimate"}
+    inferred = {"belief", "belief_peak", "opponent_scent", "opponent_estimate", "peak_cell"}
     if isinstance(payload, dict):
         return {
             key: without_inferences(value)

@@ -20,7 +20,9 @@ from ..domain.params import (
     MIN_GRID_SIZE,
     MIN_MAX_BARRIERS,
     MIN_MAX_MOVES,
+    MIN_RESPONSE_TIMEOUT_SEC,
     MIN_SURVIVAL_THRESHOLD,
+    MIN_WATCHDOG_TIMEOUT_SEC,
 )
 from ..domain.scoring import FIXED_SCORES
 from ..protocol.canonical import canonical_json
@@ -31,6 +33,14 @@ MINIMUMS = {
     "max_barriers": MIN_MAX_BARRIERS,
     "max_moves": MIN_MAX_MOVES,
     "survival_threshold": MIN_SURVIVAL_THRESHOLD,
+    # Timing is a floor like any other: a peer may grant us longer to think,
+    # never shorter. Left out until 2026-08-14, so a proposal of
+    # `response_timeout_sec: 1` signed cleanly — and a turn we cannot answer in
+    # time is `EndReason.TIMEOUT`, which is a mini-game lost without a move
+    # being played. The negotiation playbook already held these lines; it only
+    # covers terms we argue about, and this covers terms we sign.
+    "response_timeout_sec": MIN_RESPONSE_TIMEOUT_SEC,
+    "watchdog_timeout_sec": MIN_WATCHDOG_TIMEOUT_SEC,
 }
 FIXED_TERMS = {"num_agents": 2, **FIXED_SCORES}
 #: The four keys the reference agreement message owns. A declaration may never

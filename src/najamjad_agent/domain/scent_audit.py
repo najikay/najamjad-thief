@@ -137,6 +137,19 @@ class FrameLog:
         self.claims.clear()
 
 
+def peak_cell(grid: dict[str, float]) -> Position | None:
+    """The single cell an honest field is centred on, or None when it names none.
+
+    One argmax, shared by the audit and by both event lines. A second copy is how
+    a replay ends up disagreeing with the audit that already ran and nobody can
+    say which to believe — `replay/verifier.py`'s docstring makes the same point
+    about hashing. Ties resolve to the lowest cell, deterministically, because an
+    event log that reorders under a tie is not comparable across runs.
+    """
+    cells = _peak_cells(grid)
+    return cells[0] if cells else None
+
+
 def _peak_cells(grid: dict[str, float]) -> tuple[Position, ...]:
     """Every cell holding the maximum intensity, parsed to positions.
 
