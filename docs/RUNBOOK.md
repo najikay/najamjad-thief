@@ -155,11 +155,18 @@ uv run najamjad-cop match --opponent <name> --tunnel --dashboard \
 
 Choose what we transmit to match the opponent:
 
-| They send | Use |
-|---|---|
-| scent and hints | `--talk` (the shipped default) |
-| hints, no scent | `--scent none --hints` |
-| nothing | `--quiet` |
+| They send | Use | Measured on |
+|---|---|---|
+| scent and hints | `--talk` (the shipped default) | |
+| **scent, no hints** | `--no-hints` | **vibecode** — 68 frames, 0 carried hint text |
+| hints, no scent | `--scent none --hints` | uoh-ay26 — a hint on all 135 records, not one scent cell |
+| nothing | `--quiet` | uoh-sqak |
+
+Read the column on the right before choosing: each of those is a measurement
+from `workspace/events.jsonl`, not a recollection. `scripts/scent_parity.py`
+prints both sides' profile for any window, and it exists because "they send no
+hints" was asserted about one opponent from their *sealed records*, which
+structurally cannot carry a hint in their build.
 
 `--quiet` also skips the vendor call, so it costs zero tokens. None of these
 change the move: emission is a disclosure dial, never a strategy one.
