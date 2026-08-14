@@ -17,5 +17,5 @@ notes    = "Ron Marom, Amit Kuperminz. TWO processes, TWO ports (cop :61224, thi
 # result-claim fix (survival, not timeout, when no capture occurs) and the
 # psutil/hardware_spec fix.
 [armed_commits]
-cop   = "59dc9c2d9a6350ec8c8d36aa9e6bde6fd38983ca"
-thief = "a3be8b4e70c548e33d97464296d9751d319bdd21"
+cop   = "6c3ea00d33ece171c0c7a8c5fd8eff52ac677992"
+thief = "8dc9ff66094a0aa9c1f87ae8c8625c1a88c63b32"
