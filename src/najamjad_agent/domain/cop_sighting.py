@@ -13,12 +13,12 @@ of three.
 But they are not actually silent. The rules make two things public, and both
 are position-bearing:
 
-* **A capture claim** (rules 21-22). A capture requires the cop to *be* on the
-  thief's cell and say so — `domain/capture.evaluate_capture` will not score one
-  otherwise — and the claim must name the cell, because a thief who cannot see
-  the cop could not answer honestly if it did not. So a claim is the cop's exact
-  cell, stated by the cop, mandatory, and free to us. There were 146 of them in
-  one series.
+* **A capture claim** (rules 21-22). The claim must name a cell, because a thief
+  who cannot see the cop could not answer honestly otherwise — and every
+  implementation in this league fills that field with the cop's *own* position,
+  on every move it makes rather than only when it lands. That is measured, not
+  assumed: see `from_claim`. So a claim is the cop's exact cell, mandatory, and
+  free to us. There were 146 of them in one series.
 * **A barrier declaration** (rules 15-16, FR-ENG-3). The Barrier Law is *in lieu
   of moving*, on the cop's own cell or one orthogonally adjacent to it. So a
   declared barrier puts the cop in a five-cell set and says it did not move that
@@ -92,25 +92,58 @@ class Sighting:
 
 
 def from_claim(cell: Position, step: int) -> Sighting:
-    """A capture claim read as a position fix. **Deliberately never called.**
+    """A capture claim read as a position fix on the cop. **Wired, and measured.**
 
-    This docstring used to say "the cop's exact cell", and that is wrong: a claim
-    names the cell where the cop asserts **the thief** is. `answer_capture_claim(
-    true_thief_cell, claimed_cell)` settles it from our own code — the claim is
-    compared against the *thief's* position. It coincides with the cop's own cell
-    only for a claim that lands, and uoh-sqak claiming only their own cell is the
-    sole reason believing otherwise ever looked right.
+    This function was wired, removed, wired again and removed again, on the
+    reading that a claim names the cell where the cop asserts *the thief* is
+    rather than where the cop stands. The argument for that reading was
+    `answer_capture_claim(true_thief_cell, claimed_cell)` — our own code compares
+    the claim against the thief's position. That argument does not hold: the
+    comparison is identical under both readings. A cop standing on X asking "are
+    you on X?" is answered by exactly the same line as a cop guessing "I think
+    you are on X". The receiver cannot distinguish them, so the receiver's code
+    cannot settle which the sender meant.
 
-    Wiring it in was measured and reverted **twice**. Against a cop claiming one
-    row off, the thief went from surviving 35/35 to captured at step 13; against
-    one claiming our own cell we were blinded every turn, because 0.99 of the
-    mass landed on our own square and the next `exclude()` deleted it. Both are
-    worse than ignoring claims outright.
+    What settles it is the sender, and it was measurable all along:
 
-    Kept rather than deleted because the shape is right and the *evidence* is
-    real — it is the reading of it that is wrong, and a future session that
-    deletes this will reach for it again. `test_a_capture_claim_is_not_treated_
-    as_a_cop_position_fix` is the guard; read it before touching this.
+    * **Both reference implementations** put the police's own position in the
+      field — `turn_sender.py`: ``capture_claim = list(rt.state.position) if
+      rt.role is Role.POLICE and decision.move_type is MoveType.MOVE`` — on
+      every move, not only on a landing.
+    * **Our own cop** does the same, deliberately, and `T-0535` locks it.
+    * **323 of 323** capture claims in every sealed record in `matches/` name the
+      claimer's own revealed position. Zero exceptions, across three agents; 306
+      of them from uoh-ay26, an external opponent whose records we hold.
+
+    So in this league the claim is the cop's exact cell, disclosed every turn it
+    moves, and it is the single most precise position evidence the game emits.
+
+    **Measured on the archived lines, replayed with their real declarations at
+    the steps they were really declared on:** ignoring claims left the belief
+    wrong by 2.04 cells on average, exact on 10% of turns, and **lost
+    uoh-ay26/g03 to a capture at step 26**. Reading them put the belief on the
+    cop's exact cell on **100%** of turns in both games and survived all 35.
+
+    The harm the removals recorded was real and is now understood. It was a
+    fusion interaction, not a semantic one: a claim naming *our own* cell put
+    0.99 on our square, the next `exclude()` deleted it, and — the part that
+    actually cost us — `_record_sighting`'s exact-beats-inexact rule had already
+    let it evict the barrier sighting on the way past. `turn_ingress` drops a
+    claim on our own cell before it is held, which restores the ignoring
+    behaviour exactly (2.04 / 10% again, against 3.73 / 0% unguarded).
+
+    What is *not* fixed, stated plainly: a peer that lies consistently — claiming
+    a cell one row from where it stands, every turn — degrades us, and on the
+    uoh-sqak sweep it turns 35/35 survival into a capture at step 14. No guard
+    tried separates that peer from an honest one; `plausible` anchored on the
+    signed `cop_start`, and refusing rather than downgrading an implausible
+    claim, both failed under barrier cover, and widening the own-cell guard to
+    the surrounding ring was strictly worse (it re-lost g03 while holding a
+    near-perfect belief, by discarding the claim exactly when the cop was
+    adjacent). We take that exposure because it requires an opponent to lie about
+    its own position on the wire, which has never been observed, and because
+    `scent_audit` now checks every claim against their revealed records so a peer
+    that does it leaves the evidence in our archive.
     """
     return Sighting((cell,), CLAIM_CONFIDENCE, "capture_claim", step)
 

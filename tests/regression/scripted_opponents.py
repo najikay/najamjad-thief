@@ -63,6 +63,38 @@ UOH_SQAK_BASELINE_STEPS = 15
 UOH_SQAK_CAPTURE_CELL: Position = (1, 6)
 
 
+#: uoh-ay26's cop in g03 of the 2026-08-08 series, from their revealed records.
+#:
+#: The line that settles what a capture claim is worth. They **claimed on every
+#: one of the 34 steps**, and every claim named the cell their own sealed record
+#: reveals them standing on — 34 for 34 here, 323 for 323 across the archive.
+#: They emit no scent and their hints parse to nothing, so these claims are the
+#: entire position signal in the game.
+#:
+#: Replayed with claims ignored, the belief sits 2.35 cells from the truth, is
+#: never once exact, and the thief is **captured at step 26**. Read as fixes on
+#: the cop's own cell, the belief is exact on all 34 turns and the thief
+#: survives. That difference is why `cop_sighting.from_claim` is wired.
+UOH_AY26_G03_SWEEP: tuple[Position, ...] = (
+    (1, 0), (2, 0), (2, 1), (3, 1), (3, 2), (3, 3), (2, 3), (2, 4), (3, 4),
+    (3, 3), (2, 3), (2, 4), (1, 4), (1, 5), (2, 5), (2, 4), (1, 4), (1, 5),
+    (2, 5), (3, 5), (3, 4), (3, 3), (4, 3), (4, 4), (4, 5), (4, 6), (5, 6),
+    (5, 5), (4, 5), (5, 5), (5, 5), (6, 5), (6, 4), (6, 3),
+)
+
+#: Their walls, keyed by the step each was declared on. Sparse, because they are:
+#: nine walls across thirty-four steps. Compacting them into a dense
+#: one-per-step list is what put `AMJAD_G02_BARRIERS` at steps 1-4 when the
+#: archive says 9, 11, 16 and 18.
+UOH_AY26_G03_BARRIERS: dict[int, Position] = {
+    1: (1, 1), 3: (2, 2), 7: (1, 3), 19: (1, 5), 21: (2, 4),
+    22: (3, 3), 25: (3, 5), 29: (4, 4), 30: (5, 5),
+}
+
+#: Step the thief was caught on when claims reached nothing. The ratchet.
+UOH_AY26_G03_BLIND_CAPTURE_STEP = 26
+
+
 #: The cop's true cells from g02 of the 2026-08-06 practice series against
 #: Amjad, lifted from the sealed log rather than invented. Our thief was
 #: captured at step 20 playing this line, and the archive is the only place

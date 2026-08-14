@@ -61,8 +61,16 @@ you" is unanswerable.
 A claim therefore carries `claimed_cell`: the cop asserts *which* cell it is
 standing on, and the thief compares that against its own true position. This is
 the one moment a cop discloses its location, and that disclosure is the design:
-a speculative claim hands the thief the cop's exact position for nothing, which
-is what stops a cop from claiming every turn "just in case".
+a speculative claim hands the thief the cop's exact position for nothing.
+
+**That price does not deter anyone, and assuming it did cost us games.** Both
+reference implementations attach a claim to *every* police move, and so do the
+opponents built on them: uoh-sqak claimed on all 15 steps, uoh-ay26 on all 34 of
+theirs. A claim forces a cryptographically truthful yes/no, so claiming each
+swept cell buys a free bit per turn and the discloser evidently considers that a
+good trade. Against a peer who emits no scent and no parseable hint, their claims
+are the *entire* position signal in the game — see `cop_sighting.from_claim` for
+what reading them is worth, and `scripts/claim_evidence.py` for the measurement.
 
 ## 4. Consequences for validation
 

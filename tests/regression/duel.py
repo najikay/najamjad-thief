@@ -83,7 +83,7 @@ def run_duel(
     brain: Any,
     cop_line: Sequence[Position],
     params: GameParams,
-    barriers: Sequence[Position] = (),
+    barriers: Sequence[Position] | dict[int, Position] = (),
     belief_for: BeliefFor | None = None,
 ) -> DuelResult:
     """Replay `cop_line` against `brain` and report how long the thief lasted.
@@ -108,7 +108,20 @@ def run_duel(
 
     The cop repeats its final cell once the scripted line runs out, so a short
     line does not silently hand the thief a win it never earned.
+
+    `barriers` may also be a `{step: cell}` mapping, and for an archived line it
+    should be. A dense one-wall-per-step sequence cannot express "no barrier this
+    turn", so transcribing a real game into one compacts the walls onto the
+    opening steps: `AMJAD_G02_BARRIERS` reads as steps 1-4 where the archive says
+    9, 11, 16 and 18. That is not a cosmetic difference — walls declared before
+    the cop could have reached them are an *implausible* peer, and measuring
+    belief changes against one produced a whole table of numbers about a game
+    nobody played.
     """
+    if isinstance(barriers, dict):
+        schedule = {int(step): tuple(cell) for step, cell in barriers.items()}
+    else:
+        schedule = {step: tuple(cell) for step, cell in enumerate(barriers, start=1)}
     board = Board(params)
     thief: Position = params.thief_start
     path: list[Position] = [thief]
@@ -125,8 +138,8 @@ def run_duel(
         cop = tuple(cop_line[min(step - 1, len(cop_line) - 1)])
         if cop == thief:
             return DuelResult(step - 1, True, tuple(path), "claim")
-        if step <= len(barriers):
-            wall = tuple(barriers[step - 1])
+        wall = schedule.get(step)
+        if wall is not None:
             if wall == thief:
                 return DuelResult(step - 1, True, tuple(path), "walled in place")
             board = board.with_barrier(wall)

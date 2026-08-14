@@ -22,6 +22,14 @@ What it catches: a field centred on a decoy, a replayed trail, a grid that stops
 tracking its emitter. What it does not catch: an honest field with a *scaled*
 peak, and a peer who simply transmits nothing. Both are visible elsewhere —
 `scent.absorbed` records the peak value and the cell count per frame.
+
+**Their capture claims are checked the same way and for a sharper reason.** We
+read a claim as a fix on the cop's own cell, which is sound only because every
+implementation in this league fills that field with its own position — 323 of
+323 sealed claims in `matches/` do. That is a measurement about opponents, not a
+guarantee from the book, so it has to keep being measured. A peer that begins
+naming a cell it is not standing on cannot do it invisibly: their own revealed
+records convict them, one line per step, in our archive.
 """
 
 from __future__ import annotations
@@ -44,11 +52,24 @@ class TrailReport:
     #: legal — but it is the difference between "verified" and "nothing to
     #: verify", and those must never read the same.
     unverifiable: int = 0
+    #: The same comparison for their capture claims: `(step, claimed, revealed)`.
+    #: We now read a claim as a fix on the cop's own cell (`cop_sighting.
+    #: from_claim`), which is only sound while peers fill that field with their
+    #: own position — 323 of 323 sealed claims in the archive do. This is how
+    #: that stays a measurement instead of an assumption, and it is the reason
+    #: the exposure is worth carrying: a peer that starts lying leaves it here.
+    claim_mismatches: tuple[tuple[int, Position, Position], ...] = ()
+    claims_checked: int = 0
 
     @property
     def clean(self) -> bool:
         """True when every frame we could check named the cell they revealed."""
         return not self.mismatches
+
+    @property
+    def claims_clean(self) -> bool:
+        """True when every claim they made named the cell they later revealed."""
+        return not self.claim_mismatches
 
     def as_event(self) -> dict[str, Any]:
         """The summary line for the event log."""
@@ -57,6 +78,13 @@ class TrailReport:
             "checked": self.checked,
             "agreed": self.agreed,
             "unverifiable": self.unverifiable,
+            "claims_checked": self.claims_checked,
+            "claims_agreed": self.claims_checked - len(self.claim_mismatches),
+            "claim_mismatches": [
+                {"step": step, "they_claimed": list(claimed),
+                 "they_revealed": list(revealed)}
+                for step, claimed, revealed in self.claim_mismatches[:5]
+            ],
             # Bounded: a peer whose every frame disagrees would otherwise write a
             # 35-entry structure into a line meant to be read at a glance.
             "mismatches": [
@@ -85,11 +113,18 @@ class FrameLog:
     #: `smell_binding: none` puts no grid in a sealed record. The wire is the only
     #: place either claim can be settled, and we were not keeping it.
     hints: dict[int, str] = field(default_factory=dict)
+    #: The cell each capture claim named, kept for the same reason and checked
+    #: the same way. Recorded as sent, before anything reads it as evidence.
+    claims: dict[int, Position] = field(default_factory=dict)
 
     def record(self, step: int, grid: dict[str, float], hint: str = "") -> None:
         """Keep one arriving frame. An empty grid is recorded as an empty grid."""
         self.frames[int(step)] = dict(grid or {})
         self.hints[int(step)] = str(hint or "")
+
+    def record_claim(self, step: int, cell: Position) -> None:
+        """Keep the cell one capture claim named."""
+        self.claims[int(step)] = (int(cell[0]), int(cell[1]))
 
     def spoke(self) -> int:
         """How many steps carried a non-empty hint."""
@@ -99,6 +134,7 @@ class FrameLog:
         """Forget the mini-game just played."""
         self.frames.clear()
         self.hints.clear()
+        self.claims.clear()
 
 
 def _peak_cells(grid: dict[str, float]) -> tuple[Position, ...]:
@@ -147,7 +183,14 @@ def verify_trail(log: FrameLog, records: list[dict[str, Any]]) -> TrailReport:
 
     checked = agreed = unverifiable = 0
     mismatches: list[tuple[int, tuple[Position, ...], Position]] = []
+    claims_checked = 0
+    claim_mismatches: list[tuple[int, Position, Position]] = []
     for step, cell in sorted(revealed.items()):
+        claimed = log.claims.get(step)
+        if claimed is not None:
+            claims_checked += 1
+            if claimed != cell:
+                claim_mismatches.append((step, claimed, cell))
         grid = log.frames.get(step)
         peaks = _peak_cells(grid or {})
         if not peaks:
@@ -158,4 +201,7 @@ def verify_trail(log: FrameLog, records: list[dict[str, Any]]) -> TrailReport:
             agreed += 1
         else:
             mismatches.append((step, peaks, cell))
-    return TrailReport(checked, agreed, tuple(mismatches), unverifiable)
+    return TrailReport(
+        checked, agreed, tuple(mismatches), unverifiable,
+        tuple(claim_mismatches), claims_checked,
+    )
