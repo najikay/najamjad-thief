@@ -17,10 +17,22 @@ from ..shared.events import Emit
 
 #: Extra attempts reserved for a peer whose gate is merely shut. A refusal
 #: arrives in milliseconds, so these are cheap, and they are what actually
-#: resynchronises two agents that started a few seconds apart. Ten at four
-#: seconds covers about forty seconds of skew — comfortably more than a cold
-#: start — without approaching the opponent's own watchdog.
-BUSY_RETRIES = 10
+#: resynchronises two agents that started a few seconds apart.
+#:
+#: Ten of them covered forty seconds, which was the right size while the thing
+#: being waited out was a cold start. Splitting our roles across two processes
+#: (book Appendix ה rule 1) made it the wrong size: our cop process skips the
+#: windows our thief plays and reaches mini-game 2 immediately, so against an
+#: opponent that still runs *one* process it now waits out a whole mini-game
+#: rather than a few seconds of skew. Forty seconds of budget against a
+#: multi-minute game scored a technical outcome on a peer who was healthy,
+#: playing, and doing nothing wrong.
+#:
+#: Ninety at four seconds is six minutes — longer than a 35-move mini-game and
+#: still bounded, so a peer that is genuinely wedged is eventually resolved
+#: rather than waited on forever. Nothing is spent unless the peer keeps
+#: *answering* "busy", which is a live process telling us it is fine.
+BUSY_RETRIES = 90
 BUSY_BACKOFF_SECONDS = 4.0
 
 

@@ -14,6 +14,26 @@ group_name = "NajAmjad"
 group_id = "najamjad"
 members = ["Naji Kayal", "Amjad Abed"]
 
+# Our group's role in mini-game 1, and the switch that splits a series across
+# two processes — one per role — as book Appendix ה Table 7 rule 1 requires
+# ("מריצים את קוד הגנב והשוטר בשני תהליכים נפרדים לחלוטין", sanction: total
+# failure). Set it and this process plays only the windows its own role holds:
+# opening as thief, najamjad-thief takes 1/3/5 and najamjad-cop takes 2/4/6,
+# each working it out from this value alone. The halves are rejoined into one
+# report after play by `reporting/sibling_merge`.
+#
+# **Both repos must carry the same value** — it names the group's role, not the
+# process's. Disagreement is silent: both would claim mini-game 1 and neither
+# would play 2. `series.role_split` echoes it at startup; compare the two
+# terminals before dialling.
+#
+# Empty means unsplit: one process plays all six windows, which is what every
+# match up to and including 2026-08-15 did. Left empty deliberately so the
+# counted series already scheduled run on the code that has produced three
+# cleanly reconciled reports; flip it once a full practice series has been
+# played and merged end to end.
+opening_role = ""
+
 # The public endpoints we publish. Sent in the handshake and copied into the
 # opponent's declaration, so they must be the URLs an opponent can actually
 # reach — not the local ports.

@@ -17,7 +17,7 @@ from ..domain.game_state import GameState
 from ..domain.match import MatchRunner
 from ..domain.params import GameParams
 from ..domain.scoring import ScoreTable
-from ..domain.series import SeriesTracker
+from ..domain.series import SeriesTracker, role_for, split_roles
 from ..llm.speaker import Speaker
 from ..net.deadline import DeadlineTracker
 from ..net.mcp_client import PeerClient
@@ -188,11 +188,21 @@ def build_match(
     """A runner ready to play the agreed series against one opponent."""
     params = GameParams.from_config(manager.as_dict())
     table = ScoreTable.from_config({"scoring": scoring or manager.section("scoring")})
+    # `game.opening_role` is our group's role in mini-game 1, and setting it is
+    # what splits the six windows across the two processes book Appendix ה rule
+    # 1 requires. Unset, this process plays all six as it always has.
+    opens, own = split_roles(str(manager.get("game.opening_role", "") or ""), role)
+    bus.publish({
+        "event": "series.role_split" if own else "series.single_process",
+        "opens": opens.value, "we_are": role.value,
+        "windows": [n for n in range(1, 7) if own is None or role_for(n, opens) is own],
+    })
     tracker = SeriesTracker(
         our_group=str(manager.get("game.group_id", "us")),
         their_group=str(manager.get("network.opponent_group_id", "them")),
         table=table,
-        first_role=role,
+        first_role=opens,
+        our_role=own,
         total_games=int(manager.get("network_and_league.num_games", 6)),
     )
     return MatchRunner(
@@ -203,7 +213,7 @@ def build_match(
         build_brain=brain_factory(manager),
         speaker=speaker,
         clock=time.monotonic,
-        first_role=role,
+        first_role=opens,
         emit=bus.publish,
         handshake=handshake,
         # Our endpoint and theirs, so a connection failure can be attributed to

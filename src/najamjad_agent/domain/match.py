@@ -128,7 +128,9 @@ class MatchRunner:
         """
         abandoned = False
         while not self.tracker.is_complete:
-            sub_game = self.tracker.next_sub_game
+            sub_game = self.tracker.advance_to_ours()
+            if sub_game is None:
+                break
             role = role_for(sub_game, self.first_role)
             # A fresh outbound session BEFORE the handshake, not after it. The
             # peer may run each sub-game as its own process — the pinned wire

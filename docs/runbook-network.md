@@ -97,6 +97,36 @@ options:
 2. **Two machines**: identical setup per machine; only `tunnel.hostname`,
    `network.my_port` and the role config directory differ.
 
+### Splitting a series across the two processes
+
+Until 2026-08-15 this section described an arrangement we did not actually use:
+one process played all six windows, alternating roles inside itself, and the
+repo you launched decided which role we opened in. The event logs show it
+plainly — `series.complete 6` from a single process, roles alternating 1 to 6.
+That is the letter of rule 1 broken, though not its purpose: our own cop and
+thief never played each other and never shared a live state, so no back door
+onto an opponent's local truth ever existed.
+
+To run it properly, set **`game.opening_role`** in `config/<role>/game.toml` to
+our group's role in mini-game 1 — and set the **same value in both repos**,
+because it names the group's role, not the process's. Each process then plays
+only its own windows: opening as thief, `najamjad-thief` takes 1/3/5 and
+`najamjad-cop` takes 2/4/6.
+
+- Bring **both** up, each with its own tunnel. Both doors must stay live for
+  the whole series; the peer dials whichever matches the role it is facing.
+- Compare the `series.role_split` line in the two terminals before dialling.
+  Two different `opens` values means both processes claim mini-game 1 and
+  neither plays mini-game 2, and nothing else will tell you.
+- Only the process holding the **last** window files the report. The other
+  writes its half to `workspace/partials/` and exits; the halves are rejoined
+  by `reporting/sibling_merge` so one report still covers all six games.
+- Leave it empty to keep the old single-process behaviour. It ships empty on
+  purpose, so counted series already scheduled run on the code that produced
+  three cleanly reconciled reports.
+- The counted-match ledger is still written only by the repo that files, so
+  `scripts/reconcile_counted.py` after a counted series remains necessary.
+
 ## 6. Match-day preflight (always run this)
 
 ```bash

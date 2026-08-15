@@ -219,7 +219,9 @@ def _attach_match(
     ))
     from .match_filing import build_filer
 
-    actions.attach_filer(build_filer(manager, bus, session, actions, load_setup(), observer))
+    actions.attach_filer(
+        build_filer(manager, bus, session, actions, load_setup(), observer, role)
+    )
 
 
 def _attach_dashboard(

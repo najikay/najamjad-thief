@@ -750,6 +750,22 @@ Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
 - [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
 
 
+## E27 — Process separation: two roles, two processes (7 tasks)
+
+Opened 2026-08-15. Book Appendix ה Table 7 rule 1 requires the cop's and thief's code to run in
+two completely separate processes (sanction `כישלון מוחלט`); §2.4.2 disqualifies the solution
+even when the game works technically. We were running one process for all six windows, which
+FR-NET-6 and `runbook-network.md` had specified against since the beginning. See PLAN ADR-023.
+
+- [x] **T-2701** (P0) Verify the defect against evidence rather than a claim: confirm the rule text in `.extracted/project_book.txt` and confirm our own runtime from the event logs — DoD: Table 7 rule 1 and §2.4.2 quoted verbatim; both repos' logs show `series.complete 6` with roles alternating 1→6 [FR-NET-6a]
+- [x] **T-2702** (P0) Split the series across the two processes from the agreed opening role alone, with no cross-process coordination — DoD: `series.plays_window`/`split_roles`, `SeriesTracker.advance_to_ours`, `game.opening_role` in both repos [FR-NET-6a, rule 2]
+- [x] **T-2703** (P0) Stop deriving mini-game numbers from the count of outcomes: a process that skips three windows would number mini-game 2 as 1, and two reports numbering one match differently are contradictory — DoD: `SeriesTracker.cursor`; `outcomes` holds only games we played [rules 33-35]
+- [x] **T-2704** (P0) Rejoin the two halves into one report, filed by the process holding the last window — DoD: `reporting/sibling_merge`; a missing half emits `series.sibling_half_missing` and is never passed off as a whole series [FR-NET-6b, rules 33-35]
+- [x] **T-2705** (P1) Size the busy-wait for what it now waits out: a one-process opponent stays busy for a whole mini-game, and 40s of budget scored a technical outcome on a healthy peer — DoD: `BUSY_RETRIES` 10 → 90, bounded at six minutes [FR-NET-9]
+- [x] **T-2706** (P1) Declare per-role endpoints only when both doors are genuinely served — DoD: `served_endpoints` publishes the split in split mode and the single served door otherwise; `is_our_own` still recognises both hostnames [FR-NET-3]
+- [ ] **T-2707** (P0) Activate it: play a full practice series with `opening_role` set in both repos, confirm six windows across two processes and one correctly merged report, then flip the key for counted play — DoD: a merged six-game report reconciled field-for-field against the opponent's; not to be done in the hours before a scheduled match [FR-NET-6a]
+
+
 ## E24 — Submission & freeze (70 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
@@ -936,7 +952,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
 | E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
-| **Total** | | | **689** | **625** | **64** |
+| E27 | Process separation: two roles, two processes | M6 | 7 | 6 | 1 |
+| **Total** | | | **696** | **631** | **65** |
 
 
 

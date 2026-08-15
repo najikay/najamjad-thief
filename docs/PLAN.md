@@ -752,3 +752,48 @@ the four lifecycle artifacts, commit-reveal/audit, reporting, or the two counted
 `PRD_belief_engine.md` · `PRD_commit_reveal.md` · `PRD_negotiation.md` · `PRD_llm_router.md` ·
 `PRD_strategy_cop.md` · `PRD_strategy_thief.md` · `PRD_gatekeeper.md` · `PRD_reporting.md` —
 each: theory, I/O contracts, metrics, alternatives, test scenarios.
+
+### ADR-023 — The two roles are two processes, and the series is split between them *(status: accepted, 2026-08-15)*
+Book Appendix ה Table 7 rule 1: `מריצים את קוד הגנב והשוטר בשני תהליכים נפרדים לחלוטין` —
+run the thief's code and the cop's code in two completely separate processes, sanction
+`כישלון מוחלט`. §2.4.2 boxes the same rule and ends `ופוסל את הפתרון — גם אם המשחק ״עובד״
+טכנית`: it disqualifies the solution *even if the game works technically*.
+
+We were not doing it. One process played all six windows and alternated roles inside itself;
+both repos' event logs show `series.complete 6` with roles alternating 1→6, and which role we
+opened in was decided by which repo the operator launched. FR-NET-6 and `runbook-network.md`
+had specified separation correctly since the beginning, so our own documents sided with the
+book against our runtime — the worst shape for a grader to find it in.
+
+**The rule's purpose was never breached.** §2.4.2's rationale is a back door onto an
+opponent's local truth. Our cop and our thief never played each other, never coexisted in a
+mini-game, and the opponent was always remote. Three counted series ran clean, and interop
+never cared. This is a letter-of-the-rule defect with a project-level sanction, which is
+precisely why it is not optional.
+
+**The design turns on one observation:** which windows belong to which process is a pure
+function of the agreed opening role — opening as thief, our thief takes 1/3/5 and our cop
+takes 2/4/6. Neither process has to ask the other, so nothing resembling shared state is
+needed to split them. `game.opening_role` carries that value, identically in both repos,
+because it names the *group's* role rather than the process's.
+
+Two consequences had to be designed rather than discovered:
+
+- **Numbering stopped being `len(outcomes) + 1`.** That was the same thing only while one
+  process played every window; skipping three of them would have had our cop announce
+  mini-game 2 as mini-game 1. `SeriesTracker` now counts windows with a cursor and records
+  outcomes only for games it actually played — which is also exactly the shape the merge needs.
+- **Neither process can file alone.** Rules 33-35 want one report covering six mini-games and
+  void both teams for a contradictory one. The process holding the last window files, after
+  rejoining its sibling's half from disk; the other writes `workspace/partials/` and exits.
+  The rejoin is post-play, from finished records — not a channel between two live agents.
+
+Waiting behaviour changed too: our cop process now reaches mini-game 2 immediately and, against
+an opponent still running one process, waits out a whole mini-game on `busy`. Forty seconds of
+budget against a multi-minute game scored a technical outcome on a healthy peer, so
+`BUSY_RETRIES` went from 10 to 90 — six minutes, still bounded.
+
+**Shipped inert.** `opening_role = ""` keeps the old single-process behaviour, so the counted
+series already scheduled run on the code that has produced three cleanly reconciled reports.
+Flipping the key is the whole activation, and it happens after a full practice series has been
+played and merged end to end — not in the hours before a match.

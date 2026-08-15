@@ -135,6 +135,25 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
 - **FR-NET-5 (M)** Watchdog: heartbeat monitor; on freeze → persist state + controlled shutdown.
 - **FR-NET-6 (M)** Strict process separation: cop and thief run as separate processes from
   separate repos with `config/police/` vs `config/thief/`; zero shared runtime state.
+- **FR-NET-6a (M)** **A series is split across those two processes.** Book Appendix ה Table 7
+  rule 1 is unconditional (`מריצים את קוד הגנב והשוטר בשני תהליכים נפרדים לחלוטין`, sanction
+  `כישלון מוחלט`), and §2.4.2 disqualifies a solution that breaks it *even if the game works
+  technically*. Roles alternate across the six mini-games, so each process plays only the
+  windows its own role holds — derived from `game.opening_role`, our group's role in mini-game
+  1, carried identically in both repos. Neither process asks the other which windows are its
+  own: that would be the shared state rule 2 forbids.
+  **Discovered 2026-08-15**, self-audited: until then one process played all six windows,
+  alternating roles internally (`series.complete 6` in both repos' event logs, roles alternating
+  1→6), contradicting this very requirement. The rule's *purpose* was never breached — our cop
+  and thief never faced each other and shared no live state — but its text was, and our own
+  spec sided with the text. Shipped inert (`opening_role = ""` keeps the old behaviour) so
+  already-scheduled counted series run on known-good code.
+- **FR-NET-6b (M)** **One report per team, from two half-series.** Neither process witnesses
+  more than three mini-games, and rules 33-35 void both teams for a missing or self-
+  contradictory report. The process holding the **last** window files; the other writes its half
+  to `workspace/partials/` and exits. The rejoin happens after play, from finished records on
+  disk — no live channel between the two sides. A missing half is announced
+  (`series.sibling_half_missing`) and never passed off as a whole series.
 - **FR-NET-7 (S)** Defensive ingress: every inbound payload validated against pydantic schemas;
   unknown fields tolerated (log + ignore); malformed messages answered with structured errors,
   never crashes (A6 pain #2: interop robustness).
