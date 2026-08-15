@@ -122,12 +122,13 @@ def match(
     scent: ScentOption = "",
     hints: HintsOption = None,
     dashboard_host: DashHostOption = "",
+    opens: Annotated[str, typer.Option("--opens", help="our role in mini-game 1: thief|police — splits the series across both processes")] = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
     _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
                group_id=group_id or None, quiet=quiet, scent=scent, hints=hints,
-               dashboard_host=dashboard_host)
+               dashboard_host=dashboard_host, opens=opens)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     from .sdk.actions import OpponentUnreachableError
 

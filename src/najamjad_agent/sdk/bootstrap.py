@@ -87,6 +87,7 @@ def build_sdk(
     scent: str = "",
     hints: bool | None = None,
     dashboard_host: str = "",
+    opens: str = "",
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -106,7 +107,7 @@ def build_sdk(
     guard_counted_strength(manager)
     # Flags layered onto the loaded config for this process only; nothing
     # here touches a tracked file (see sdk/config_overrides.py).
-    apply_overrides(manager, opponent, group_id, quiet, scent, hints)
+    apply_overrides(manager, opponent, group_id, quiet, scent, hints, opens)
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path(setting(setup, "paths.workspace", "workspace")))
                    / "events.jsonl")

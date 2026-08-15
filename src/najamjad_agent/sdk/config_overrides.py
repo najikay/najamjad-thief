@@ -52,8 +52,19 @@ def apply_overrides(
     quiet: bool = False,
     scent: str = "",
     hints: bool | None = None,
+    opens: str = "",
 ) -> None:
     """Layer this run's flags onto the loaded config, in dependency order."""
+    if opens:
+        # Our role in mini-game 1, which splits the six windows across our two
+        # processes. A flag rather than an opponent-card key on purpose: the
+        # card mapping may only reach `network.opponent_*`, and widening it to
+        # `game.*` would give a per-opponent file a route into game settings.
+        # It is also the safer ergonomics — the value must be *identical* in
+        # both terminals, and typing it in each is harder to get silently wrong
+        # than keeping two cards in agreement. `series.role_split` echoes it at
+        # startup precisely so the two can be compared before dialling.
+        manager.overlay({"game": {"opening_role": opens}})
     if group_id:
         # Practice-only. The committed config carries our real group id and a
         # test pins it; this is how a second agent from the same team plays
