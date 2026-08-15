@@ -736,6 +736,19 @@ PRD §3.11 (`FR-AUD`).
 - [ ] **T-2512** (P1) Play a vibecode practice series with the full audit recording in place, then run `audit_opponent.py`, `scent_parity.py` and the trail/claim verdicts over the fresh archive — DoD: a verdict for every mini-game, and every "not checkable" line from the 2026-08-13 friendly closed [FR-AUD-1..6]
 
 
+## E26 — Cop strategy: closing the capture (7 tasks)
+
+Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
+
+- [x] **T-2601** (P0) Build a cop-side benchmark: our cop against a thief, with the belief the real ingress path builds from their scent, and an adaptive-evader mode — DoD: `tests/regression/cop_duel.py`; `test_cop_benchmark.py` ratchets the one adaptive opponent we beat [FR-STR-0]
+- [x] **T-2602** (P0) Establish why pursuit stalls: grid cop number is 2 and no state admits a forced capture by movement alone, so distance-2 is a theorem rather than a defect — DoD: recorded in ADR-021 with citations [FR-STR-1]
+- [x] **T-2603** (P0) Establish that a barrier cannot capture: the reference implements neither barrier-capture nor immobilisation, so enclosure yields a disputed mini-game — DoD: ADR-020, `FR-STR-0`, and the harness refuses to score one [rules 46-47, 33-35]
+- [x] **T-2604** (P1) Measure candidate cop changes against the benchmark rather than against argument — DoD: four candidates measured 2026-08-15, three reverted on the evidence (release the capture gate: 2/5 against 4/5; charge walls that lengthen our approach: wins only a stationary thief; thief multi-barrier seal veto: no effect, never fired)
+- [ ] **T-2605** (P0) Implement phased containment: herd toward a corner, build an anti-diagonal cut by step-and-seal, then close the sealed pocket — the only structure the budget affords, since anti-diagonals are vertex separators for orthogonal movement and cornering costs 8-10 of 14 while sweeping is unaffordable — DoD: beats the shipped cop on **both** adaptive benchmarks without walling an occupied cell [FR-STR-0]
+- [ ] **T-2606** (P1) Build a best-responding evader for the benchmark: distance-maximisation self-corners and is too weak to certify a cop against — DoD: an evader that survives the shipped cop and is beaten only by a genuine containment plan
+- [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
+
+
 ## E24 — Submission & freeze (70 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
@@ -921,7 +934,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E23 | League operations | M6 | 24 | 9 | 15 |
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
-| **Total** | | | **681** | **620** | **61** |
+| E26 | Cop strategy: closing the capture | M6 | 7 | 4 | 3 |
+| **Total** | | | **688** | **624** | **64** |
 
 
 

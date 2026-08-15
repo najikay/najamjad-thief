@@ -576,6 +576,44 @@ emission *maths*, not the transmitted snapshot.
 auditing happens months later from a directory. Recording a peak *value* without its *cell*
 left 68 vibecode frames whose honesty is now permanently unknowable.
 
+### ADR-020 — A barrier can shrink the board but can never take the thief *(status: accepted, 2026-08-15)*
+The book gives three capture conditions (rules 46-47): the cop enters the thief's cell and
+declares a claim; a barrier lands on the thief's cell; the thief is immobilised. **Only the
+first is implementable against the teams in this league.**
+
+The course reference's `domain/rules.py` contains exactly two predicates — `thief_result`
+(survival at the step cap) and `is_captured` (compare a claim against its own sealed
+position). There is no barrier-capture check and no immobilisation check anywhere in it.
+Every opponent we have met is reference-derived, so a wall dropped on their cell is a
+capture *we* score and *they* do not, and two reports disagreeing about a mini-game is the
+contradiction rules 33-35 void it for. `domain/endings.own_barrier_capture` already refuses
+to end a game that way, having learned it the expensive way: the reference kept playing
+while we closed the game, filed the capture, and read its silence at the audit as tampering.
+
+The consequence is a design constraint, not a detail: **barriers are for constraining, and
+every capture must arrive as a claim the thief confirms.** A strategy that wins by enclosure
+wins nothing.
+
+### ADR-021 — Pursuit cannot close on an open board, and the benchmark must be adaptive *(status: accepted, 2026-08-15)*
+Our cop tracked vibecode perfectly through a counted series and never captured: distance
+6-4-2 and then held at exactly 2 for 28 steps. That is not a defect to tune out.
+
+A 7x7 grid is the Cartesian product of two paths, and the cop number of a product of two
+trees is 2 (Maamoun and Meyniel 1987), so one cop cannot catch a perfect evader even under
+the friendlier alternating-move rules. An exhaustive fixed-point over all 49x49 states finds
+**zero** states from which a movement-only cop can force a capture under simultaneous moves.
+Barriers are the only resource that changes the answer — the Angel/Devil result (Berlekamp:
+the Devil beats a power-1 Angel) is the right frame, and our thief is weaker than a power-1
+Angel because it moves orthogonally rather than as a king.
+
+**What this means for measurement.** A recorded opponent line does not react: replay
+vibecode's real 35 cells and our cop captures at step 13, while the live series those cells
+came from stalled for 28 steps. Scripted replays measure "can we follow a path". Only an
+adaptive opponent measures "can we close on something that runs", and even a
+distance-maximising evader is a weak adversary — the theory says maximising distance
+self-corners, which is how uoh-sqak beat us 3/3. `tests/regression/cop_duel.py` exists so
+this is testable at all; there was no cop-side harness when a counted series was lost as cop.
+
 ---
 
 ## 4. Interop & negotiation playbook (summary; full doc `docs/PRD_negotiation.md` at build time)

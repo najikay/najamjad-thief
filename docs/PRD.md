@@ -207,6 +207,10 @@ Requirements are numbered `FR-<area>-<n>`. Priority: **M** (must — book/guidel
 
 ### 3.5 Strategy & intelligence (`FR-STR`)
 
+- **FR-STR-0 (M)** **Every capture is a claim the thief confirms.** Barriers constrain the
+  board and never take the thief: no opponent in this league implements the barrier-capture
+  or immobilisation conditions (PLAN ADR-020), so scoring one produces a mini-game the
+  opponent disputes. A cop strategy is therefore judged on claims landed, not on enclosure.
 - **FR-STR-1 (M)** Belief engine: probability grid over opponent position; Bayes update fusing
   scent observation likelihood, opponent movement model, and hint likelihood weighted by a
   per-opponent credibility coefficient.
