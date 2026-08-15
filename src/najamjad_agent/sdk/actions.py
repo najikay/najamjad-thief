@@ -16,6 +16,7 @@ from ..net.opponent_wait import wait_for_opponent
 from ..net.preflight import PreflightReport, run_preflight
 from ..replay.verifier import ReplayResult, verify_log
 from ..reporting.archive import ArchiveReport, build_archive
+from ..reporting.sibling_merge import clear_partials
 
 
 class OpponentUnreachableError(RuntimeError):
@@ -162,6 +163,13 @@ class AgentActions:
                     "their URL is current (a quick tunnel changes on restart)"
                 )
         self._emit({"event": "match.starting"})
+        # Drop the half-series *we* left behind, now that a new one is starting.
+        # Here and nowhere earlier: `preflight` and `peer` build the same runner,
+        # and either of them clearing would delete a half our sibling is waiting
+        # to merge. Only ever our own role's files — `sibling_merge` carries the
+        # reasoning for identifying an attempt by deletion, no clock being able
+        # to tell a live half from a replayed one.
+        clear_partials(Path.cwd(), getattr(self._match.tracker, "our_role", None), self._emit)
         result = self._match.play_series()
         self._emit({"event": "match.finished", "games": len(self._match.games)})
         self._file(result)

@@ -101,34 +101,64 @@ def write_partial(
     return path
 
 
+def clear_partials(root: Path, role: Role | None, emit: Emit | None = None) -> int:
+    """Drop the halves *we* left behind, at the moment we start playing again.
+
+    `None` is an unsplit run, which never writes a partial: nothing to clear,
+    and the caller does not have to know which mode it is in.
+
+    The hazard is real and `derive_game_ids` is why: the same opponent on the
+    same terms produces the same `game_uid` every time, by design, so that both
+    peers compute it independently. A series that stalls and is replayed
+    therefore writes to the same partial path, and merging the earlier
+    attempt's half would file one report describing games from two runs —
+    self-contradictory in exactly the way rules 33-35 void both teams for.
+
+    **Timestamps cannot decide it, and two rehearsals proved that in a row.**
+    The first version refused any half written before our own first mini-game,
+    on the reasoning that our sibling could not finish its last window before we
+    began ours. The second moved the line back to when this process started.
+    Both are false, because the halves are *independent streams*: our sibling
+    opens window 1 while we wait for window 2, so it can finish, write its half
+    and exit while we are still importing the MCP stack. Measured: the half was
+    written at 20:02:01 and our own server bound at 20:02:07. Each guard called
+    a live half stale, announced `sibling_half_missing`, and filed a two-game
+    series as one game — the very mismatch the merge exists to prevent.
+
+    So the attempt is identified by *deletion* instead, which needs no clock and
+    no agreement between the two processes: each removes its own halves before
+    it plays, and never touches its sibling's. Whatever is found afterwards
+    under the sibling's role was therefore written by the sibling's current
+    run — it wipes its own at startup exactly as we do (rule 2 is untouched:
+    nothing is shared, each process only ever deletes what it wrote itself).
+    """
+    if role is None:
+        return 0
+    directory = root / PARTIALS
+    dropped = 0
+    for path in sorted(directory.glob(f"*-{role.value}.json")):
+        path.unlink()
+        dropped += 1
+    if dropped and emit is not None:
+        emit({"event": "series.partials_cleared", "role": role.value, "count": dropped})
+    return dropped
+
+
 def await_partial(
     root: Path, game_uid: str, role: Role, emit: Emit,
-    wait: float = WAIT_SECONDS, sleep: Any = None, since: str = "",
+    wait: float = WAIT_SECONDS, sleep: Any = None,
 ) -> dict[str, Any] | None:
-    """Our sibling's half of *this* attempt, waiting a bounded while for it.
+    """Our sibling's half of this attempt, waiting a bounded while for it.
 
-    `since` is when our own play began, and a partial older than that belongs
-    to an **earlier attempt at the same series** — which is a live hazard
-    rather than a theoretical one, because `derive_game_ids` is deterministic:
-    the same opponent and the same terms produce the same `game_uid` every
-    time, by design, so that both peers compute it independently. A series that
-    stalls and is restarted therefore reuses the filename. Without this check
-    the second attempt would quietly merge the first attempt's half and file a
-    report describing games from two different runs — self-contradictory in
-    exactly the way rules 33-35 void both teams for.
-
-    A stale half is treated as no half at all: announced, never used.
+    Anything present belongs to the current attempt — see `clear_partials` for
+    why that holds and why no timestamp is compared here.
     """
     sleep = sleep or time.sleep
     path = partial_path(root, game_uid, role)
     deadline = time.monotonic() + wait
     while True:
         if path.exists():
-            body = dict(json.loads(path.read_text(encoding="utf-8")))
-            if not since or str(body.get("written_at", "")) >= since:
-                return body
-            emit({"event": "series.sibling_half_stale", "path": str(path),
-                  "written_at": body.get("written_at"), "our_series_began": since})
+            return dict(json.loads(path.read_text(encoding="utf-8")))
         if time.monotonic() >= deadline:
             emit({"event": "series.sibling_half_missing", "path": str(path),
                   "waited": wait, "role": role.value})
@@ -166,12 +196,7 @@ def assemble(
         emit({"event": "series.sibling_files", "sub_games": [o.sub_game for o in outcomes]})
         return None
     other = Role.THIEF if own is Role.COP else Role.COP
-    # Our first mini-game began before our sibling finished its last, so a half
-    # written earlier than this is from a previous attempt at the same series.
-    began = min((str(game.get("started_at", "")) for game in games), default="")
-    theirs = await_partial(
-        sibling_repo(here) or here, game_uid, other, emit, wait, since=began
-    ) or {}
+    theirs = await_partial(sibling_repo(here) or here, game_uid, other, emit, wait) or {}
     merged = sorted(list(games) + list(theirs.get("games", [])),
                     key=lambda game: int(game.get("sub_game", 0)))
     scored = sorted(list(outcomes) + [_decode(row) for row in theirs.get("outcomes", [])],

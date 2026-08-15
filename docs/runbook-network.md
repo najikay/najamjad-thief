@@ -127,6 +127,23 @@ only its own windows: opening as thief, `najamjad-thief` takes 1/3/5 and
 - The counted-match ledger is still written only by the repo that files, so
   `scripts/reconcile_counted.py` after a counted series remains necessary.
 
+**Rehearse it before playing it.** `uv run python scripts/split_rehearsal.py
+--games 6` plays a whole split series locally: our two real repos against an
+opponent that is also split, four processes, nothing tracked touched. It exists
+because no other harness reaches this code — every one of them runs a single
+process a side — and the first run it made found a defect that had defeated the
+entire merge, filing a two-game series as one game. Expect
+`series.rejoined sub_games=[1,2,3,4,5,6]` in the filing process's log and a
+`result_*.json` naming six mini-games.
+
+**What the split needs from the opponent.** Their two processes must each hold
+*our* counterpart door: their cop dials our thief, their thief dials our cop.
+That is automatic for a peer who is split as we are. A peer running one process
+holds one `opponent_url` for the whole series and never retargets — the course
+reference builds its client once and cannot — so three of the six windows would
+arrive at the wrong door of ours. Against such a peer, leave `opening_role`
+empty and play unsplit.
+
 ## 6. Match-day preflight (always run this)
 
 ```bash
