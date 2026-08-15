@@ -34,9 +34,12 @@ CONFIG = {
     },
 }
 
-#: Step by which our cop closes on our own thief. The one adaptive opponent the
-#: shipped policy beats, and the number a change must not lose.
-CATCHES_OUR_THIEF_BY = 22
+#: Steps our own thief survives against our own cop. It used to be caught at 22;
+#: `thief_safety.LOCAL_ROOM_RADIUS` stopped the tie-breaker walking it into a
+#: corner and it now runs the full horizon. The ratchet therefore moved to the
+#: thief's side of the matchup — the honest place for it, since the two brains
+#: are measured against each other and only one of them improved.
+OUR_THIEF_SURVIVES_OUR_COP = 35
 
 
 @pytest.fixture()
@@ -44,12 +47,19 @@ def params() -> GameParams:
     return GameParams.from_config(CONFIG)
 
 
-def test_the_cop_still_catches_our_own_thief(params: GameParams) -> None:
-    """The ratchet. Adaptive, and the only adaptive case the cop currently wins."""
+def test_our_thief_outlasts_our_cop(params: GameParams) -> None:
+    """The ratchet, now on the thief's side — it is the brain that improved.
+
+    Our cop caught our thief at step 22 until 2026-08-15. It no longer does, and
+    that is the intended direction: a lone pursuer provably cannot close on an
+    open board (ADR-021), so a thief that keeps its room should outlast it. If
+    this starts failing, either the thief has regressed or the cop has found
+    something the theory says it should not have — both worth stopping for.
+    """
     result = run_cop_duel(CopBrain(), [], params, thief_brain=ThiefBrain())
 
-    assert result.captured, "the cop stopped catching our own thief"
-    assert result.step <= CATCHES_OUR_THIEF_BY
+    assert not result.captured, f"our thief was caught at step {result.step}"
+    assert result.step == OUR_THIEF_SURVIVES_OUR_COP
 
 
 def test_the_cop_tracks_even_when_it_cannot_close(params: GameParams) -> None:

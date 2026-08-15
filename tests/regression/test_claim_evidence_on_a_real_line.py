@@ -26,7 +26,6 @@ from najamjad_agent.strategy.thief_brain import ThiefBrain
 from tests.regression.duel import run_duel
 from tests.regression.scripted_opponents import (
     UOH_AY26_G03_BARRIERS,
-    UOH_AY26_G03_BLIND_CAPTURE_STEP,
     UOH_AY26_G03_SWEEP,
 )
 from tests.regression.silent_peer import SilentPeerBelief
@@ -72,18 +71,41 @@ def test_the_thief_survives_the_line_that_used_to_catch_it(params: GameParams) -
     assert result.steps_survived == 35
 
 
-def test_ignoring_their_claims_still_loses_the_same_mini_game(params: GameParams) -> None:
-    """The instrument must be able to fail, or the test above proves nothing.
+def test_ignoring_their_claims_costs_us_the_belief_even_when_we_survive(
+    params: GameParams,
+) -> None:
+    """The counterfactual, updated the day the thief outgrew it.
 
-    Strips the claims and leaves everything else — the same cop line, the same
-    nine walls on the same steps. If this ever starts surviving too, the gate
-    above has stopped measuring the claim wiring and needs rewriting rather than
-    celebrating.
+    Stripping the claims used to lose this mini-game outright, at step 26. It no
+    longer does: `thief_safety.LOCAL_ROOM_RADIUS` keeps the thief out of the
+    corner the tie-breaker used to pick, and it survives the line blind. That is
+    the thief improving, not the claim wiring becoming pointless — so the
+    counterfactual now asserts what it still costs, which is the belief.
+
+    Reading their claims puts the peak on the cop's exact cell every turn;
+    ignoring them leaves it wrong by roughly two cells. Against a cop that does
+    close, that difference is the game, which is why the wiring stays.
     """
-    result, _ = _play(params, deaf=True)
+    def located(deaf: bool) -> int:
+        """Turns on which the belief named their true cell, claims on or off."""
+        belief = SilentPeerBelief(params, UOH_AY26_G03_SWEEP, UOH_AY26_G03_BARRIERS)
+        if deaf:
+            walls = dict(UOH_AY26_G03_BARRIERS)
+            belief._message = lambda cop, step: {  # noqa: SLF001
+                "step": step, "commit": f"{step:064x}",
+                **({"barrier_placed": list(walls[step])} if step in walls else {}),
+            }
+        hits = 0
+        for step, cop in enumerate(UOH_AY26_G03_SWEEP, start=1):
+            belief(cop, step, (3, 3))
+            hits += belief.peak == cop
+        return hits
 
-    assert result.captured
-    assert result.steps_survived == UOH_AY26_G03_BLIND_CAPTURE_STEP
+    heard, deaf = located(deaf=False), located(deaf=True)
+
+    assert heard >= 30, f"reading their claims located them on only {heard} of 34 turns"
+    assert deaf <= 5, f"ignoring their claims still located them on {deaf} turns"
+    assert heard > deaf * 4, "the claim wiring must be the reason we know where they are"
 
 
 def test_their_claims_put_the_belief_on_the_cop_every_single_turn(

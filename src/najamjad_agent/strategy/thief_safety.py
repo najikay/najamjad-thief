@@ -33,7 +33,7 @@ from __future__ import annotations
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
-from .base import apply
+from .base import apply, reachable_within
 from .territory import UNREACHABLE, component_size, cut_cells, distances_from
 
 #: Below this the cop is adjacent and can take us on its next move.
@@ -102,6 +102,17 @@ def adversarial_room(board: Board, cell: Position, cuts: frozenset[Position]) ->
     return worst
 
 
+#: How far to look when measuring the room a cell actually has. Two steps: a
+#: corner reaches six cells, a central cell thirteen, which is the distinction
+#: the coarser keys cannot draw. Three is worse — it prefers cells that are open
+#: now over cells that stay open, and the thief parks.
+LOCAL_ROOM_RADIUS = 2
+#: Cop distance beyond which a turn is about position rather than escape. Inside
+#: it, distance decides: ranking room above distance while a cop closes made the
+#: thief stand still through eight turns of an approach, which is the failure
+#: `test_amjad_g02` exists for.
+ROOM_MATTERS_BEYOND = 4
+
 #: Exits beyond which more exits stop buying survival. A cell with three ways
 #: out cannot be sealed by one barrier, which is the threat the count exists to
 #: measure; a fourth adds nothing a thief can spend.
@@ -114,7 +125,7 @@ def rank(
     move: Move,
     reach: dict[Position, int],
     cuts: frozenset[Position],
-) -> tuple[int, int, int, int]:
+) -> tuple[int, int, int, int, int, bool]:
     """Sort key for one move; larger is better.
 
     Room first, then distance. That order is the whole correction: the old
@@ -136,7 +147,7 @@ def rank(
     """
     landing = apply(board, origin, move)
     if not board.is_open(landing):
-        return (-1, -1, -1, -1)
+        return (-1, -1, -1, -1, -1, False)
     return (
         # Room after the cop's worst single reply, which is the room that is
         # actually ours. Equal to the plain component size once the barrier
@@ -163,7 +174,55 @@ def rank(
         # was never the order, it was treating a safety floor as something to
         # maximise.
         min(len(board.neighbours(landing)), SAFE_EXITS),
+        # **Room within two steps — the key that decides which corner we die in.**
+        #
+        # Everything above this line ties across most of an intact board:
+        # component size is identical for every cell of one component, and the
+        # exit count saturates at three. So the ranking fell straight through to
+        # distance, and among equal-distance moves `_break_tie` chose — a
+        # mechanism that exists to stop a scripted opponent solving one line,
+        # and which was therefore picking between moves that are *not* equally
+        # safe.
+        #
+        # Measured against vibecode's recorded cop line, the one that took three
+        # mini-games off us: sub-games 1, 3, 4 and 6 survived and sub-games
+        # **2 and 5 were caught at step 13, both ending on (6,6)**. We play
+        # thief in the even sub-games. The tie-break was choosing the corner two
+        # times in six, and the counted series lost all three thief games.
+        #
+        # A corner reaches six cells in two steps; a central cell reaches
+        # thirteen. That is exactly the quantity a cop's barriers attack, it
+        # separates cells the coarser keys call equal, and it is a plain BFS.
+        # With it, all six sub-games survive, and the other three recorded
+        # opponents are unchanged at 35 of 35.
+        #
+        # Radius two and not three: at three the metric starts preferring cells
+        # that are open *now* over cells that stay open, and the thief parks for
+        # 21 turns instead of 3. Centrality as a proxy is worse still — it parks
+        # for 29. Room is the thing; distance from the middle is not.
+        #
+        # **Last, below distance, and that ordering is the whole of it.** Placed
+        # above distance this key makes `STAY` win whenever standing still holds
+        # more room than stepping — and the thief idled through eight turns of a
+        # cop closing on it, which is the pathology `test_amjad_g02` was written
+        # for after the real game did it five times in a row at [5,5]. Below
+        # distance it only separates moves the earlier keys called equal, which
+        # is exactly the tie the corner deaths were hiding in.
+        # Only while the cop is far enough that this turn is about *position*
+        # rather than survival. Under threat, distance decides and this returns
+        # a constant.
+        (
+            len(reachable_within(board, landing, LOCAL_ROOM_RADIUS))
+            if reach.get(landing, 0) >= ROOM_MATTERS_BEYOND
+            else 0
+        ),
         min(reach.get(landing, 0), 12),
+        # Standing still loses every tie it is in. Not a preference for motion
+        # for its own sake — it only separates moves every key above has called
+        # equal, and among equals a cop closing on a stationary target is the
+        # one outcome we know costs games: the real g02 stood at [5,5] through
+        # five turns of an approach and was herded west into [6,0].
+        move is not Move.STAY,
     )
 
 

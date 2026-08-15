@@ -614,6 +614,32 @@ distance-maximising evader is a weak adversary — the theory says maximising di
 self-corners, which is how uoh-sqak beat us 3/3. `tests/regression/cop_duel.py` exists so
 this is testable at all; there was no cop-side harness when a counted series was lost as cop.
 
+### ADR-022 — A tie-breaker must only break ties between genuinely equal moves *(status: accepted, 2026-08-15)*
+`_break_tie` varies the thief's choice by sub-game number so a scripted opponent cannot solve
+one line by replaying it — a real defence, added after one did exactly that. It was also
+deciding whether we lived.
+
+Replayed against vibecode's recorded cop line, survival depended entirely on the sub-game
+number: 1, 3, 4 and 6 survived; **2 and 5 were caught at step 13, both ending on (6,6)**. We
+play thief in the even sub-games, and the counted series lost all three of them.
+
+The cause is that every ranking key above the tie-break ties on an intact board. Component
+size is identical for every cell of one component; the exit count saturates at three by
+design. So the ranking collapsed to distance, and among equal-distance moves the variation
+picked — including moves that walk into a corner two barriers can seal.
+
+The fix is a key that separates them: **room reachable within two steps**, which is the
+quantity a cop's barriers actually attack (a corner reaches six cells, a central cell
+thirteen). Two constraints on it were found by measurement, and both matter more than the key
+itself. It is **gated on cop distance**, because ranking room above distance while a cop
+closes made the thief stand still through eight turns of an approach — the failure
+`test_amjad_g02` exists for. And `STAY` **loses every tie it is in**, because among moves the
+ranking calls equal, standing still in front of a closing cop is the one outcome known to
+cost games.
+
+The general rule: a tie-breaker that exists for unpredictability must be handed only choices
+that are equal *in outcome*. If it is deciding survival, the ranking above it is incomplete.
+
 ---
 
 ## 4. Interop & negotiation playbook (summary; full doc `docs/PRD_negotiation.md` at build time)

@@ -745,6 +745,7 @@ Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
 - [x] **T-2603** (P0) Establish that a barrier cannot capture: the reference implements neither barrier-capture nor immobilisation, so enclosure yields a disputed mini-game — DoD: ADR-020, `FR-STR-0`, and the harness refuses to score one [rules 46-47, 33-35]
 - [x] **T-2604** (P1) Measure candidate cop changes against the benchmark rather than against argument — DoD: four candidates measured 2026-08-15, three reverted on the evidence (release the capture gate: 2/5 against 4/5; charge walls that lengthen our approach: wins only a stationary thief; thief multi-barrier seal veto: no effect, never fired)
 - [ ] **T-2605** (P0) Implement phased containment: herd toward a corner, build an anti-diagonal cut by step-and-seal, then close the sealed pocket — the only structure the budget affords, since anti-diagonals are vertex separators for orthogonal movement and cornering costs 8-10 of 14 while sweeping is unaffordable — DoD: beats the shipped cop on **both** adaptive benchmarks without walling an occupied cell [FR-STR-0]
+- [x] **T-2608** (P0) Stop the tie-breaker choosing a corner. Survival against vibecode's recorded cop line depended on the sub-game number — 1/3/4/6 survived, **2 and 5 were caught at step 13, both ending on (6,6)**, and we play thief in the even sub-games, which is all three thief games of the counted series. Every key above `_break_tie` ties on an intact board (component size is constant across a component, exits saturate at three), so the variation mechanism was choosing between moves that are not equally safe — DoD: `thief_safety.LOCAL_ROOM_RADIUS`, gated on `ROOM_MATTERS_BEYOND` so it never overrides escape, plus a move-preferring final key; all six sub-games survive and the other three recorded lines are unchanged at 35 [FR-STR-1]
 - [ ] **T-2606** (P1) Build a best-responding evader for the benchmark: distance-maximisation self-corners and is too weak to certify a cop against — DoD: an evader that survives the shipped cop and is beaten only by a genuine containment plan
 - [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
 
@@ -934,8 +935,8 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E23 | League operations | M6 | 24 | 9 | 15 |
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
-| E26 | Cop strategy: closing the capture | M6 | 7 | 4 | 3 |
-| **Total** | | | **688** | **624** | **64** |
+| E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
+| **Total** | | | **689** | **625** | **64** |
 
 
 

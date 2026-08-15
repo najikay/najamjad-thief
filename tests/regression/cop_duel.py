@@ -55,6 +55,8 @@ class CopResult:
     peak_mass: tuple[float, ...] = ()
     #: Whether the belief peak was the thief's true cell, per step.
     peak_correct: tuple[bool, ...] = ()
+    #: Where the thief actually went, so parking is measurable.
+    thief_path: tuple[Position, ...] = ()
     reason: str = ""
     events: list[str] = field(default_factory=list)
 
@@ -156,7 +158,19 @@ def run_cop_duel(
         opponent_scent=ScentField(board_size=board.size),
         ledger=CommitLedger(sub_game=1),
     )
+    # The thief's own view of us, built the same way ours is built of them: our
+    # scent through the real ingress path. A point mass would hand it certainty
+    # no opponent has, and an empty dict drops it into its blind fallback — the
+    # two errors bracket the truth and neither is it.
+    theirs = GameState(
+        board=board, role=Role.THIEF, sub_game=1, own_position=params.thief_start,
+        belief=BeliefGrid(board, start=params.cop_start),
+        own_scent=ScentField(board_size=board.size),
+        opponent_scent=ScentField(board_size=board.size),
+        ledger=CommitLedger(sub_game=1),
+    )
     walls: list[Position] = []
+    path: list[Position] = []
     distances: list[int] = []
     masses: list[float] = []
     correct: list[bool] = []
@@ -172,7 +186,22 @@ def run_cop_duel(
             # which overstates its knowledge and therefore understates our cop.
             # A pursuit policy that cannot close on a thief with perfect
             # information will not close on one with imperfect information.
-            facts_t = Facts(state, {}, 0)
+            # **A real belief, not an empty dict.** `ThiefBrain` reads
+            # `facts.belief` and nothing else — handed `{}` it decides
+            # `_cop_cell` is unknown and plays its *blind* fallback, so every
+            # thief measurement taken through this harness was of a policy that
+            # could not see the cop. A point mass on the cop's true cell
+            # overstates the thief's knowledge and therefore understates our
+            # cop, which is the safe direction for a cop benchmark.
+            theirs.own_position = thief
+            theirs.step = step
+            theirs.board = state.board
+            absorb_turn(theirs, {"step": step, "sender": "police",
+                                 "commit": f"{step:064x}",
+                                 "smell_grid": _their_frame(state.own_position, params)},
+                        lambda name, **_f: None)
+            decay_after_full_turn(theirs)
+            facts_t = Facts(theirs, theirs.belief.as_dict(), 0)
             facts_t.own_position = thief
             facts_t.legal = legal_moves(state.board, thief)
             facts_t.cop_position = state.own_position
@@ -194,10 +223,11 @@ def run_cop_duel(
         masses.append(belief.get(peak, 0.0) if peak else 0.0)
         correct.append(peak == thief)
         distances.append(Board.manhattan(state.own_position, thief))
+        path.append(thief)
 
         if state.own_position == thief:
             return CopResult(True, step, tuple(walls), tuple(distances), tuple(masses),
-                             tuple(correct), "captured", events)
+                             tuple(correct), tuple(path), "captured", events)
 
         facts = Facts(state, belief, params.max_barriers - len(walls))
         wall = brain.pick_barrier(facts) if len(walls) < params.max_barriers else None
@@ -230,4 +260,4 @@ def run_cop_duel(
         state.own_scent.deposit(state.own_position)
 
     return CopResult(False, horizon, tuple(walls), tuple(distances), tuple(masses),
-                     tuple(correct), "thief survived", events)
+                     tuple(correct), tuple(path), "thief survived", events)
