@@ -313,64 +313,32 @@ be justified by measurement. The cop is where the points are — it is worth its
 against a correct thief. Any future search should be pointed there, and needs
 arenas that are not already saturated to be worth running at all.
 
-## Defending against a wall built over several turns — 2026-08-16
+## Defending against a wall built over several turns — tried, rejected (2026-08-16)
 
-`adversarial_room` scored a landing by the room left after the cop's **single**
+`adversarial_room` scores a landing by the room left after the cop's **single**
 most damaging next barrier. That is a defence against one wall, and a cop does
-not seal a room with one wall: it builds one over several turns, walking to the
-neck it wants while we walk to wherever we are going.
+not seal a room with one wall: it builds one over several turns. Conway's angel
+problem is the frame — an angel of power 1 loses to a devil blocking one square
+a turn by *progressive* encirclement, and our thief moves less than that angel.
 
-The gap only became visible once the cop started spending its barriers
-(`barrier_threshold` 0.40 -> 0.22 the same day). Against that cop, over 40
-starting positions:
+The two-cut version works, on the number it was aimed at. Against a cop walling
+flat-out (`barrier_threshold` 0.22 with no patience), over 40 starting
+positions: one cut deep is captured **40 of 40** at mean step 27.5, two cuts
+deep **0 of 40**, for 13.6 ms.
 
-| thief | captured |
-|---|---|
-| one cut deep (was shipped) | **40 of 40**, mean step 27.5 |
-| two cuts deep | **0 of 40** |
+**Rejected on how it survives.** It spends **78.6% of its steps in one of the
+four corner cells**, against 14.5% for the shipped version, and 87.7% on an
+edge. Corner camping is the exact shape that lost mini-games to uoh-sqak (herded
+along row 6 and killed at [6,0]) and to vibecode (sat on (6,5)/(6,6) from step 4
+and walled in at 14). `LOCAL_ROOM_RADIUS` and the tie-break rewrite exist to
+stop it. Buying survival against one synthetic cop by reintroducing it is the
+flattering-number trade, and the number would have looked excellent in a commit
+message.
 
-**Conway's angel problem is the frame.** An angel of power 1 — a king, one
-square a turn — loses to a devil that blocks one square a turn on a bounded
-board, by progressive encirclement. Our thief is weaker than that angel (four
-orthogonal moves, no diagonals) on a 49-cell board against fourteen blocks, so
-the *only* defence is to see the encirclement coming rather than the individual
-wall. Two cuts is the cheapest lookahead that does.
+**The exposure it was aimed at is real and stays open.** Against a cop that
+spends its barriers freely we are captured 40 of 40 — and uoh-sqak, who beat us
+15-60, spent all fourteen. The honest fix has to keep the room *and* the
+distance rather than trading one for the other; a defence that answers
+encirclement by sitting in the most encirclable cell on the board has not
+answered it. Open, not solved.
 
-The first cut is taken anywhere in our component rather than only beside us,
-which is deliberate and slightly pessimistic: the Barrier Law lets the cop wall
-only its own cell or one step from it *this turn*, but it can walk to any neck
-in our region in the turns it takes us to cross it. The second cut is evaluated
-next to wherever the first left us.
-
-**Cost**: 13.6 ms on an open board, 1.5 ms once fourteen walls are down — 0.045%
-of the 30-second turn deadline, and the open board is the worst case because a
-walled one has fewer cells to search.
-
-**No regression anywhere it was already measured**: the uoh-sqak sweep, amjad
-g02, the vibecode line, the silent-opponent set and all five archived real
-opponent lines in `claim_evidence` still survive 35 of 35, and `test_amjad_g02`'s
-idle bound of 3 still holds, so the deeper room measure has not made it park.
-
-**The limit, stated plainly, because it is larger than it looks.** The only
-adversary that has ever converted this vulnerability is *our own cop*. Two
-independent wall-builders were written to check that — a `FenceCop` scoring a
-barrier by how much it shrinks the thief's region and prefers walls that
-continue a fence or lean on the board edge, which is the shape the angel/devil
-argument suggests and what uoh-sqak appeared to do. Neither version catches
-either thief: 0 of 40 against the one-cut thief and 0 of 40 against the two-cut
-one, whether they wall greedily (9.6 walls a game), conservatively, or patiently,
-and whether they chase with their own naive movement **or with our cop's real
-pursuit policy** bolted on so that only the wall objective differs.
-
-So this change is a defence against a threat only one opponent in existence is
-known to be able to make, and **its generality is unproven**. It is kept because
-it costs 13.6 ms, regresses nothing measured, and answers the one attack that
-does work — not because it has been shown to answer attacks in general.
-
-The same experiment says something useful about the cop, recorded in
-`PRD_strategy_cop.md`: region-shrinking is the *weaker* barrier objective.
-Spending 9.6 walls to shrink the thief's room converts nothing, while our own
-belief-weighted escape-route scoring converts 40 of 40 once its threshold lets
-it spend. The intuitive reading of the angel argument — wall to make the room
-small — is not what wins here; walling to remove the *escapes the thief is
-actually about to use* is.

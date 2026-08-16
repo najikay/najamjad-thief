@@ -14,7 +14,7 @@ The brain never sees the thief's true cell — only belief. It returns a move; t
 orchestrator filters legality, so a bug here is a weak move, not a forfeit.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from ..constants import Move
@@ -22,7 +22,7 @@ from ..domain.board import Board
 from ..domain.params import Position
 from ..shared.strength import plays_full_strength
 from .base import apply, escape_routes, expected_distance
-from .cop_barriers import plan_barrier
+from .cop_barriers import plan_barrier, stalled_bar
 
 
 def _chebyshev(a: Position, b: Position) -> int:
@@ -43,40 +43,57 @@ class CopBrain:
 
     board_supplier: Any = None
     # How much belief mass must sit on the target cells before we spend one of
-    # 14 barriers.
+    # 14 barriers, **while the chase is still young**. See `stalled_threshold`
+    # for the bar once it demonstrably is not.
     #
-    # **0.40 was measured against thieves that could not be walled in.** The
-    # sweep behind it, and the whole "walling is self-harm" reading, ran on
-    # *replayed* opponent lines — and a replayed line is a list of cells the
-    # thief teleports through, so our barriers blocked only us. 36 of the 56
-    # archived lines put the thief on a cell we had walled. That instrument
-    # charges the cop for every barrier and credits it with nothing, and it
-    # cannot decide this dial.
+    # The value is unchanged, but the sweep behind it was void and the reasoning
+    # was wrong. It ran on *replayed* opponent lines, and a replayed line is a
+    # list of cells the thief is teleported through: it cannot be blocked, so
+    # our barriers constrained only us — 36 of 56 archived lines put the thief
+    # on a cell we had walled. Re-measured against thieves that see the live
+    # board, 0.40 is right for one reason only, and it is not "walling is
+    # self-harm": a thief that blunders is caught by pursuit at step 8, long
+    # before a wall could pay, and every wall laid before then narrows our own
+    # approach. Against 400 games of a randomly-moving thief — the faithful
+    # model of this league, moaamoha's own records carry `random_move: true` —
+    # 0.40 captures 396 and a flat 0.22 captures 294.
+    barrier_threshold: float = 0.40
+    # The bar once the chase has stalled at close range, and the reason this is
+    # a phase rather than a constant.
     #
-    # Re-measured against four thieves that see the live board, over 40 starting
-    # positions each (160 games per value). Captures:
+    # A thief that is still uncaught after `stall_patience` consecutive turns
+    # inside `stall_close` is not blundering, it is evading, and pursuit alone
+    # will not finish it: on an open 7x7 a lone cop cannot force a capture
+    # (ADR-021), so the space has to shrink and barriers are the only thing that
+    # shrinks it. This is the vibecode signature exactly — distance 6,6,4,4,4,2
+    # and then 2 held for 28 steps, reaching 1 zero times, in all three cop
+    # games of a counted series we lost 30-90 with three barriers of fourteen
+    # placed. Conway's angel problem says which way to go: a blocker adding one
+    # square a turn beats a king-stepping evader on a bounded board by
+    # progressive encirclement, and our thief is weaker than that angel.
     #
-    #     value   our thief   sandbagged   greedy   room evader   total
-    #     0.40        0/40        40/40    40/40         9/40    89/160
-    #     0.25        0/40        40/40    40/40        21/40   101/160
-    #     0.24       40/40        40/40    40/40        27/40   147/160
-    #     0.23       40/40        40/40    40/40        28/40   148/160
-    #     0.22       40/40        40/40    40/40        28/40   148/160
-    #     0.21       40/40        40/40    40/40        27/40   147/160
-    #     0.20       40/40        40/40    40/40         0/40   120/160
+    # Measured over 520 games per configuration — 400 against a random mover,
+    # 40 each against a greedy evader, a room evader that keeps its distance and
+    # its room, and our own thief:
     #
-    # Strictly better on every one of the four, never worse on any, and 0.22
-    # sits in the middle of the [0.21, 0.24] band rather than on either cliff —
-    # 0.25 stops taking the walls that convert, 0.20 starts taking ones that
-    # fence us out. The theory agrees: a blocker that adds one square a turn
-    # beats a king-stepping evader on a bounded board by progressive
-    # encirclement (Conway's angel of power 1), and 0.40 declined eleven of its
-    # fourteen walls against vibecode while holding a near-perfect belief.
+    #     cop                     random   room evader   greedy
+    #     flat 0.40                396/400        9/40    40/40
+    #     flat 0.22                294/400       28/40    40/40
+    #     stall 8 -> 0.24          396/400       21/40    40/40
     #
-    # What stays true: a barrier is impassable for *both* sides, which is why
-    # the lower half of the band collapses and why `_still_reachable` refuses a
-    # placement that walls us away from the mass we are chasing.
-    barrier_threshold: float = 0.22
+    # Identical to the standing bar on the thieves we actually meet — not one
+    # capture given up — and more than double the conversion against one that
+    # evades properly. Neither dial is a cliff: patience 6/8/10 and a late bar
+    # of 0.21/0.22/0.24 all hold 21 of 40, and only 0.24 leaves the random
+    # column untouched, which is why it is the one shipped.
+    stalled_threshold: float = 0.24
+    #: How near the belief peak counts as "on it" for the stall test.
+    stall_close: int = 3
+    #: Consecutive close turns before the chase is called stalled.
+    stall_patience: int = 8
+    #: Turns spent close without converting. Per mini-game: `brain_factory`
+    #: builds a fresh brain for each one, so this cannot leak across games.
+    _stalled: int = field(default=0, init=False, repr=False)
     # A field rather than a module constant so the sweep runner can actually
     # vary it. Sweeping a constant would have reported a flat line and been
     # read as "this dial does not matter".
@@ -202,6 +219,16 @@ class CopBrain:
         belief = dict(getattr(facts, "belief", {}) or {})
         if not belief:
             return None
+        origin: Position = getattr(facts, "own_position", (0, 0))
+        # **Before the early returns, not after.** The streak counts turns spent
+        # close to the thief, and a turn where a capture step was available is
+        # the closest kind there is — skipping those made the count read the
+        # stall as shorter than it was and cost 2 conversions in 40 against the
+        # room evader (19 rather than the 21 the design was measured at).
+        bar, self._stalled = stalled_bar(
+            origin, belief, self._stalled, self.stall_close, self.stall_patience,
+            self.barrier_threshold, self.stalled_threshold,
+        )
         if not plays_full_strength(self.strength):
             # Barriers are the dial that decides matches — 0.05 captured 4% of
             # games and 0.40 captured 100% — so a reduced-strength cop that
@@ -214,10 +241,10 @@ class CopBrain:
             return None
         plan = plan_barrier(
             board,
-            getattr(facts, "own_position", (0, 0)),
+            origin,
             belief,
             int(getattr(facts, "barriers_left", 0) or 0),
-            self.barrier_threshold,
+            bar,
         )
         return plan.cell if plan else None
 

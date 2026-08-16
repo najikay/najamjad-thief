@@ -25,6 +25,7 @@ from najamjad_agent.shared.strength import SANDBAGGED
 from najamjad_agent.strategy.cop_brain import CopBrain
 from najamjad_agent.strategy.thief_brain import ThiefBrain
 from tests.regression.cop_duel import Evader, run_cop_duel
+from tests.regression.reactive_thieves import RandomThief, RoomEvader
 
 CONFIG = {
     "board_and_agents": {"grid_size": 7, "thief_start": [3, 3], "cop_start": [0, 0]},
@@ -139,4 +140,49 @@ def test_the_harness_scores_only_captures_an_opponent_would_honour(params: GameP
 
     assert result.reason in {"captured", "thief survived"}, (
         f"a capture the opponent would dispute was scored as a win: {result.reason}"
+    )
+
+
+#: Starting positions for the barrier questions. The agreed terms fix cop [0,0]
+#: and thief [3,3]; the rest are hypotheticals, used only to check that a dial's
+#: advantage survives being moved off the one position it was found at.
+BARRIER_STARTS = [((0, 0), (3, 3)), ((3, 3), (6, 6)), ((6, 6), (0, 0)), ((1, 1), (4, 4)),
+                  ((0, 6), (6, 0)), ((2, 3), (4, 1)), ((5, 5), (1, 2)), ((4, 2), (1, 5))]
+
+
+def _params(cop: tuple[int, int], thief: tuple[int, int]) -> GameParams:
+    return GameParams.from_config({
+        "board_and_agents": {"grid_size": 7, "thief_start": list(thief), "cop_start": list(cop)},
+        "movement_and_barriers": CONFIG["movement_and_barriers"],
+    })
+
+
+def _captures(brain, build_thief, seeds=(0,)) -> int:
+    return sum(
+        run_cop_duel(brain(), [], _params(cop, thief), thief_brain=build_thief(seed)).captured
+        for seed in seeds
+        for cop, thief in BARRIER_STARTS
+    )
+
+
+def test_the_stalled_chase_starts_walling_and_the_young_one_does_not() -> None:
+    """Both halves of the phase, against the two thieves that disagree about it.
+
+    A flat bar cannot serve both: 0.40 takes 396 of 400 random movers and 9 of
+    40 room evaders, 0.22 takes 294 and 28. The stall trigger is what lets one
+    cop do both, and this pins the shape rather than the exact counts — a cop
+    that quietly stopped walling would still pass a test that only checked the
+    random column, which is how the barrier dial went a week without anyone
+    noticing it declined eleven walls of fourteen.
+    """
+    patient = _captures(lambda: CopBrain(), lambda seed: RandomThief(seed), range(4))
+    never = _captures(lambda: CopBrain(stall_patience=99), lambda seed: RandomThief(seed), range(4))
+
+    assert patient >= never, "walling once stalled must not cost us the blunderers"
+
+    walls_on = _captures(lambda: CopBrain(), lambda _s: RoomEvader())
+    walls_off = _captures(lambda: CopBrain(stall_patience=99), lambda _s: RoomEvader())
+
+    assert walls_on > walls_off, (
+        f"the stall trigger converted {walls_on} evaders against {walls_off} without it"
     )

@@ -208,56 +208,60 @@ instrument was reporting it about every thief rather than about that one.
 old instrument, and at least the two pursuit candidates deserve re-running now
 that closing can be scored.
 
-## Lowering `barrier_threshold` — adopted, 0.40 -> 0.22 (2026-08-16)
+## Barriers are a phase, not a threshold — 2026-08-16
 
 The vibecode post-mortem asked why a full-strength cop holding a near-perfect
-belief declined **eleven of its fourteen walls**. The answer was the dial:
-`plan_barrier` scores a placement by the escape routes it removes from cells
-holding belief mass, at 0.40 almost nothing clears it, and the value itself was
-measured on an instrument that could not price a barrier.
+belief declined **eleven of its fourteen walls**. Two answers were measured, and
+the first one was wrong.
 
-**Why the old measurement was void.** The sweep behind 0.40 — and the reading
-that "walling is self-harm" — ran against *replayed* opponent lines. A replayed
-line is a list of cells the thief is teleported through: it cannot be blocked,
-so our barriers constrained only us. **36 of the 56 archived lines put the thief
-on a cell we had walled.** That instrument charges the cop for every barrier and
-credits it with nothing, and no barrier question can be settled on it. It is
-still the right instrument for pursuit-without-walls, which is what it was
-originally built for.
+**The old sweep was void.** `barrier_threshold = 0.40`, and the reading that
+"walling on weak evidence is self-harm", came from replaying *recorded* opponent
+thief lines. A recorded line is a list of cells the thief is teleported through:
+it cannot be blocked, so our barriers constrained only us. **36 of the 56
+archived lines put the thief on a cell we had walled.** That instrument charges
+the cop for every barrier and credits it with nothing, and no barrier question
+can be settled on it. It remains the right instrument for pursuit without walls,
+which is what it was built for.
 
-**Re-measured against four thieves that see the live board**, 40 starting
-positions each, 160 games per value:
+**Re-measured against thieves that see the live board**, and they disagree with
+each other, which is the finding:
 
-| value | our thief | sandbagged | greedy | room evader | total |
-|---|---|---|---|---|---|
-| 0.40 (was shipped) | 0/40 | 40/40 | 40/40 | 9/40 | **89/160** |
-| 0.25 | 0/40 | 40/40 | 40/40 | 21/40 | 101/160 |
-| 0.24 | 40/40 | 40/40 | 40/40 | 27/40 | 147/160 |
-| **0.22** | 40/40 | 40/40 | 40/40 | 28/40 | **148/160** |
-| 0.21 | 40/40 | 40/40 | 40/40 | 27/40 | 147/160 |
-| 0.20 | 40/40 | 40/40 | 40/40 | 0/40 | 120/160 |
+| cop | random mover (400) | room evader (40) | greedy (40) |
+|---|---|---|---|
+| flat 0.40 | **396** | 9 | 40 |
+| flat 0.22 | 294 | **28** | 40 |
+| **0.40, dropping to 0.24 once stalled** | **396** | **21** | 40 |
 
-Strictly better on every one of the four and worse on none. 0.22 sits in the
-middle of the [0.21, 0.24] band rather than on a cliff: at 0.25 the walls that
-convert stop being taken, at 0.20 walls that fence us out start being taken. The
-`room evader` in that table is the honest adversary — a thief that keeps its
-distance *and* maximises the room it keeps — and it is the column that matters,
-because a wall policy which only beats thieves indifferent to enclosure has not
-been tested against the thing walls are for.
+A thief that blunders is caught by pursuit around step 8, long before a wall
+could pay, and every wall laid before then narrows our own approach — that is
+what 0.40 is right about, and the random mover is the faithful model of this
+league (moaamoha's own sealed records carry `"random_move": true` on the steps
+we captured them). A thief still uncaught after eight consecutive turns within
+three of the belief peak is not blundering; pursuit alone will not finish it,
+because on an open 7x7 a lone cop cannot force a capture (ADR-021). That is the
+vibecode signature exactly: distance 6,6,4,4,4,2 and then 2 held for 28 steps,
+reaching 1 zero times, in all three cop games of the series we lost 30-90.
 
-**The theory agrees, and it is the reason to trust the direction rather than the
-digits.** Conway's angel problem: a blocker that removes one square per turn
-defeats a king-stepping evader on a bounded board by *progressive* encirclement
-(the angel of power 1 loses). Our thief steps one orthogonal square per turn on
-49 cells, which is weaker than a king, and we hold fourteen blocks. Enclosure is
-the cop's winning idea; the previous value simply never bought it.
+So the bar is a phase. It stands at 0.40 while pursuit is plausible and drops to
+0.24 once the chase has demonstrably stalled — **not one capture given up**
+against the thieves we actually meet, and more than double the conversion
+against one that evades properly. Neither dial is a cliff: patience 6/8/10 and a
+late bar of 0.21/0.22/0.24 all hold 21 of 40, and 0.24 is the value that leaves
+the random column untouched.
 
-**What did not change.** A barrier is still impassable for both sides, which is
-exactly why the band has a floor — `_still_reachable` refuses a placement that
-walls us away from the mass we are chasing, and below 0.21 the planner starts
-taking walls it cannot see past. And the theorem still stands: against a thief
-that defends against encirclement properly, the cop captures none of 40 (see
-`PRD_strategy_thief.md`, same date) — which is ADR-021 doing what it says.
+**Conway's angel problem is why the direction was worth testing.** A blocker
+that removes one square a turn defeats a king-stepping evader on a bounded board
+by progressive encirclement — the angel of power 1 loses. Our thief moves *less*
+than that angel (four orthogonal steps, no diagonals) on 49 cells, and we hold
+fourteen blocks. Enclosure is the cop's winning idea; the old value simply never
+bought it, and a flat low value bought it against opponents who did not need it.
+
+**The limit, stated.** Every thief in that table is one we wrote. The random
+mover is faithful to the field by evidence rather than by assumption, and the
+room evader is independent of our own thief's ranking — but no measurement here
+has met a real evading opponent, because the one we did meet (vibecode) beat us
+before any of this existed. `test_the_stalled_chase_starts_walling_and_the_young_one_does_not`
+pins both halves so a future change cannot quietly return to either extreme.
 
 ### Region-shrinking as the barrier objective — tried, measured, weaker
 

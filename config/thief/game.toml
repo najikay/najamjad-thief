@@ -148,17 +148,20 @@ thief_class = ""
 # recorded opponent lines, and a recorded line teleports through our barriers
 # while they still block us (36 of 56 archived lines stand on a cell we walled).
 #
-# Re-measured 2026-08-16 against four thieves that see the live board, 40 starts
-# each: 0.40 captures 89 of 160, 0.22 captures 148 of 160 — strictly better on
-# every one of the four and worse on none. 0.25 stops taking the walls that
-# convert; 0.20 starts taking ones that fence us out. 0.22 is the middle of the
-# band, not an edge of it. See src/najamjad_agent/strategy/cop_brain.py.
+# Re-measured 2026-08-16 against thieves that see the live board. 0.40 is right
+# while the chase is young — a blundering thief is caught by pursuit at step 8
+# and every earlier wall narrows our own approach — and wrong once the chase has
+# stalled, which is what `stalled_threshold` is for: after 8 consecutive turns
+# within 3 of the belief peak the bar drops to 0.24. Measured over 520 games per
+# configuration, that costs nothing against a random mover (396/400, unchanged)
+# and takes 21 of 40 against a proper evader instead of 9. See
+# src/najamjad_agent/strategy/cop_brain.py.
 #
 # A barrier is still impassable for BOTH sides, which is why the band has a
 # floor at all and why `_still_reachable` refuses a wall that cuts us off from
 # the mass we are chasing.
 [strategy.cop]
-barrier_threshold = 0.22
+barrier_threshold = 0.40
 lookahead = 2
 claim_threshold = 0.12
 

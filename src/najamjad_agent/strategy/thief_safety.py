@@ -93,33 +93,23 @@ def adversarial_room(board: Board, cell: Position, cuts: frozenset[Position]) ->
     a component with no articulation points cannot be split by one barrier at
     all, and that is the common case on an open board.
 
-    **Two cuts deep, not one, and that is the whole of it.** A cop does not seal
-    a room with one barrier; it builds a wall over several turns, and a defence
-    that only ever asks "what does the worst single next barrier cost me?"
-    cannot see one coming. This is Conway's angel of power 1 in miniature: a
-    blocker adding one square a turn beats a king-stepping evader on a bounded
-    board by *progressive* encirclement, and our thief steps one square a turn
-    into a 49-cell board. Measured against our own cop once it started spending
-    its barriers (`barrier_threshold` 0.22, 40 starting positions): one cut deep
-    is captured **40 of 40** at mean step 27.5, two cuts deep is captured **0 of
-    40**.
+    **One cut, not two, and the rejected experiment is worth the paragraph.**
+    A cop does not seal a room with one barrier — it builds a fence over several
+    turns — so looking two cuts deep is the obvious improvement, and against a
+    cop walling flat-out it works: captured 40 of 40 becomes 0 of 40. It was
+    measured and **rejected anyway**, because of *how* it survives. It spends
+    **78.6% of its steps in one of the four corner cells**, against 14.5% for
+    this version. Corner camping is the shape that lost us games to uoh-sqak and
+    vibecode, it is what `LOCAL_ROOM_RADIUS` and `_break_tie` were rewritten to
+    stop, and buying survival against one synthetic cop with it is the
+    flattering-number trade this file exists to refuse.
 
-    The first cut is taken anywhere in the component rather than only beside us,
-    because that is the shape of the threat — the cop walks to the neck it wants
-    over the turns it takes us to get there. The second is evaluated the
-    original way, next to wherever the first left us.
+    The exposure it was meant to close is real and stays open: against a cop
+    that spends barriers freely we are taken 40 of 40. It is recorded in
+    `PRD_strategy_thief.md` rather than papered over, because the honest fix has
+    to keep the room *and* the distance, not trade one for the other.
     """
-    if not cuts:
-        return component_size(board, cell)
-    worst = _room_after_one_cut(board, cell, cuts)
-    for first in cuts:
-        if first == cell or not board.is_open(first):
-            continue
-        walled = board.with_barrier(first)
-        if not walled.is_open(cell):
-            continue
-        worst = min(worst, _room_after_one_cut(walled, cell, frozenset(cut_cells(walled, cell))))
-    return worst
+    return _room_after_one_cut(board, cell, cuts)
 
 
 def _room_after_one_cut(board: Board, cell: Position, cuts: frozenset[Position]) -> int:
