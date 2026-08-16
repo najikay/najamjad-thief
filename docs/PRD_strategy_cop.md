@@ -173,3 +173,105 @@ winning position looks like* and useless as a *turn-by-turn objective*, because
 the cop cannot reach a tree from an intact board inside 35 moves anyway. The
 theory tells you the destination; it does not follow that steering toward it one
 barrier at a time is better than playing the position in front of you.
+
+## The harness could not score a capture — 2026-08-16
+
+Every cop number in this document above was measured with an instrument that
+**could not end a game the way real ones end.** `cop_duel.run_cop_duel` checked
+co-location once per step, *before* the cop moved, so it detected only the thief
+walking into a stationary cop. The move that actually decides mini-games — the
+thief moves, the cop steps onto the cell it moved to and claims it — was never
+checked at all.
+
+Settled from real games rather than from the rule text, because the rule text is
+where the earlier reading came from. In the moaamoha friendly of 2026-08-15 our
+cop captured three times and our thief was captured twice, and **all five were
+that move**: g02 their `[6,6]→[5,6]` against our `[5,5]→[5,6]`; g04 `[6,6]→[6,5]`
+against `[5,5]→[6,5]`; g06 `[6,4]→[6,3]` against `[5,3]→[6,3]`; and the two we
+lost are the same geometry from the other side. Their `is_captured` answers a
+claim from the sealed position of that step, so the cell the thief has just
+moved to is exactly what the claim is compared against.
+
+With the check added, against the greedy evader the same pursuit ends at **step
+13** instead of running the full 35 while sitting at distance 1 for its last 23
+steps. `test_the_cop_takes_a_thief_that_lets_it_reach_striking_range` is the new
+ratchet; tracking and closing are now separate assertions, which they always
+should have been.
+
+**What is still true.** One cop cannot *force* a capture on an open 7x7 — that
+is ADR-021 and it is a theorem about a thief that keeps its distance, which our
+own thief does: it still survives all 35 against our own cop under the corrected
+rule, holding distance 3. The theorem was never the thing that was wrong; the
+instrument was reporting it about every thief rather than about that one.
+
+**Owed:** the five candidates rejected on 2026-08-15 were all measured on the
+old instrument, and at least the two pursuit candidates deserve re-running now
+that closing can be scored.
+
+## Lowering `barrier_threshold` — adopted, 0.40 -> 0.22 (2026-08-16)
+
+The vibecode post-mortem asked why a full-strength cop holding a near-perfect
+belief declined **eleven of its fourteen walls**. The answer was the dial:
+`plan_barrier` scores a placement by the escape routes it removes from cells
+holding belief mass, at 0.40 almost nothing clears it, and the value itself was
+measured on an instrument that could not price a barrier.
+
+**Why the old measurement was void.** The sweep behind 0.40 — and the reading
+that "walling is self-harm" — ran against *replayed* opponent lines. A replayed
+line is a list of cells the thief is teleported through: it cannot be blocked,
+so our barriers constrained only us. **36 of the 56 archived lines put the thief
+on a cell we had walled.** That instrument charges the cop for every barrier and
+credits it with nothing, and no barrier question can be settled on it. It is
+still the right instrument for pursuit-without-walls, which is what it was
+originally built for.
+
+**Re-measured against four thieves that see the live board**, 40 starting
+positions each, 160 games per value:
+
+| value | our thief | sandbagged | greedy | room evader | total |
+|---|---|---|---|---|---|
+| 0.40 (was shipped) | 0/40 | 40/40 | 40/40 | 9/40 | **89/160** |
+| 0.25 | 0/40 | 40/40 | 40/40 | 21/40 | 101/160 |
+| 0.24 | 40/40 | 40/40 | 40/40 | 27/40 | 147/160 |
+| **0.22** | 40/40 | 40/40 | 40/40 | 28/40 | **148/160** |
+| 0.21 | 40/40 | 40/40 | 40/40 | 27/40 | 147/160 |
+| 0.20 | 40/40 | 40/40 | 40/40 | 0/40 | 120/160 |
+
+Strictly better on every one of the four and worse on none. 0.22 sits in the
+middle of the [0.21, 0.24] band rather than on a cliff: at 0.25 the walls that
+convert stop being taken, at 0.20 walls that fence us out start being taken. The
+`room evader` in that table is the honest adversary — a thief that keeps its
+distance *and* maximises the room it keeps — and it is the column that matters,
+because a wall policy which only beats thieves indifferent to enclosure has not
+been tested against the thing walls are for.
+
+**The theory agrees, and it is the reason to trust the direction rather than the
+digits.** Conway's angel problem: a blocker that removes one square per turn
+defeats a king-stepping evader on a bounded board by *progressive* encirclement
+(the angel of power 1 loses). Our thief steps one orthogonal square per turn on
+49 cells, which is weaker than a king, and we hold fourteen blocks. Enclosure is
+the cop's winning idea; the previous value simply never bought it.
+
+**What did not change.** A barrier is still impassable for both sides, which is
+exactly why the band has a floor — `_still_reachable` refuses a placement that
+walls us away from the mass we are chasing, and below 0.21 the planner starts
+taking walls it cannot see past. And the theorem still stands: against a thief
+that defends against encirclement properly, the cop captures none of 40 (see
+`PRD_strategy_thief.md`, same date) — which is ADR-021 doing what it says.
+
+### Region-shrinking as the barrier objective — tried, measured, weaker
+
+Written as `FenceCop` while checking whether the thief's new defence generalises:
+score a placement by how much it shrinks the thief's *component*, preferring
+walls that continue a fence or lean on the board edge. That is the intuitive
+reading of the angel argument and it appears to be what uoh-sqak did to us.
+
+It converts nothing. Over 40 starting positions it spends 9.6 barriers a game
+and captures **0 of 40** against both our current thief and the one-cut thief it
+was built to exploit — including the variant given our own pursuit policy, so
+the only difference is the wall objective itself.
+
+The shipped objective wins because it is denominated in the escapes the thief is
+*about to use*, weighted by where we believe it is, rather than in the size of
+the room. The room is a lagging measure of the same thing and pays for walls too
+early. Recorded because it is the obvious next idea and it is worse.

@@ -767,6 +767,16 @@ FR-NET-6 and `runbook-network.md` had specified against since the beginning. See
 - [ ] **T-2707** (P0) Activate it: play a full practice series with `opening_role` set in both repos, confirm six windows across two processes and one correctly merged report, then flip the key for counted play — DoD: a merged six-game report reconciled field-for-field against the opponent's; not to be done in the hours before a scheduled match [FR-NET-6a] — *2026-08-15: played four processes locally (`scripts/split_rehearsal.py --games 6`), two split teams. Six windows across our two processes, 1/3/5 and 2/4/6, rejoined into one six-game report, every audit `Verified OK`. It found T-2708, which had defeated the whole module. Still owed for the DoD: the same against a real opponent, reconciled field-for-field.*
 
 
+## E28 — Barriers, measured on an instrument that can price them (3 tasks)
+
+Opened 2026-08-16. The counted series against vibecode was lost as cop with **3 barriers placed of
+14**, and uoh-sqak beat us 15-60 using all fourteen. The dial that declined them was tuned on
+replayed opponent lines, which cannot be blocked — see PRD_strategy_cop.md.
+
+- [x] **T-2801** (P0) Show the replay instrument cannot price a barrier before re-tuning on it — DoD: count the archived lines whose thief stands on a cell we walled; 36 of 56 [FR-STR-0]
+- [x] **T-2802** (P0) Re-measure `barrier_threshold` against thieves that see the live board — DoD: four reactive thieves x 40 starts x 7 values; 0.22 captures 148/160 against 0.40's 89/160, better on all four and worse on none; band [0.21, 0.24] with the shipped value in the middle
+- [x] **T-2803** (P0) Defend the thief against a wall built over several turns, not one — DoD: `adversarial_room` two cuts deep; 40/40 captured becomes 0/40 against the wall-using cop, every existing benchmark unchanged, 13.6 ms worst case [Conway's angel of power 1]
+
 ## E24 — Submission & freeze (70 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
@@ -954,6 +964,7 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
 | E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
 | E27 | Process separation: two roles, two processes | M6 | 8 | 7 | 1 |
+| E28 | Barriers, measured on an instrument that can price them | M6 | 3 | 3 | 0 |
 | **Total** | | | **696** | **631** | **65** |
 
 

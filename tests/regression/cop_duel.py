@@ -257,6 +257,29 @@ def run_cop_duel(
             if move not in facts.legal:
                 move = Move.STAY if Move.STAY in facts.legal else facts.legal[0]
             state.own_position = apply_move(state.board, state.own_position, move)
+            # **Landing on the thief is a capture, and this is where the game is
+            # actually decided.** The check used to exist only before the cop
+            # moved, which catches the thief walking into a stationary cop and
+            # nothing else — so a reactive thief could never be taken here, and
+            # every cop measurement made through this harness was of a pursuit
+            # that was not allowed to finish. It ran the cop at distance 1 for
+            # 23 consecutive steps against the greedy evader and scored it a
+            # survival.
+            #
+            # Settled from real games rather than from the rule text, because
+            # the rule text is what the earlier reading came from. In the
+            # moaamoha series of 2026-08-15 our cop captured three times and our
+            # thief was captured twice, and **all five were this move**: the
+            # thief moves first, the cop steps onto the cell it moved to, and
+            # claims it. g02 [6,6]->[5,6] with our cop [5,5]->[5,6]; g04
+            # [6,6]->[6,5] against [5,5]->[6,5]; g06 [6,4]->[6,3] against
+            # [5,3]->[6,3]; and the two we lost are the same geometry from the
+            # other side. Their `is_captured` answers the claim from the sealed
+            # position of that step, so the cell the thief just moved to is
+            # exactly what a claim is compared against.
+            if state.own_position == thief:
+                return CopResult(True, step, tuple(walls), tuple(distances), tuple(masses),
+                                 tuple(correct), tuple(path), "captured", events)
         state.own_scent.deposit(state.own_position)
 
     return CopResult(False, horizon, tuple(walls), tuple(distances), tuple(masses),

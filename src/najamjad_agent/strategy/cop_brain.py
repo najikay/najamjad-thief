@@ -43,14 +43,40 @@ class CopBrain:
 
     board_supplier: Any = None
     # How much belief mass must sit on the target cells before we spend one of
-    # 14 barriers. Swept over three unseen seeds: 0.05 captured 4 % of games,
-    # 0.15 (the value we shipped for weeks) 43-75 %, and 0.40 captured 100 % on
-    # every seed tried.
+    # 14 barriers.
     #
-    # The reason is that a barrier is impassable for *both* sides. A cop that
-    # walls on weak evidence fences itself away from the thief it is chasing —
-    # spending barriers cheaply is not aggression, it is self-harm.
-    barrier_threshold: float = 0.40
+    # **0.40 was measured against thieves that could not be walled in.** The
+    # sweep behind it, and the whole "walling is self-harm" reading, ran on
+    # *replayed* opponent lines — and a replayed line is a list of cells the
+    # thief teleports through, so our barriers blocked only us. 36 of the 56
+    # archived lines put the thief on a cell we had walled. That instrument
+    # charges the cop for every barrier and credits it with nothing, and it
+    # cannot decide this dial.
+    #
+    # Re-measured against four thieves that see the live board, over 40 starting
+    # positions each (160 games per value). Captures:
+    #
+    #     value   our thief   sandbagged   greedy   room evader   total
+    #     0.40        0/40        40/40    40/40         9/40    89/160
+    #     0.25        0/40        40/40    40/40        21/40   101/160
+    #     0.24       40/40        40/40    40/40        27/40   147/160
+    #     0.23       40/40        40/40    40/40        28/40   148/160
+    #     0.22       40/40        40/40    40/40        28/40   148/160
+    #     0.21       40/40        40/40    40/40        27/40   147/160
+    #     0.20       40/40        40/40    40/40         0/40   120/160
+    #
+    # Strictly better on every one of the four, never worse on any, and 0.22
+    # sits in the middle of the [0.21, 0.24] band rather than on either cliff —
+    # 0.25 stops taking the walls that convert, 0.20 starts taking ones that
+    # fence us out. The theory agrees: a blocker that adds one square a turn
+    # beats a king-stepping evader on a bounded board by progressive
+    # encirclement (Conway's angel of power 1), and 0.40 declined eleven of its
+    # fourteen walls against vibecode while holding a near-perfect belief.
+    #
+    # What stays true: a barrier is impassable for *both* sides, which is why
+    # the lower half of the band collapses and why `_still_reachable` refuses a
+    # placement that walls us away from the mass we are chasing.
+    barrier_threshold: float = 0.22
     # A field rather than a module constant so the sweep runner can actually
     # vary it. Sweeping a constant would have reported a flat line and been
     # read as "this dial does not matter".

@@ -92,7 +92,38 @@ def adversarial_room(board: Board, cell: Position, cuts: frozenset[Position]) ->
     and keep the worst room we would be left with. `cuts` is a pre-filter, since
     a component with no articulation points cannot be split by one barrier at
     all, and that is the common case on an open board.
+
+    **Two cuts deep, not one, and that is the whole of it.** A cop does not seal
+    a room with one barrier; it builds a wall over several turns, and a defence
+    that only ever asks "what does the worst single next barrier cost me?"
+    cannot see one coming. This is Conway's angel of power 1 in miniature: a
+    blocker adding one square a turn beats a king-stepping evader on a bounded
+    board by *progressive* encirclement, and our thief steps one square a turn
+    into a 49-cell board. Measured against our own cop once it started spending
+    its barriers (`barrier_threshold` 0.22, 40 starting positions): one cut deep
+    is captured **40 of 40** at mean step 27.5, two cuts deep is captured **0 of
+    40**.
+
+    The first cut is taken anywhere in the component rather than only beside us,
+    because that is the shape of the threat — the cop walks to the neck it wants
+    over the turns it takes us to get there. The second is evaluated the
+    original way, next to wherever the first left us.
     """
+    if not cuts:
+        return component_size(board, cell)
+    worst = _room_after_one_cut(board, cell, cuts)
+    for first in cuts:
+        if first == cell or not board.is_open(first):
+            continue
+        walled = board.with_barrier(first)
+        if not walled.is_open(cell):
+            continue
+        worst = min(worst, _room_after_one_cut(walled, cell, frozenset(cut_cells(walled, cell))))
+    return worst
+
+
+def _room_after_one_cut(board: Board, cell: Position, cuts: frozenset[Position]) -> int:
+    """Room left after the single most damaging barrier next to `cell`."""
     if not cuts:
         return component_size(board, cell)
     worst = component_size(board, cell)

@@ -48,15 +48,24 @@ def params() -> GameParams:
 
 
 def test_our_thief_outlasts_our_cop(params: GameParams) -> None:
-    """The ratchet, now on the thief's side — it is the brain that improved.
+    """The ratchet, and both sides of it have moved since it was written.
 
-    Our cop caught our thief at step 22 until 2026-08-15. It no longer does, and
-    that is the intended direction: a lone pursuer provably cannot close on an
-    open board (ADR-021), so a thief that keeps its room should outlast it. If
-    this starts failing, either the thief has regressed or the cop has found
-    something the theory says it should not have — both worth stopping for.
+    Our cop caught our thief at step 22 until 2026-08-15, stopped when the
+    thief's tie-breaker stopped walking it into corners, and caught it again at
+    step 27 on 2026-08-16 the moment `barrier_threshold` dropped to 0.22 and the
+    barriers started being spent. It no longer does, because the thief now
+    measures the room left after **two** cuts rather than one — a wall built
+    over several turns is not a single barrier (`PRD_strategy_thief.md`).
+
+    That is the intended end state: a lone pursuer provably cannot close on a
+    thief that defends its room (ADR-021). The barrier assertion is what keeps
+    this honest — without it the test would pass just as well if the cop quietly
+    stopped walling, which is the state it was in when the thief's vulnerability
+    went unnoticed for a week.
     """
     result = run_cop_duel(CopBrain(), [], params, thief_brain=ThiefBrain())
+
+    assert result.barriers_used >= 1, "a cop that spends no barriers is not the adversary here"
 
     assert not result.captured, f"our thief was caught at step {result.step}"
     assert result.step == OUR_THIEF_SURVIVES_OUR_COP
@@ -65,16 +74,40 @@ def test_our_thief_outlasts_our_cop(params: GameParams) -> None:
 def test_the_cop_tracks_even_when_it_cannot_close(params: GameParams) -> None:
     """Sensing and closing are different failures and must stay distinguishable.
 
-    Against a greedy evader the cop does *not* capture — and that is a theorem
-    rather than a defect. A 7x7 grid is the product of two paths, so its cop
-    number is 2 (Maamoun and Meyniel), and an exhaustive fixed-point over all
-    49x49 states finds no state from which a movement-only cop can force a
-    capture. What the cop must still do is know where the thief is, because a
-    strategy that fixes closing will be built on that belief.
+    The cop cannot *force* a capture against a thief that keeps its distance —
+    that is a theorem rather than a defect. A 7x7 grid is the product of two
+    paths, so its cop number is 2 (Maamoun and Meyniel), and an exhaustive
+    fixed-point over all 49x49 states finds no state from which a movement-only
+    cop can force one. What it must still do is know where the thief is, because
+    everything that fixes closing is built on that belief — and our own thief,
+    which does keep its distance, is the case that shows the difference
+    (`test_our_thief_outlasts_our_cop`).
     """
     result = run_cop_duel(CopBrain(), [], params, thief_brain=Evader())
 
     assert result.tracking >= 0.9, f"belief named the true cell only {result.tracking:.0%} of turns"
+
+
+def test_the_cop_takes_a_thief_that_lets_it_reach_striking_range(params: GameParams) -> None:
+    """Closing is a separate ratchet from tracking, and it used to read zero.
+
+    "One cop cannot force a capture" is true of a thief that never lets the
+    distance fall to one. It was being reported about *every* thief, because
+    this harness only ended a game when the thief walked into a stationary cop —
+    the reverse of the move that decides real ones. Under the rule five real
+    captures in the moaamoha series of 2026-08-15 were actually settled by (the
+    thief moves, the cop steps onto the cell it moved to, and claims it), the
+    same pursuit ends at step 13 rather than running to 35 at distance 1 for its
+    last 23 steps.
+
+    The greedy evader is a weak thief on purpose: it maximises distance from
+    where the cop *is*, which walks it into a corner. A cop that cannot punish
+    that has stopped pursuing, and no amount of tracking makes up for it.
+    """
+    result = run_cop_duel(CopBrain(), [], params, thief_brain=Evader())
+
+    assert result.captured, f"the pursuit never finished: {result.reason} at {result.step}"
+    assert result.step <= 13, f"closed at {result.step}, slower than the measured 13"
 
 
 def test_a_sandbagged_cop_lays_no_barriers_and_does_not_close(params: GameParams) -> None:
