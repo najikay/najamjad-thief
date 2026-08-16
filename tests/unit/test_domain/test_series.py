@@ -116,3 +116,58 @@ def test_outcomes_record_steps_for_the_report(tracker: SeriesTracker) -> None:
     outcome = tracker.record(EndReason.SURVIVAL, Role.THIEF, steps=35)
     assert outcome.steps == 35
     assert outcome.sub_game == 1
+
+
+def test_one_process_per_role_plays_only_its_own_windows() -> None:
+    """Book Appendix ה rule 1: the two roles are two processes.
+
+    Opening as thief, our cop process holds 2, 4 and 6 and never touches the
+    other three. It works this out from the agreed opening role alone — asking
+    the sibling would be the shared state rule 2 forbids.
+    """
+    tracker = SeriesTracker(
+        our_group="najamjad", their_group="rival",
+        table=ScoreTable.from_config(SCORING),
+        first_role=Role.THIEF, our_role=Role.COP,
+    )
+
+    played = []
+    while (sub_game := tracker.advance_to_ours()) is not None:
+        played.append(sub_game)
+        tracker.record(EndReason.CAPTURE, Role.COP)
+
+    assert played == [2, 4, 6]
+    assert [outcome.sub_game for outcome in tracker.outcomes] == [2, 4, 6]
+
+
+def test_a_skipped_window_is_not_reported_as_a_game_we_played() -> None:
+    """The sibling's three games are absent, not scored 0-0.
+
+    Recording them as technical outcomes would put games we never witnessed
+    into our own report as abandoned — which is the self-misdescription rules
+    33-35 void a report for. They are filled in by the sibling merge instead.
+    """
+    tracker = SeriesTracker(
+        our_group="najamjad", their_group="rival",
+        table=ScoreTable.from_config(SCORING),
+        first_role=Role.THIEF, our_role=Role.COP,
+    )
+    tracker.advance_to_ours()
+
+    assert tracker.cursor == 1
+    assert tracker.outcomes == []
+
+
+def test_without_a_role_split_one_process_still_plays_all_six() -> None:
+    """The default must not change what every existing run already does."""
+    tracker = SeriesTracker(
+        our_group="najamjad", their_group="rival",
+        table=ScoreTable.from_config(SCORING), first_role=Role.COP,
+    )
+
+    played = []
+    while (sub_game := tracker.advance_to_ours()) is not None:
+        played.append(sub_game)
+        tracker.record(EndReason.CAPTURE, tracker.next_role())
+
+    assert played == [1, 2, 3, 4, 5, 6]

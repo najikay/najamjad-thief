@@ -87,6 +87,7 @@ def build_sdk(
     scent: str = "",
     hints: bool | None = None,
     dashboard_host: str = "",
+    opens: str = "",
 ) -> AgentSdk:
     """Load configuration and return an SDK wired to real services."""
     # Before anything reads a credential. `.env` was documented, git-ignored and
@@ -106,7 +107,7 @@ def build_sdk(
     guard_counted_strength(manager)
     # Flags layered onto the loaded config for this process only; nothing
     # here touches a tracked file (see sdk/config_overrides.py).
-    apply_overrides(manager, opponent, group_id, quiet, scent, hints)
+    apply_overrides(manager, opponent, group_id, quiet, scent, hints, opens)
     chosen = resolve_role(role_dir, role)
     bus = EventBus(path=(workspace or Path(setting(setup, "paths.workspace", "workspace")))
                    / "events.jsonl")
@@ -192,9 +193,21 @@ def _attach_match(
     # against a 30 s turn budget, and game 1 of a real match took 153 s while
     # games 2-6 took ~15 s. A timeout cannot fix it — those calls succeed,
     # just slowly — so the cost has to move, not be bounded.
+    #
+    # **Not when we have already decided not to speak.** `_apply_emission`
+    # promises a hint-free run is "genuinely free: zero tokens, no provider
+    # latency", and the unconditional warm-up made that false: the vibecode
+    # friendly was played with `--no-hints` and still spent 97 tokens and 42
+    # seconds warming a vendor no turn would ever call. It also put 97 in our
+    # step-0 running total while our own result reported 0, so the two files
+    # disagreed about our spend. Warming a path that is switched off buys
+    # latency insurance against a call that cannot happen.
     from ..llm.warm_up import warm_up
 
-    warm_up(speaker._router, emit=bus.publish)
+    if bool(manager.get("emission.hint", True)):
+        warm_up(speaker._router, emit=bus.publish)
+    else:
+        bus.publish({"event": "llm.warm_up_skipped", "reason": "hints are off this run"})
     # One dict shared by the handshake and the filer: the handshake learns the
     # opponent's identity and the locked contract hash, and the artifacts cannot
     # be written without both.
@@ -207,7 +220,9 @@ def _attach_match(
     ))
     from .match_filing import build_filer
 
-    actions.attach_filer(build_filer(manager, bus, session, actions, load_setup(), observer))
+    actions.attach_filer(
+        build_filer(manager, bus, session, actions, load_setup(), observer, role)
+    )
 
 
 def _attach_dashboard(

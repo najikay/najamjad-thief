@@ -124,8 +124,21 @@ class ControlMessage(TolerantModel):
 
     @model_validator(mode="after")
     def _kind_is_known(self) -> "ControlMessage":
-        """Reject control verbs we do not implement rather than guessing."""
-        allowed = {"enable", "status", "restart", "quit"}
+        """Reject control verbs we do not implement rather than guessing.
+
+        `done` is accepted and does nothing. vibecode send it once at the close
+        of every sub-game, and we rejected all six of the 2026-08-14 series with
+        `unknown control kind 'done'` — a peer politely announcing a boundary and
+        being told its message is malformed. Nothing broke, because the boundary
+        is also visible in the audit exchange, which is exactly what makes this
+        the kind of interop gap that goes unnoticed until it matters.
+
+        Accepting an informational verb is not the same as guessing at one. The
+        list stays closed and a genuinely unknown verb is still refused: what
+        changed is that a *known* announcement we have no action for is now
+        distinguished from a verb we cannot parse.
+        """
+        allowed = {"enable", "status", "restart", "quit", "done"}
         if self.kind not in allowed:
             raise ValueError(f"unknown control kind {self.kind!r}; expected one of {sorted(allowed)}")
         return self

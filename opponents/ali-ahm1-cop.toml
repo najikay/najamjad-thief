@@ -1,0 +1,52 @@
+# ali-ahm1-cop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://b44e-2a06-c701-416f-9300-d5c6-8eec-e69c-a248.ngrok-free.app/mcp"
+group_id = "ali-ahm1"
+name     = "ali-ahm1-cop"
+notes    = """
+Ali Trabeh, Ahmad Kais. Role-split: one process per role, two ngrok URLs.
+
+  their cop    https://b44e-2a06-c701-416f-9300-d5c6-8eec-e69c-a248.ngrok-free.app/mcp
+  their thief  https://b55f-2a06-c701-416f-9300-d5c6-8eec-e69c-a248.ngrok-free.app/mcp
+  repos        github.com/AhmadKais/Final_Project_AI_Orchestration
+               github.com/AhmadKais/Final_Project_AI_Orchestration_Robber
+
+FREE-TIER NGROK: these URLs change every time their tunnel restarts, which they
+say themselves. RE-CARD IMMEDIATELY BEFORE EVERY SESSION - a stale URL is a
+silent 900-second opponent wait, not an error. Ask them for a reserved static
+domain if we play more than once.
+
+THREE THINGS TO SETTLE BEFORE ANY WINDOW - none of them ours to concede:
+
+1. WIRE SHAPE. They offer simultaneous-v1 (their own) or bookletter-v3 (a
+   third-party community kit). We run the course reference shape, and so did
+   uoh-ay26, imreeyal and vibecode - three counted series, all reconciled. We
+   are not porting to a fourth shape for one opponent.
+
+2. MOVE ORDER. Their bookletter-v3 is described as alternating half-turns,
+   POLICE FIRST. The reference says thief first (gui/live_apply.py: "thief
+   moves first") and every series we have played is thief-first. Police-first
+   is not a variant of our protocol, it is a different game.
+
+3. ROLE CONVENTION. They propose alphabetically-first group_id plays cop on odd
+   sub-games. ali-ahm1 < najamjad, so they take cop on 1/3/5 and we open as
+   THIEF - which means running najamjad-thief and the `ali-ahm1-cop` card. Fine
+   in itself, but it decides which repo we run, so agree it in writing first.
+
+Their config_sha256 0d90f525... is over their whole canonical file; ours,
+a284082d..., is over the flat agreed terms. Different constructions cannot
+refuse each other - compare the extracted terms, not the digests. This exact
+confusion already cost a counted series a mutual_agreement dispute.
+
+USE THIS ONE when running najamjad-thief: their cop answers window 1,
+which is what their alphabetical role convention asks for.
+"""
+
+# Awaiting their reply. Full 40 characters, one per repo - their cop and thief
+# are separate checkouts, so the pair can differ.
+[armed_commits]
+cop   = ""
+thief = ""

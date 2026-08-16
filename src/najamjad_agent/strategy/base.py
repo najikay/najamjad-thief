@@ -14,6 +14,36 @@ from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
 
+#: How many times the uniform share the peak must hold before a belief is
+#: treated as naming a cell. Lifted from `ThiefBrain._cop_cell`, where the check
+#: was written after a re-baseline caught the thief striding into a cop two
+#: cells away on step 1 — the belief was uniform, `max()` returned an arbitrary
+#: cell, and an arbitrary cell reported as certain is the confidently-wrong
+#: failure both roles have to avoid.
+CONFIDENT_SHARE = 4.0
+
+
+def confident_peak(belief: dict[Position, float]) -> Position | None:
+    """The cell the belief names, or None when it names none.
+
+    Shared by both roles because both have been bitten by the same thing: the
+    thief walked into a cop it could not actually locate, and the cop counted a
+    flat belief as eight turns of a stalled chase and spent barriers on it.
+
+    The cap at a half matters as much as the multiple: `CONFIDENT_SHARE /
+    len(belief)` alone demands more than all the mass when the belief covers
+    only a cell or two, so a *certain* localisation would be rejected as
+    unreliable.
+    """
+    if not belief:
+        return None
+    total = sum(belief.values())
+    if total <= 0:
+        return None
+    peak = max(belief, key=lambda cell: belief[cell])
+    floor = min(CONFIDENT_SHARE / len(belief), 0.5)
+    return peak if belief[peak] / total >= floor else None
+
 
 def expected_distance(belief: dict[Position, float], cell: Position) -> float:
     """Belief-weighted Manhattan distance from `cell` to the opponent.

@@ -27,6 +27,48 @@ def role_for(sub_game: int, first_role: Role) -> Role:
     return Role.THIEF if first_role is Role.COP else Role.COP
 
 
+def plays_window(sub_game: int, first_role: Role, our_role: Role) -> bool:
+    """Whether *this process* holds the role that plays this mini-game.
+
+    Book Appendix ה Table 7 rule 1 requires the cop's code and the thief's code
+    to run in two completely separate processes, on pain of `כישלון מוחלט`. A
+    series still alternates roles across its six mini-games, so with one
+    process per role each of them plays only half of them: opening as thief
+    means our thief process takes 1, 3 and 5 and our cop process takes 2, 4
+    and 6, and neither has to ask the other which — the answer is a function of
+    the agreed opening role and nothing else.
+
+    `first_role` is therefore no longer "the role of whichever repo was
+    launched". It is the role *the group* holds in mini-game 1, agreed with the
+    opponent beforehand and configured identically in both repos; `our_role` is
+    what this process is. They coincide in exactly one of the two processes.
+    """
+    return role_for(sub_game, first_role) is our_role
+
+
+def split_roles(configured: str, our_role: Role) -> tuple[Role, Role | None]:
+    """Resolve `(opening_role, our_role)` from the configured opening role.
+
+    An empty setting means the roles are **not** split: one process plays all
+    six windows, opening in whichever role it is, exactly as before. That is
+    the pre-2026-08-15 behaviour and it stays the default so no test, harness
+    or rehearsal changes underneath us.
+
+    A value turns the split on, and it is the one thing the two processes must
+    agree about: our group's role in mini-game 1. Both repos must be given the
+    *same* value — `police` in both, or `thief` in both — because it describes
+    the group, not the process. Disagreement is silent and expensive: both
+    would claim mini-game 1 and neither would play 2, so it is echoed at
+    startup for the operator to compare across the two terminals.
+
+    `cop` is accepted alongside `police` because that is what everyone types.
+    """
+    text = (configured or "").strip().lower()
+    if not text:
+        return our_role, None
+    return Role.COP if text == "cop" else Role(text), our_role
+
+
 @dataclass
 class SubGameOutcome:
     """The scored result of one finished mini-game."""
@@ -50,16 +92,57 @@ class SeriesTracker:
     first_role: Role = Role.COP
     total_games: int = MINI_GAMES_PER_SERIES
     outcomes: list[SubGameOutcome] = field(default_factory=list)
+    #: Mini-games this process has advanced past, whether or not it played
+    #: them. Numbering used to be `len(outcomes) + 1`, which was the same thing
+    #: while one process played all six. Under one process per role it is not:
+    #: our cop process skips 1, 3 and 5, and deriving the number from outcomes
+    #: would have it announce mini-game 2 as mini-game 1 — two reports
+    #: describing one match with different `sub_game_number`s, which rules
+    #: 33-35 can void *both* teams for. The cursor counts windows; `outcomes`
+    #: holds only games we actually played, which is exactly what the sibling
+    #: merge needs to fill in.
+    cursor: int = 0
+    #: The role *this process* is, when the two roles run as two processes
+    #: (book Appendix ה rule 1). `None` keeps the pre-split behaviour — one
+    #: process plays all six windows — so every existing caller and test is
+    #: unaffected until a run opts in.
+    our_role: Role | None = None
 
     @property
     def is_complete(self) -> bool:
-        """True once every mini-game of the series has been played."""
-        return len(self.outcomes) >= self.total_games
+        """True once the series has passed its last mini-game."""
+        return self.cursor >= self.total_games
 
     @property
     def next_sub_game(self) -> int:
         """1-based number of the mini-game about to be played."""
-        return len(self.outcomes) + 1
+        return self.cursor + 1
+
+    def skip(self) -> int:
+        """Advance past a mini-game our sibling process is playing.
+
+        Nothing is recorded: we did not witness it, and inventing a 0-0
+        technical outcome for it would put a game we never saw into our own
+        report as though it had been abandoned.
+        """
+        self.cursor += 1
+        return self.cursor
+
+    def advance_to_ours(self) -> int | None:
+        """The number of the next mini-game *this process* plays.
+
+        Skips the windows our sibling process holds, so the caller never has to
+        know the split exists. Returns None once no windows of ours remain,
+        which ends the series loop for this process while the sibling is still
+        playing its own — the two exit independently and neither waits on the
+        other, because waiting would be shared state by another name.
+        """
+        while not self.is_complete:
+            sub_game = self.next_sub_game
+            if self.our_role is None or plays_window(sub_game, self.first_role, self.our_role):
+                return sub_game
+            self.skip()
+        return None
 
     def next_role(self) -> Role:
         """Our role in the upcoming mini-game."""
@@ -86,6 +169,7 @@ class SeriesTracker:
             audit_passed=audit_passed,
         )
         self.outcomes.append(outcome)
+        self.cursor += 1
         return outcome
 
     def result(self) -> SeriesResult:

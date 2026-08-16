@@ -74,50 +74,98 @@ def test_survival_against_silence_does_not_regress(params: GameParams) -> None:
     assert result.steps_survived >= SILENT_BEST_STEPS
 
 
-def test_a_capture_claim_is_not_treated_as_a_cop_position_fix(params: GameParams) -> None:
-    """The regression that reading it as one caused, pinned so it cannot return.
+def test_a_capture_claim_is_read_as_a_cop_position_fix(params: GameParams) -> None:
+    """This test used to assert the opposite, and the opposite was wrong.
 
-    `capture.answer_capture_claim(true_thief_cell, claimed_cell)` settles the
-    semantics from our own code: a claim names the cell where the cop asserts
-    *the thief* is. That equals the cop's own cell only for a claim that lands.
-    uoh-sqak happened to claim only their own cell, which is the sole reason
-    believing it looked correct against their recorded line.
+    It guarded the reading that a claim names the cell where the cop asserts
+    *the thief* is, on the strength of `answer_capture_claim(true_thief_cell,
+    claimed_cell)` comparing the claim against the thief's position. That
+    argument does not survive contact: the comparison is the same line under
+    either reading, because a cop standing on X asking "are you on X?" and a cop
+    guessing "I think you are on X" are answered identically. The receiver
+    cannot tell them apart, so the receiver's code cannot settle the question.
 
-    Measured before this was removed: against a cop claiming one row off the
-    thief went from 35/35 to captured at step 13; against one claiming our own
-    cell it was blinded every turn, because 0.99 of the mass landed on our
-    square and the very next `exclude()` deleted it. Both were worse than
-    ignoring claims outright.
+    The sender can, and did. Both reference implementations send
+    `list(rt.state.position)` when POLICE moves; our own cop is locked to its own
+    true cell by T-0535; and **323 of 323** sealed claims across every archive in
+    `matches/` name the claimer's own revealed position, 306 of them from
+    uoh-ay26. `scripts/claim_evidence.py` is the measurement and re-runs.
+
+    Replaying uoh-ay26's own recorded lines with their real declarations,
+    ignoring claims left the belief wrong by 2.04 cells and lost g03 to a
+    capture at step 26; reading them puts it on the cop's exact cell every turn
+    and survives all 35. So the guard now points the other way.
     """
     belief = SilentPeerBelief(params, UOH_SQAK_SWEEP, barriers=())
 
     for step, cop in enumerate(UOH_SQAK_SWEEP[:4], start=1):
         distribution = belief(cop, step, (3, 3))
 
-    assert ThiefBrain()._cop_cell(distribution) is None, (  # noqa: SLF001
-        "claims alone must not produce a confident cop cell"
+    assert ThiefBrain()._cop_cell(distribution) == UOH_SQAK_SWEEP[3], (  # noqa: SLF001
+        "the cop named its cell on every one of four turns and we did not use it"
     )
 
 
 def test_a_claim_on_our_own_cell_cannot_blind_us(params: GameParams) -> None:
     """The free attack: claim where we stand, every turn, and watch us go flat.
 
-    Believing the claim put near-certainty on our own square; `exclude()` then
-    zeroed it, `normalise` spread the residue, and the belief was uniform again
-    on every single turn. The opponent needs no information to do this — our own
-    scent field hands them our exact cell for free.
+    This is the harm both earlier removals recorded, and it is a fusion
+    interaction rather than a semantic one — which is why it is fixable and the
+    removals were not. Held as a sighting, the claim first evicted any barrier
+    seen on the same turn under `_record_sighting`'s exact-beats-inexact rule,
+    then put 0.99 on our own square, which the turn's closing `exclude()`
+    deleted. We lost the barrier and gained nothing.
+
+    The opponent needs no information to run it: our own scent field hands them
+    our exact cell for free. `turn_ingress` drops the claim before it is held,
+    which leaves the belief exactly where ignoring claims leaves it — measured
+    on the archived lines, mean error 2.04 either way, against 3.73 unguarded.
     """
     belief = SilentPeerBelief(params, UOH_SQAK_SWEEP, UOH_SQAK_BARRIERS)
     belief._message = lambda cop, step: {  # noqa: SLF001
         "step": step,
         "commit": f"{step:064x}",
         "capture_claim": [3, 3],
+        "barrier_placed": list(UOH_SQAK_BARRIERS[step - 1]),
     }
 
     for step, cop in enumerate(UOH_SQAK_SWEEP[:5], start=1):
         belief(cop, step, (3, 3))
 
     assert belief.peak != (3, 3), "a claim on our own cell must not become the belief peak"
+
+
+def test_a_claim_on_our_own_cell_does_not_evict_the_barrier_beside_it(
+    params: GameParams,
+) -> None:
+    """The half of the blinding that the peak assertion above cannot see.
+
+    A belief whose peak is merely *not* our own square passes that test while
+    holding nothing at all. What the attack actually destroyed was the barrier
+    sighting arriving on the same turn, so this asserts the barrier still
+    reaches the belief with the hostile claim present.
+    """
+    hostile = SilentPeerBelief(params, UOH_SQAK_SWEEP, UOH_SQAK_BARRIERS)
+    hostile._message = lambda cop, step: {  # noqa: SLF001
+        "step": step,
+        "commit": f"{step:064x}",
+        "capture_claim": [3, 3],
+        "barrier_placed": list(UOH_SQAK_BARRIERS[step - 1]),
+    }
+    quiet = SilentPeerBelief(params, UOH_SQAK_SWEEP, UOH_SQAK_BARRIERS)
+    quiet._message = lambda cop, step: {  # noqa: SLF001
+        "step": step,
+        "commit": f"{step:064x}",
+        "barrier_placed": list(UOH_SQAK_BARRIERS[step - 1]),
+    }
+
+    for step, cop in enumerate(UOH_SQAK_SWEEP[:5], start=1):
+        hostile(cop, step, (3, 3))
+        quiet(cop, step, (3, 3))
+
+    assert hostile.peak == quiet.peak, (
+        "claiming our own cell every turn changed what the barriers told us"
+    )
 
 
 def test_the_evidence_path_actually_runs(params: GameParams) -> None:

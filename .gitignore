@@ -25,6 +25,9 @@ logs/
 # both meant every archive showed up as a tree full of deletions — and one of
 # those took the repo-rules gate down with it.
 workspace/artifacts/
+# Half a series, waiting for the sibling process to merge it (rule 1's two
+# processes). Runtime state, never a deliverable.
+workspace/partials/
 # Runtime output, regenerated every run and rewritten by every test that
 # publishes an event. It is real evidence *during* a match — the connection
 # forensics read it, and it settled the T-2456 argument — but it is evidence we

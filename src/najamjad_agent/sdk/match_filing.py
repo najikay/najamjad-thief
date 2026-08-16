@@ -48,11 +48,14 @@ def _emission_declaration(manager: Any) -> dict[str, str] | None:
 
 
 def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
-                setup: dict | None = None, observer: Any = None) -> Any:
+                setup: dict | None = None, observer: Any = None,
+                role: Any = None) -> Any:
     """Turn a finished series into its four artifacts, and send the result."""
+    from ..domain.scoring import ScoreTable
     from ..negotiation.contract import contract_hash, derive_game_ids
     from ..reporting.filing import MatchFiler
     from ..reporting.result_blocks import declaration_group
+    from ..reporting.sibling_merge import assemble
 
     def file_match(games, outcomes, result) -> None:
         """Called once, after the last mini-game."""
@@ -72,6 +75,20 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
                 game.setdefault("their_commit", peer_commit)
         terms = session.get("terms") or {}
         game_id, game_uid = derive_game_ids(terms, ours, theirs)
+        # With the two roles split across two processes, this one played at
+        # most half the series. Rejoin our sibling's half before anything is
+        # written, and file nothing at all when the sibling is the one holding
+        # the last window — two reports on one series contradict each other,
+        # and rules 33-35 void both teams for that.
+        if role is not None:
+            rejoined = assemble(
+                manager, role, game_uid, games, outcomes, result, (ours, theirs),
+                ScoreTable.from_config({"scoring": manager.section("scoring")}),
+                bus.publish,
+            )
+            if rejoined is None:
+                return
+            games, outcomes, result = rejoined
         filer = MatchFiler(
             workspace=Path(setting(setup or {}, "paths.artifacts", "workspace/artifacts")),
             game_id=game_id,

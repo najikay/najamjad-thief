@@ -15,6 +15,7 @@ from collections.abc import Callable
 from typing import Any
 
 from ..shared.config import ConfigManager
+from .preflight_counted import counted_ledger_check
 from .preflight_opponent import opponent_tools_check
 from .preflight_tunnel import tunnel_check
 
@@ -61,7 +62,7 @@ def port_check(server: Any) -> Callable[[], str]:
 
 # Re-exported so every existing caller and test keeps importing it from here,
 # while the check itself lives in the module that can afford to explain it.
-__all__ = ["tunnel_check"]
+__all__ = ["counted_ledger_check", "tunnel_check"]
 
 
 def gmail_check(load: Callable[[], Any] | None = None) -> Callable[[], str]:
@@ -172,4 +173,5 @@ def standard_checks(
         "gmail_credentials": gmail_check(credentials),
         "report_delivery": delivery_check(manager),
         "group_id": required_setting(manager, "game.group_id"),
+        "counted_ledger": counted_ledger_check(manager),
     }

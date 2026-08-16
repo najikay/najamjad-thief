@@ -11,8 +11,23 @@ teams' agents, with SHA-256 commit-reveal integrity and Gmail-API result reporti
 [![ci](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml/badge.svg)](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml)
 
 **Team:** Naji Kayal · Amjad Abed — group `najamjad`
-**Status:** M5 — plays a full audited series, interoperates with the course reference
-simulator, dashboard and replay viewer live. Remaining work is tracked in `docs/TODO.md`.
+**Status:** M6 — **three counted series played and filed**, rule 31's pass threshold met with
+one to spare. Plays a full audited series, interoperates with the course reference simulator
+and with three independent team implementations, and audits an opponent's play after the
+match. Remaining work is tracked in `docs/TODO.md`.
+
+### League record
+
+| # | Date | Opponent | Result | Us | Them |
+|---|---|---|---|---|---|
+| 1 | 2026-08-08 | `uoh-ay26` | **won** 6–0 | 90 | 30 |
+| 2 | 2026-08-13 | `imreeyal` | **won** 6–0 | 90 | 30 |
+| 3 | 2026-08-14 | `vibecode` | lost 0–6 | 30 | 90 |
+
+Every mini-game of all three verified `Verified OK` at the audit, with zero technical losses
+attributable to us. The vibecode series reconciled **field for field** against their filed
+report — 66 fields, zero differences, identical `mutual_agreement.sha256`, `confirmed: true`
+on both sides.
 
 ---
 
@@ -464,8 +479,9 @@ agrees with your assumptions, not that your assumptions are right.**
 | Document | Purpose |
 |---|---|
 | `docs/PRD.md` | Product requirements (FR-* ids, KPIs, milestones) |
-| `docs/PLAN.md` | Architecture: C4 + FSM diagrams, ADR-001..014, module map |
-| `docs/TODO.md` | 617-task build plan with traceability and progress |
+| `docs/PLAN.md` | Architecture: C4 + FSM diagrams, ADR-001..021, module map |
+| `docs/TODO.md` | 688-task build plan with traceability and progress |
+| `docs/HANDOFF-2026-08-14.md` | Current state, open items, and every correction measured |
 | `docs/PROTOCOL.md` | What crosses the wire, and what never does |
 | `docs/SECURITY.md` | Threat model, prompt-injection defences, secret handling |
 | `docs/UX.md` | Nielsen heuristics mapped to dashboard decisions; accessibility |
@@ -481,6 +497,61 @@ agrees with your assumptions, not that your assumptions are right.**
 | `docs/PRD_belief_engine.md` · `PRD_commit_reveal.md` · `PRD_llm_router.md` | Mechanism designs |
 | `docs/runbook-network.md` | Tunnel and connectivity procedures |
 | `docs/research/` | Source digests (book, guidelines, reference simulator, A6 retrospective) |
+
+---
+
+## Auditing an opponent
+
+Commit-reveal proves a peer did not *rewrite* history. It proves nothing about whether they
+played by the rules, and those are different guarantees — we conflated them for the whole
+league phase and could not say, after losing a series, whether the play had been legal.
+
+Auditing is **post-match by design**: rules 33-35 void a match for contradictory reports, so
+an agent acting on its own accusation converts a suspicion into a mutual zero. Everything
+below records evidence and changes nothing about how we play (PLAN ADR-019).
+
+```bash
+# replay their revealed records through the fair-play rules: movement legality,
+# the Barrier Law, the budget, step order, hint length — and say what it could NOT check
+uv run python scripts/audit_opponent.py --team vibecode
+
+# are we disclosing scent on the same terms they are?
+uv run python scripts/scent_parity.py --since 2026-08-14T16:00   # UTC
+
+# 323 of 323 sealed capture claims name the claimer's own revealed cell
+uv run python scripts/claim_evidence.py
+
+# both repos must declare the same counted-match count (rules 37-38)
+uv run python scripts/reconcile_counted.py ../najamjad-thief --apply
+```
+
+What a reveal can settle and what only the wire can: a peer's sealed record holds what that
+peer chose to seal. Movement and barriers are checkable from an archive alone; `smell_grid`,
+`capture_claim`, `hint` and response times are checkable only against what arrived on the
+wire, which is why `FrameLog` keeps them as sent. The audit reports those as *not checkable*
+rather than folding them into a clean verdict — "we looked and agreed" and "there was nothing
+to look at" must never read the same.
+
+## Two results that constrain every strategy
+
+Both were established by measurement during the league phase, and both are load-bearing.
+
+**A barrier can shrink the board but can never take the thief.** The book gives three capture
+conditions (rules 46-47); the course reference implements exactly one. Its `rules.py` has
+`thief_result` and `is_captured` and no barrier-capture or immobilisation check anywhere.
+Every opponent we have met is reference-derived, so enclosure yields a mini-game *we* score
+and *they* do not — the rules 33-35 contradiction. **Every capture must be a claim the thief
+confirms** (PLAN ADR-020).
+
+**One cop cannot close on an open board.** A 7×7 grid is the Cartesian product of two paths,
+so its cop number is 2 (Maamoun & Meyniel 1987), and an exhaustive fixed-point over all 49×49
+states finds *no* state from which a movement-only cop can force a capture under simultaneous
+moves. Our cop tracking a thief to distance 2 and holding there for 28 steps is a theorem,
+not a defect. Barriers are the only resource that changes the answer (PLAN ADR-021).
+
+`tests/regression/cop_duel.py` is the cop-side benchmark those claims are tested with — our
+cop against an adaptive thief, with the belief the real ingress path builds from scent. A
+*recorded* opponent line does not react and cannot measure closing.
 
 ---
 

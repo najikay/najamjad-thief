@@ -122,12 +122,13 @@ def match(
     scent: ScentOption = "",
     hints: HintsOption = None,
     dashboard_host: DashHostOption = "",
+    opens: Annotated[str, typer.Option("--opens", help="our role in mini-game 1: thief|police — splits the series across both processes")] = "",
 ) -> None:
     """Serve, then play the agreed series against the configured opponent."""
     _practice(practice)
     sdk = _sdk(config=config, role=role, dashboard=dashboard, opponent=opponent or None,
                group_id=group_id or None, quiet=quiet, scent=scent, hints=hints,
-               dashboard_host=dashboard_host)
+               dashboard_host=dashboard_host, opens=opens)
     typer.echo(f"agent online at {sdk.actions.start_peer(with_tunnel=tunnel, with_dashboard=dashboard)}")
     from .sdk.actions import OpponentUnreachableError
 
@@ -137,7 +138,23 @@ def match(
         typer.echo(str(absent), err=True)
         raise typer.Exit(code=UNUSABLE_INPUT) from absent
     for game in sdk.actions.games:
-        typer.echo(f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} {game['audit']}")
+        # `disputed` belongs on this line, and leaving it off hid the only
+        # thing that decides `mutual_agreement.confirmed`. The 2026-08-14
+        # vibecode friendly printed six `Verified OK` while the opponent had
+        # contradicted our ending in three of them, so the operator read
+        # agreement off the console and filed `confirmed: false` — the two
+        # checks are orthogonal and the console showed one of them. An audit
+        # verifies nobody rewrote history; a dispute is the peer disagreeing
+        # about what happened, which is what rules 33-35 void a match for.
+        clash = (
+            f"  DISPUTED — they claim {game.get('their_claim') or 'something else'}"
+            if game.get("disputed")
+            else ""
+        )
+        typer.echo(
+            f"  g{game['sub_game']:02d} {game['role']:6} {game['end_reason']:14} "
+            f"{game['audit']}{clash}"
+        )
     typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
     if dashboard:
         # The process used to exit here, taking the dashboard with it — so the

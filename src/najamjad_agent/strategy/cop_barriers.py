@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from ..domain.board import Board
 from ..domain.params import Position
-from .base import escape_routes, reachable_within
+from .base import confident_peak, escape_routes, reachable_within
 
 # A placement that captures outright dwarfs any positional gain.
 CAPTURE_SCORE = 1_000.0
@@ -72,6 +72,42 @@ def _still_reachable(walled: Board, cop_cell: Position, belief: dict[Position, f
         return True
     horizon = reachable_within(walled, cop_cell, walled.size * 2)
     return bool(live & horizon)
+
+
+def stalled_bar(
+    origin: Position,
+    belief: dict[Position, float],
+    streak: int,
+    close: int,
+    patience: int,
+    standing: float,
+    stalled: float,
+) -> tuple[float, int]:
+    """The bar to spend a barrier at this turn, and the updated stall streak.
+
+    A chase that has sat within `close` of the belief peak for `patience`
+    consecutive turns without finishing is not going to finish by pursuit: on an
+    open 7x7 a lone cop cannot force a capture (ADR-021), so the space has to
+    shrink, and barriers are the only thing that shrinks it. Below that, walls
+    are pure cost — a blundering thief is caught around step 8 and every earlier
+    wall narrows our own approach.
+
+    The streak resets the moment the peak is out of range, so a chase that keeps
+    breaking off never counts as the stalled one this is for. Pure, so a replay
+    reaches the same bar on the same turn; the caller owns the counter.
+    """
+    # **A belief that names no cell cannot be stalled on.** Taking `max()` of a
+    # flat distribution returns an arbitrary cell, and counting turns against it
+    # is how the cop came to spend barriers while it had no idea where the thief
+    # was: at blur 3 in self-play it walled its way to a "capture" that only the
+    # harness honoured — a barrier landing on the thief, which no opponent in
+    # this league concedes. Caught by the gates before it went anywhere near a
+    # match; the same check keeps the thief from walking into a cop it cannot
+    # locate (`confident_peak`).
+    peak = confident_peak(belief)
+    near = peak is not None and abs(origin[0] - peak[0]) + abs(origin[1] - peak[1]) <= close
+    streak = streak + 1 if near else 0
+    return (stalled if streak >= patience else standing), streak
 
 
 def plan_barrier(

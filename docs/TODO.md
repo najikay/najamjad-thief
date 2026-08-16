@@ -716,6 +716,68 @@
 - [ ] **T-2323** (P0) Enforce match-day freeze discipline: no code changes during a match; between-match changes land as commits so each match's `github_commit` is exact — DoD: per-match commit hashes verified against git log [book rule 53]
 - [ ] **T-2324** (P1) Run the weekly interop regression vs the reference simulator during the league window — DoD: regression log green each week [ADR-012; deps: T-2111]
 
+## E25 — Opponent auditing & fair play verification (12 tasks)
+
+Added 2026-08-14, mid-league. Every task here exists because a question was asked
+during a match and our own records could not answer it. See PLAN ADR-019 and
+PRD §3.11 (`FR-AUD`).
+
+- [x] **T-2501** (P0) Read a capture claim as an exact position fix on the cop, settled by measuring senders rather than arguing from our receiver: both reference repos send `list(rt.state.position)` on every police MOVE, and 323/323 sealed claims in `matches/` name the claimer's own revealed cell — DoD: `scripts/claim_evidence.py` reproduces the count and both outcome tables; `tests/regression/test_claim_evidence_on_a_real_line.py` gates the archived line and its counterfactual [FR-AUD-2, FR-STR-1, rules 21-22]
+- [x] **T-2502** (P0) Never hold a claim naming our own cell: it evicts the same turn's barrier sighting under exact-beats-inexact and is then deleted by `exclude()`, which is the whole of the "blinding" both earlier removals recorded — DoD: belief identical to ignoring claims under that attack (mean error 2.04 vs 3.73 unguarded); gated in `test_silent_opponent.py` [FR-AUD-2]
+- [x] **T-2503** (P0) Gate capture claims on the role: a *thief* peer sending `capture_claim` was able to write its own choice of cell into the belief our cop hunts with — DoD: `test_a_thief_peer_cannot_inject_a_sighting_with_a_claim` [FR-AUD-2, rules 21-22]
+- [x] **T-2504** (P0) Compare every capture claim against the cell the claimer reveals at the audit, so reading claims as position fixes stays a measurement instead of an inherited premise — DoD: `verify_trail` reports `claims_checked` / `claim_mismatches`; rides the existing call site [FR-AUD-2]
+- [x] **T-2505** (P0) Check an opponent's transmitted scent field against their revealed positions by argmax, independent of which snapshot they transmit — DoD: `scent_audit.verify_trail`; `tests/integration/test_trail_verification_runs.py` proves it runs in a played series [FR-AUD-3]
+- [x] **T-2506** (P0) Replay an opponent's revealed records offline through the fair-play rules — movement, Barrier Law, budget, step order, hint cap — since the protocol seals positions and those checks cannot fire on live input — DoD: `scripts/audit_opponent.py`; reports what it could not check rather than scoring silence as clean [FR-AUD-1, FR-AUD-6]
+- [x] **T-2507** (P1) Instrument our **own** emission on the same terms as theirs (`scent.emitted`: cells, peak, peak cell, mode) — DoD: `tests/integration/test_emission_is_instrumented.py` drives the real `MatchRunner` and asserts both directions carry the same keys [FR-AUD-4]
+- [x] **T-2508** (P1) Compare the two sides' emission profiles from the event log — DoD: `scripts/scent_parity.py`; measured us at peak 0.9 pre-decay against vibecode's 0.8 post-decay, and 25 vs 30 median cells [FR-AUD-4, open item §5.2]
+- [x] **T-2509** (P1) Record the peak *cell* on **inbound** scent frames so an archived event log is auditable on its own, and never on outbound — the centre of our own field is our own position and the event stream reaches a dashboard bound to `0.0.0.0` in practice runs — DoD: `peak_cell` on `scent.absorbed` only; one shared argmax in `scent_audit.peak_cell`; `test_their_peak_cell_is_recorded_and_ours_never_is` pins both halves [FR-AUD-5]
+- [x] **T-2510** (P0) Enforce Appendix F Table 19's clock at the point of signature, not only in the playbook: `response_timeout_sec` ≥ 30, `watchdog_timeout_sec` ≥ 60, longer signable, shorter refused — DoD: `tests/unit/test_negotiation/test_timing_floors.py`; `validate_terms` accepted `response_timeout_sec: 1` before this [FR-NEG-7, rule 12]
+- [x] **T-2511** (P0) Keep the two repos' counted-match ledgers consistent, since only the repo that played a series writes one — DoD: `scripts/reconcile_counted.py` merges the machine-written ledgers by `game_uid` and refuses entries no archive corroborates; `counted_ledger_check` fails preflight on divergence [FR-NEG-3, rules 37-38]
+- [ ] **T-2512** (P1) Play a vibecode practice series with the full audit recording in place, then run `audit_opponent.py`, `scent_parity.py` and the trail/claim verdicts over the fresh archive — DoD: a verdict for every mini-game, and every "not checkable" line from the 2026-08-13 friendly closed [FR-AUD-1..6]
+
+
+## E26 — Cop strategy: closing the capture (7 tasks)
+
+Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
+
+- [x] **T-2601** (P0) Build a cop-side benchmark: our cop against a thief, with the belief the real ingress path builds from their scent, and an adaptive-evader mode — DoD: `tests/regression/cop_duel.py`; `test_cop_benchmark.py` ratchets the one adaptive opponent we beat [FR-STR-0]
+- [x] **T-2602** (P0) Establish why pursuit stalls: grid cop number is 2 and no state admits a forced capture by movement alone, so distance-2 is a theorem rather than a defect — DoD: recorded in ADR-021 with citations [FR-STR-1]
+- [x] **T-2603** (P0) Establish that a barrier cannot capture: the reference implements neither barrier-capture nor immobilisation, so enclosure yields a disputed mini-game — DoD: ADR-020, `FR-STR-0`, and the harness refuses to score one [rules 46-47, 33-35]
+- [x] **T-2604** (P1) Measure candidate cop changes against the benchmark rather than against argument — DoD: four candidates measured 2026-08-15, three reverted on the evidence (release the capture gate: 2/5 against 4/5; charge walls that lengthen our approach: wins only a stationary thief; thief multi-barrier seal veto: no effect, never fired)
+- [ ] **T-2605** (P0) Implement phased containment: herd toward a corner, build an anti-diagonal cut by step-and-seal, then close the sealed pocket — the only structure the budget affords, since anti-diagonals are vertex separators for orthogonal movement and cornering costs 8-10 of 14 while sweeping is unaffordable — DoD: beats the shipped cop on **both** adaptive benchmarks without walling an occupied cell [FR-STR-0]
+- [x] **T-2608** (P0) Stop the tie-breaker choosing a corner. Survival against vibecode's recorded cop line depended on the sub-game number — 1/3/4/6 survived, **2 and 5 were caught at step 13, both ending on (6,6)**, and we play thief in the even sub-games, which is all three thief games of the counted series. Every key above `_break_tie` ties on an intact board (component size is constant across a component, exits saturate at three), so the variation mechanism was choosing between moves that are not equally safe — DoD: `thief_safety.LOCAL_ROOM_RADIUS`, gated on `ROOM_MATTERS_BEYOND` so it never overrides escape, plus a move-preferring final key; all six sub-games survive and the other three recorded lines are unchanged at 35 [FR-STR-1]
+- [ ] **T-2606** (P1) Build a best-responding evader for the benchmark: distance-maximisation self-corners and is too weak to certify a cop against — DoD: an evader that survives the shipped cop and is beaten only by a genuine containment plan
+- [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
+
+
+## E27 — Process separation: two roles, two processes (8 tasks)
+
+Opened 2026-08-15. Book Appendix ה Table 7 rule 1 requires the cop's and thief's code to run in
+two completely separate processes (sanction `כישלון מוחלט`); §2.4.2 disqualifies the solution
+even when the game works technically. We were running one process for all six windows, which
+FR-NET-6 and `runbook-network.md` had specified against since the beginning. See PLAN ADR-023.
+
+- [x] **T-2701** (P0) Verify the defect against evidence rather than a claim: confirm the rule text in `.extracted/project_book.txt` and confirm our own runtime from the event logs — DoD: Table 7 rule 1 and §2.4.2 quoted verbatim; both repos' logs show `series.complete 6` with roles alternating 1→6 [FR-NET-6a]
+- [x] **T-2702** (P0) Split the series across the two processes from the agreed opening role alone, with no cross-process coordination — DoD: `series.plays_window`/`split_roles`, `SeriesTracker.advance_to_ours`, `game.opening_role` in both repos [FR-NET-6a, rule 2]
+- [x] **T-2703** (P0) Stop deriving mini-game numbers from the count of outcomes: a process that skips three windows would number mini-game 2 as 1, and two reports numbering one match differently are contradictory — DoD: `SeriesTracker.cursor`; `outcomes` holds only games we played [rules 33-35]
+- [x] **T-2704** (P0) Rejoin the two halves into one report, filed by the process holding the last window — DoD: `reporting/sibling_merge`; a missing half emits `series.sibling_half_missing` and is never passed off as a whole series [FR-NET-6b, rules 33-35]
+- [x] **T-2705** (P1) Size the busy-wait for what it now waits out: a one-process opponent stays busy for a whole mini-game, and 40s of budget scored a technical outcome on a healthy peer — DoD: `BUSY_RETRIES` 10 → 90, bounded at six minutes [FR-NET-9]
+- [x] **T-2708** (P0) Identify a replayed attempt by deletion, not by a clock: each process clears its own halves as its series starts — DoD: `sibling_merge.clear_partials`, called from `actions.play_match` and nowhere earlier; regression test fails when the call is removed [FR-NET-6b, rules 33-35]
+- [x] **T-2706** (P1) Declare per-role endpoints only when both doors are genuinely served — DoD: `served_endpoints` publishes the split in split mode and the single served door otherwise; `is_our_own` still recognises both hostnames [FR-NET-3]
+- [ ] **T-2707** (P0) Activate it: play a full practice series with `opening_role` set in both repos, confirm six windows across two processes and one correctly merged report, then flip the key for counted play — DoD: a merged six-game report reconciled field-for-field against the opponent's; not to be done in the hours before a scheduled match [FR-NET-6a] — *2026-08-15: played four processes locally (`scripts/split_rehearsal.py --games 6`), two split teams. Six windows across our two processes, 1/3/5 and 2/4/6, rejoined into one six-game report, every audit `Verified OK`. It found T-2708, which had defeated the whole module. Still owed for the DoD: the same against a real opponent, reconciled field-for-field.*
+
+
+## E28 — Barriers, measured on an instrument that can price them (4 tasks)
+
+Opened 2026-08-16. The counted series against vibecode was lost as cop with **3 barriers placed of
+14**, and uoh-sqak beat us 15-60 using all fourteen. The dial that declined them was tuned on
+replayed opponent lines, which cannot be blocked — see PRD_strategy_cop.md.
+
+- [x] **T-2801** (P0) Show the replay instrument cannot price a barrier before re-tuning on it — DoD: count the archived lines whose thief stands on a cell we walled; 36 of 56 [FR-STR-0]
+- [x] **T-2802** (P0) Re-measure `barrier_threshold` against thieves that see the live board, and against the field rather than only against strong evaders — DoD: a flat 0.22 wins the evader column and *loses* 100 of 400 random-mover captures, so the bar became a phase: 0.40 standing, 0.24 after 8 close turns without converting; 396/400 random unchanged and 21/40 evaders against 9
+- [x] **T-2804** (P0) Keep both halves honest with a ratchet: a cop that stops walling, or one that walls too early, must fail — DoD: `test_the_stalled_chase_starts_walling_and_the_young_one_does_not` compares the shipped brain against `stall_patience=99` on both thief types and fails when the trigger is removed
+- [ ] **T-2803** (P0) Defend the thief against a wall built over several turns, not one — *2026-08-16: two-cut `adversarial_room` measured and **rejected**. It converts 40/40 captured into 0/40 against a flat-walling cop and regresses nothing measured, but it survives by sitting in a corner 78.6% of steps against 14.5% — the shape that lost games to uoh-sqak and vibecode. The exposure stays open: a cop spending barriers freely takes us 40 of 40. Needs a defence that keeps room and distance both.* [Conway's angel of power 1]
+
 ## E24 — Submission & freeze (70 tasks)
 
 - [x] **T-2401** (P0) Run the full machine-checkable compliance audit (guidelines digest §15: 150-line, ruff-0, coverage, uv-only, secrets, docs presence, versions 1.00) on BOTH repos; fix every finding — DoD: all automated gates green; audit log committed
@@ -900,7 +962,11 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E22 | Documentation deliverables | M2–M7 | 33 | 33 | 0 |
 | E23 | League operations | M6 | 24 | 9 | 15 |
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
-| **Total** | | | **669** | **609** | **60** |
+| E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
+| E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
+| E27 | Process separation: two roles, two processes | M6 | 8 | 7 | 1 |
+| E28 | Barriers, measured on an instrument that can price them | M6 | 4 | 3 | 1 |
+| **Total** | | | **696** | **631** | **65** |
 
 
 

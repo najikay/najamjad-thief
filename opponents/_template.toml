@@ -12,3 +12,15 @@ url      = ""
 group_id = ""
 name     = ""
 notes    = ""
+
+# What they told us, in writing, they would play. Optional, and checked rather
+# than trusted: `scripts/audit_opponent.py` compares these against the
+# `github_commit` their own step-0 record declares on the wire. A team that
+# messages one commit and plays another is a rule-53 finding, and without this
+# there is nothing to compare their declaration to.
+#
+# Full 40 characters. A 7-character prefix has already blocked a team in this
+# league, and a prefix cannot be compared to a full hash without guessing.
+[armed_commits]
+cop   = ""
+thief = ""

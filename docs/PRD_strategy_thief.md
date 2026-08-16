@@ -312,3 +312,33 @@ be justified by measurement. The cop is where the points are — it is worth its
 5-point survival floor and both of its dials measured 0/24 at every value
 against a correct thief. Any future search should be pointed there, and needs
 arenas that are not already saturated to be worth running at all.
+
+## Defending against a wall built over several turns — tried, rejected (2026-08-16)
+
+`adversarial_room` scores a landing by the room left after the cop's **single**
+most damaging next barrier. That is a defence against one wall, and a cop does
+not seal a room with one wall: it builds one over several turns. Conway's angel
+problem is the frame — an angel of power 1 loses to a devil blocking one square
+a turn by *progressive* encirclement, and our thief moves less than that angel.
+
+The two-cut version works, on the number it was aimed at. Against a cop walling
+flat-out (`barrier_threshold` 0.22 with no patience), over 40 starting
+positions: one cut deep is captured **40 of 40** at mean step 27.5, two cuts
+deep **0 of 40**, for 13.6 ms.
+
+**Rejected on how it survives.** It spends **78.6% of its steps in one of the
+four corner cells**, against 14.5% for the shipped version, and 87.7% on an
+edge. Corner camping is the exact shape that lost mini-games to uoh-sqak (herded
+along row 6 and killed at [6,0]) and to vibecode (sat on (6,5)/(6,6) from step 4
+and walled in at 14). `LOCAL_ROOM_RADIUS` and the tie-break rewrite exist to
+stop it. Buying survival against one synthetic cop by reintroducing it is the
+flattering-number trade, and the number would have looked excellent in a commit
+message.
+
+**The exposure it was aimed at is real and stays open.** Against a cop that
+spends its barriers freely we are captured 40 of 40 — and uoh-sqak, who beat us
+15-60, spent all fourteen. The honest fix has to keep the room *and* the
+distance rather than trading one for the other; a defence that answers
+encirclement by sitting in the most encirclable cell on the board has not
+answered it. Open, not solved.
+

@@ -545,6 +545,101 @@ asyncio task name. `drop()` reports `client.drop_failed` and *then* discards. Th
 generalises: a caught exception that is not re-raised must leave its message somewhere a
 person will read.
 
+### ADR-019 — Opponent auditing is post-match, and evidence never becomes a verdict *(status: accepted, 2026-08-14)*
+Commit-reveal proves a peer did not *rewrite* history. It proves nothing about whether they
+played by the rules, and we conflated the two for the whole league phase: after losing a
+friendly to vibecode we could not say from our own records whether their play was legal.
+
+**Post-match, not live.** Rules 33-35 void a match for *contradictory reports*, so an agent
+that acts on its own accusation mid-game converts a suspicion into a mutual zero. Every check
+here records the step and the two facts that conflict, and changes nothing about our play.
+That is also why the offline pass is the *only* place some of it can run: the protocol seals
+positions, so a peer transmits none, and `FairPlayMonitor`'s movement and Barrier-Law checks
+have nothing to read until the reveal. They were live code that could not fire on live input.
+
+**What a reveal can settle, and what only the wire can.** A peer's sealed record holds what
+that peer chose to seal. vibecode's carry `position`, `move` and `barrier_placed` — enough for
+movement legality, the Barrier Law, the budget and step order. They carry no `smell_grid`, no
+`capture_claim`, no `hint` and no timings, and the league's default `smell_binding: none` means
+that is normal rather than evasive. Those four are checkable only against what arrived on the
+wire, which is why `FrameLog` keeps frames, hints and claims *as sent*, and why an audit must
+report what it **could not** check rather than scoring silence as clean.
+
+**Both directions, on the same terms.** We instrumented inbound emission the day a peer sending
+29 cells and a peer sending none became indistinguishable in our logs, and never instrumented
+our own. So "are we disclosing on the same terms they are?" was unanswerable from our own
+event log — and the answer is no: we transmit pre-decay at peak 0.9, imreeyal and vibecode
+post-decay at 0.8. The handshake's `model_fingerprint` did not catch it because it locks the
+emission *maths*, not the transmitted snapshot.
+
+**Archives must be self-sufficient.** Live checks read frames held in memory for one mini-game;
+auditing happens months later from a directory. Recording a peak *value* without its *cell*
+left 68 vibecode frames whose honesty is now permanently unknowable.
+
+### ADR-020 — A barrier can shrink the board but can never take the thief *(status: accepted, 2026-08-15)*
+The book gives three capture conditions (rules 46-47): the cop enters the thief's cell and
+declares a claim; a barrier lands on the thief's cell; the thief is immobilised. **Only the
+first is implementable against the teams in this league.**
+
+The course reference's `domain/rules.py` contains exactly two predicates — `thief_result`
+(survival at the step cap) and `is_captured` (compare a claim against its own sealed
+position). There is no barrier-capture check and no immobilisation check anywhere in it.
+Every opponent we have met is reference-derived, so a wall dropped on their cell is a
+capture *we* score and *they* do not, and two reports disagreeing about a mini-game is the
+contradiction rules 33-35 void it for. `domain/endings.own_barrier_capture` already refuses
+to end a game that way, having learned it the expensive way: the reference kept playing
+while we closed the game, filed the capture, and read its silence at the audit as tampering.
+
+The consequence is a design constraint, not a detail: **barriers are for constraining, and
+every capture must arrive as a claim the thief confirms.** A strategy that wins by enclosure
+wins nothing.
+
+### ADR-021 — Pursuit cannot close on an open board, and the benchmark must be adaptive *(status: accepted, 2026-08-15)*
+Our cop tracked vibecode perfectly through a counted series and never captured: distance
+6-4-2 and then held at exactly 2 for 28 steps. That is not a defect to tune out.
+
+A 7x7 grid is the Cartesian product of two paths, and the cop number of a product of two
+trees is 2 (Maamoun and Meyniel 1987), so one cop cannot catch a perfect evader even under
+the friendlier alternating-move rules. An exhaustive fixed-point over all 49x49 states finds
+**zero** states from which a movement-only cop can force a capture under simultaneous moves.
+Barriers are the only resource that changes the answer — the Angel/Devil result (Berlekamp:
+the Devil beats a power-1 Angel) is the right frame, and our thief is weaker than a power-1
+Angel because it moves orthogonally rather than as a king.
+
+**What this means for measurement.** A recorded opponent line does not react: replay
+vibecode's real 35 cells and our cop captures at step 13, while the live series those cells
+came from stalled for 28 steps. Scripted replays measure "can we follow a path". Only an
+adaptive opponent measures "can we close on something that runs", and even a
+distance-maximising evader is a weak adversary — the theory says maximising distance
+self-corners, which is how uoh-sqak beat us 3/3. `tests/regression/cop_duel.py` exists so
+this is testable at all; there was no cop-side harness when a counted series was lost as cop.
+
+### ADR-022 — A tie-breaker must only break ties between genuinely equal moves *(status: accepted, 2026-08-15)*
+`_break_tie` varies the thief's choice by sub-game number so a scripted opponent cannot solve
+one line by replaying it — a real defence, added after one did exactly that. It was also
+deciding whether we lived.
+
+Replayed against vibecode's recorded cop line, survival depended entirely on the sub-game
+number: 1, 3, 4 and 6 survived; **2 and 5 were caught at step 13, both ending on (6,6)**. We
+play thief in the even sub-games, and the counted series lost all three of them.
+
+The cause is that every ranking key above the tie-break ties on an intact board. Component
+size is identical for every cell of one component; the exit count saturates at three by
+design. So the ranking collapsed to distance, and among equal-distance moves the variation
+picked — including moves that walk into a corner two barriers can seal.
+
+The fix is a key that separates them: **room reachable within two steps**, which is the
+quantity a cop's barriers actually attack (a corner reaches six cells, a central cell
+thirteen). Two constraints on it were found by measurement, and both matter more than the key
+itself. It is **gated on cop distance**, because ranking room above distance while a cop
+closes made the thief stand still through eight turns of an approach — the failure
+`test_amjad_g02` exists for. And `STAY` **loses every tie it is in**, because among moves the
+ranking calls equal, standing still in front of a closing cop is the one outcome known to
+cost games.
+
+The general rule: a tie-breaker that exists for unpredictability must be handed only choices
+that are equal *in outcome*. If it is deciding survival, the ranking above it is incomplete.
+
 ---
 
 ## 4. Interop & negotiation playbook (summary; full doc `docs/PRD_negotiation.md` at build time)
@@ -657,3 +752,48 @@ the four lifecycle artifacts, commit-reveal/audit, reporting, or the two counted
 `PRD_belief_engine.md` · `PRD_commit_reveal.md` · `PRD_negotiation.md` · `PRD_llm_router.md` ·
 `PRD_strategy_cop.md` · `PRD_strategy_thief.md` · `PRD_gatekeeper.md` · `PRD_reporting.md` —
 each: theory, I/O contracts, metrics, alternatives, test scenarios.
+
+### ADR-023 — The two roles are two processes, and the series is split between them *(status: accepted, 2026-08-15)*
+Book Appendix ה Table 7 rule 1: `מריצים את קוד הגנב והשוטר בשני תהליכים נפרדים לחלוטין` —
+run the thief's code and the cop's code in two completely separate processes, sanction
+`כישלון מוחלט`. §2.4.2 boxes the same rule and ends `ופוסל את הפתרון — גם אם המשחק ״עובד״
+טכנית`: it disqualifies the solution *even if the game works technically*.
+
+We were not doing it. One process played all six windows and alternated roles inside itself;
+both repos' event logs show `series.complete 6` with roles alternating 1→6, and which role we
+opened in was decided by which repo the operator launched. FR-NET-6 and `runbook-network.md`
+had specified separation correctly since the beginning, so our own documents sided with the
+book against our runtime — the worst shape for a grader to find it in.
+
+**The rule's purpose was never breached.** §2.4.2's rationale is a back door onto an
+opponent's local truth. Our cop and our thief never played each other, never coexisted in a
+mini-game, and the opponent was always remote. Three counted series ran clean, and interop
+never cared. This is a letter-of-the-rule defect with a project-level sanction, which is
+precisely why it is not optional.
+
+**The design turns on one observation:** which windows belong to which process is a pure
+function of the agreed opening role — opening as thief, our thief takes 1/3/5 and our cop
+takes 2/4/6. Neither process has to ask the other, so nothing resembling shared state is
+needed to split them. `game.opening_role` carries that value, identically in both repos,
+because it names the *group's* role rather than the process's.
+
+Two consequences had to be designed rather than discovered:
+
+- **Numbering stopped being `len(outcomes) + 1`.** That was the same thing only while one
+  process played every window; skipping three of them would have had our cop announce
+  mini-game 2 as mini-game 1. `SeriesTracker` now counts windows with a cursor and records
+  outcomes only for games it actually played — which is also exactly the shape the merge needs.
+- **Neither process can file alone.** Rules 33-35 want one report covering six mini-games and
+  void both teams for a contradictory one. The process holding the last window files, after
+  rejoining its sibling's half from disk; the other writes `workspace/partials/` and exits.
+  The rejoin is post-play, from finished records — not a channel between two live agents.
+
+Waiting behaviour changed too: our cop process now reaches mini-game 2 immediately and, against
+an opponent still running one process, waits out a whole mini-game on `busy`. Forty seconds of
+budget against a multi-minute game scored a technical outcome on a healthy peer, so
+`BUSY_RETRIES` went from 10 to 90 — six minutes, still bounded.
+
+**Shipped inert.** `opening_role = ""` keeps the old single-process behaviour, so the counted
+series already scheduled run on the code that has produced three cleanly reconciled reports.
+Flipping the key is the whole activation, and it happens after a full practice series has been
+played and merged end to end — not in the hours before a match.

@@ -63,7 +63,13 @@ class SilentPeerBelief:
             ledger=CommitLedger(sub_game=1),
         )
         self._cop_line = tuple(cop_line)
-        self._barriers = tuple(barriers)
+        # Keyed by the step each wall was declared on, so an archived line keeps
+        # its real timing — see `run_duel` for what compacting it costs.
+        self._barriers = (
+            {int(step): tuple(cell) for step, cell in barriers.items()}
+            if isinstance(barriers, dict)
+            else {step: tuple(cell) for step, cell in enumerate(barriers, start=1)}
+        )
         self._emit_scent = emit_scent
         self.events: list[str] = []
 
@@ -80,8 +86,9 @@ class SilentPeerBelief:
             "commit": f"{step:064x}",
             "capture_claim": [cop[0], cop[1]],
         }
-        if step <= len(self._barriers):
-            message["barrier_placed"] = list(self._barriers[step - 1])
+        wall = self._barriers.get(step)
+        if wall is not None:
+            message["barrier_placed"] = list(wall)
         if self._emit_scent:
             message["smell_grid"] = {f"{cop[0]},{cop[1]}": 0.9}
         return message

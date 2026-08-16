@@ -49,18 +49,18 @@ def test_the_declared_count_comes_from_the_tracker_not_a_setting(store: Path) ->
     honest team declares a wrong one.
     """
     tracker = CountedGames.load(store)
-    tracker.record("uoh-sqak", game_uid="g1", timestamp="2026-08-03T00:00:00Z")
-    tracker.record("ahk-yosi", game_uid="g2", timestamp="2026-08-03T01:00:00Z")
+    tracker.record("peer-one", game_uid="g1", timestamp="2026-08-03T00:00:00Z")
+    tracker.record("peer-two", game_uid="g2", timestamp="2026-08-03T01:00:00Z")
 
     identity = identity_from_config(Manager(store))
 
     assert identity["counted_matches_played"] == 2
-    assert identity["opponents_already_counted"] == ["uoh-sqak", "ahk-yosi"]
+    assert identity["opponents_already_counted"] == ["peer-one", "peer-two"]
 
 
 def test_the_count_survives_a_restart(store: Path) -> None:
     """A lost count is a false declaration next time, so it persists at once."""
-    CountedGames.load(store).record("uoh-sqak", game_uid="g1", timestamp="t")
+    CountedGames.load(store).record("peer-one", game_uid="g1", timestamp="t")
 
     assert tracker_for(Manager(store)).count == 1
 
@@ -68,7 +68,7 @@ def test_the_count_survives_a_restart(store: Path) -> None:
 def test_the_declaration_reaches_the_result_artifact(store: Path) -> None:
     """The lecturer reconciles reports; the figure has to be in the one we send."""
     tracker = CountedGames.load(store)
-    tracker.record("uoh-sqak", game_uid="g1", timestamp="t")
+    tracker.record("peer-one", game_uid="g1", timestamp="t")
 
     block = declaration_group(identity_from_config(Manager(store)))
 
@@ -78,10 +78,10 @@ def test_the_declaration_reaches_the_result_artifact(store: Path) -> None:
 def test_a_second_match_against_one_opponent_is_refused(store: Path) -> None:
     """Rule 52 seals a pairing once counted; a repeat scores nothing."""
     tracker = CountedGames.load(store)
-    tracker.record("uoh-sqak", game_uid="g1", timestamp="t")
+    tracker.record("peer-one", game_uid="g1", timestamp="t")
 
     with pytest.raises(Exception, match="already been counted"):
-        tracker.record("uoh-sqak", game_uid="g2", timestamp="t")
+        tracker.record("peer-one", game_uid="g2", timestamp="t")
 
     assert tracker.count == 1, "a refused match must not inflate the declaration"
 
@@ -132,7 +132,7 @@ def test_a_counted_match_is_recorded_once_it_has_been_filed(store: Path, monkeyp
 
     monkeypatch.setattr(practice, "current", lambda: practice.PracticeMode(enabled=False))
     bus = Bus()
-    match_filing._record_counted(Manager(store), bus, "uoh-sqak", "uid-1")
+    match_filing._record_counted(Manager(store), bus, "peer-one", "uid-1")
 
     assert "counted.recorded" in kinds(bus)
     assert tracker_for(Manager(store)).count == 1
@@ -151,7 +151,7 @@ def test_a_practice_run_never_touches_the_count(store: Path, monkeypatch) -> Non
         practice, "current", lambda: practice.PracticeMode(enabled=True, redirect_to="me@example.com")
     )
     bus = Bus()
-    match_filing._record_counted(Manager(store), bus, "uoh-sqak", "uid-1")
+    match_filing._record_counted(Manager(store), bus, "peer-one", "uid-1")
 
     assert "counted.skipped" in kinds(bus)
     assert tracker_for(Manager(store)).count == 0
@@ -163,8 +163,8 @@ def test_replaying_the_same_opponent_does_not_double_count(store: Path, monkeypa
 
     monkeypatch.setattr(practice, "current", lambda: practice.PracticeMode(enabled=False))
     bus = Bus()
-    match_filing._record_counted(Manager(store), bus, "uoh-sqak", "uid-1")
-    match_filing._record_counted(Manager(store), bus, "uoh-sqak", "uid-2")
+    match_filing._record_counted(Manager(store), bus, "peer-one", "uid-1")
+    match_filing._record_counted(Manager(store), bus, "peer-one", "uid-2")
 
     assert "counted.duplicate" in kinds(bus)
     assert tracker_for(Manager(store)).count == 1

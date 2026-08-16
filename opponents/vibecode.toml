@@ -1,0 +1,21 @@
+# vibecode
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "http://62.56.220.143:61223/mcp"
+group_id = "vibecode"
+name     = "vibecode"
+notes    = "Ron Marom, Amit Kuperminz. TWO processes, TWO ports (cop :61224, thief :61223), static IP, no tunnel — the first genuinely role-split opponent, which the pre-handshake retarget exists for. We open as COP (najamjad cop in 1/3/5), so sub-game 1 dials their THIEF door :61223 and the retarget swaps per sub-game. No LLM. Terms byte-identical: game_uid eb6ddfa3 verified both ways."
+
+# Sent in writing 2026-08-14 as plain text, full 40 characters, after the
+# formatting-mangled first attempt. This is the pair they intend to play the
+# counted series on. `scripts/audit_opponent.py` compares it per role against
+# the `github_commit` their own step-0 declares on the wire.
+#
+# Their thief is unchanged from the 19:15 friendly; their cop moved for the
+# result-claim fix (survival, not timeout, when no capture occurs) and the
+# psutil/hardware_spec fix.
+[armed_commits]
+cop   = "6c3ea00d33ece171c0c7a8c5fd8eff52ac677992"
+thief = "8dc9ff66094a0aa9c1f87ae8c8625c1a88c63b32"

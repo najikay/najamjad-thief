@@ -34,14 +34,13 @@ from ..domain.board import Board
 from ..domain.params import Position
 from ..shared.strength import plays_full_strength
 from . import blind, solver, thief_safety
-from .base import apply, expected_distance
+from .base import apply, confident_peak, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
 
 #: How many times the uniform share the peak must hold before we call the
 #: belief a localisation. Four is comfortably below what a real scent fix
 #: produces (the freshest deposit clamps at the ceiling while the rest decay)
 #: and comfortably above a flat prior, which is what step 1 looks like.
-CONFIDENT_SHARE = 4.0
 DISTANCE_WEIGHT = 1.0
 ROOM_WEIGHT = 0.9
 SCENT_WEIGHT = 0.6
@@ -231,19 +230,7 @@ class ThiefBrain:
         and when we have no idea the diffuse-belief policy below is the honest
         answer.
         """
-        if not belief:
-            return None
-        total = sum(belief.values())
-        if total <= 0:
-            return None
-        peak = max(belief, key=lambda cell: belief[cell])
-        # Capped at a half: `CONFIDENT_SHARE / len(belief)` alone demands more
-        # than all the mass when the belief names only a cell or two, so a
-        # *certain* localisation was being rejected as unreliable — the first
-        # version of this check broke the replay harness, which supplies exactly
-        # that shape.
-        floor = min(CONFIDENT_SHARE / len(belief), 0.5)
-        return peak if belief[peak] / total >= floor else None
+        return confident_peak(belief)
 
     def _break_tie(self, tied: tuple[Move, ...], facts: Any) -> Move:
         """Pick among equally safe moves, unpredictably but never unsafely.

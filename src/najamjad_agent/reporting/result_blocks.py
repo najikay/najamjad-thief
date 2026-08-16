@@ -126,7 +126,10 @@ def series_tokens(rows: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def final_result_block(
-    result: Any, tokens: dict[str, int] | None = None, rename: dict[str, str] | None = None
+    result: Any,
+    tokens: dict[str, int] | None = None,
+    rename: dict[str, str] | None = None,
+    league: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Series totals, as the league table reads them.
 
@@ -146,11 +149,18 @@ def final_result_block(
         # report against the opponent's needs to see that three mini-games
         # ended off the board, not that three of them were drawn.
         "technical_endings": int(getattr(result, "technical", 0)),
-        "winner_group": result.winner_group,
+        # Relabelled like the score maps beside it. It was not, and the gap only
+        # opens when we LOSE: the tracker scores against its `"them"` placeholder
+        # until the handshake names the opponent, so a defeat would have filed
+        # `winner_group: "them"` next to a `total_score` keyed by their real
+        # group id — our own artifact contradicting itself, on the one field a
+        # league table reads first. Five straight wins is why nothing showed it.
+        "winner_group": swap.get(result.winner_group, result.winner_group),
         "series_tie": bool(result.series_tie),
         "tokens_total_series": dict(tokens or {}),
         **({"tie_award": award} if result.series_tie and (award := getattr(
             result, "tie_award", None)) is not None else {}),
+        **(league or {}),
     }
 
 

@@ -91,7 +91,18 @@ def served_endpoints(manager: Any) -> dict[str, str]:
     hostname = str(manager.get("tunnel.hostname", "") or "").strip()
     port = int(manager.get("network.my_port", 8802))
     url = f"https://{hostname}/mcp" if hostname else f"http://127.0.0.1:{port}/mcp"
-    return {"cop": url, "thief": url}
+    if not str(manager.get("game.opening_role", "") or "").strip():
+        return {"cop": url, "thief": url}
+    # Split across two processes (book Appendix ה rule 1), so both doors are
+    # genuinely live and the per-role declaration is true again — this is the
+    # one condition under which naming an address we do not serve ourselves is
+    # honest, because our sibling serves it. Anything the config leaves blank
+    # still falls back to the door we personally answer.
+    declared = dict(manager.get("game.mcp_servers", {}) or {})
+    return {
+        "cop": str(declared.get("cop") or url),
+        "thief": str(declared.get("thief") or url),
+    }
 
 
 def spec_for_declaration() -> dict[str, Any]:

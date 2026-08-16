@@ -18,6 +18,14 @@ MIN_GRID_SIZE = 7
 MIN_MAX_BARRIERS = 14
 MIN_MAX_MOVES = 35
 MIN_SURVIVAL_THRESHOLD = 35
+# Table 19's timing floors. These are floors in the same sense as the four above
+# — an agreement may grant *more* time, never less — and they were missing from
+# the contract gate while the negotiation playbook enforced them. `validate_terms`
+# accepted `response_timeout_sec: 1` right up until 2026-08-14, which is a peer
+# winning every mini-game on `EndReason.TIMEOUT` without playing a move. The
+# playbook only governs terms we *negotiate*; this governs terms we sign.
+MIN_RESPONSE_TIMEOUT_SEC = 30
+MIN_WATCHDOG_TIMEOUT_SEC = 60
 FIXED_MOVE_SET = tuple(move.value for move in Move)
 VALID_CORNERS = ("top-left", "top-right", "bottom-left", "bottom-right")
 

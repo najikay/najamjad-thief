@@ -44,3 +44,27 @@ def build_message(sender: str, recipient: str, subject: str, body: str, attachme
         filename=attachment.name,
     )
     return base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+
+
+def report_subject(report: Path, ours: str, fallback: str) -> str:
+    """The reference's verbatim subject line, winner named.
+
+    `Police-Thief series result: winner <group_id> (reported by <role>)`. Ours
+    carried the game id alone, so two files for one series were
+    indistinguishable in the lecturer's inbox. Outside every hash and refuses
+    nothing — which is exactly why it is worth matching rather than arguing.
+
+    The role is the side we opened as: roles alternate, so "our role" is only
+    well defined for one sub-game, and the reference reports the one its runner
+    starts on. A subject is never worth failing a delivery for, so anything
+    unreadable falls back to the game id.
+    """
+    import json
+
+    try:
+        body = json.loads(report.read_text(encoding="utf-8"))
+        winner = body["final_result"]["winner_group"] or "tie"
+        role = body["sub_games"][0]["roles"][ours]
+    except Exception:  # noqa: BLE001 - cosmetic field, never fatal to delivery
+        return fallback
+    return f"Police-Thief series result: winner {winner} (reported by {role})"

@@ -16,6 +16,7 @@ from .hint_evidence import CredibilityTracker
 from .ledger import CommitLedger
 from .params import Position
 from .scent import ScentField
+from .scent_audit import FrameLog
 
 
 @dataclass
@@ -74,6 +75,10 @@ class GameState:
     # previous sighting and a peer that stops declaring must not reset that.
     cop_sighting: Any = None
     last_sighting: Any = None
+    #: The opponent's transmitted grids, kept for the length of this mini-game
+    #: and read once at the audit, when their revealed positions finally make
+    #: the comparison possible. See `domain/scent_audit.py`.
+    opponent_frames: Any = field(default_factory=FrameLog)
     # How much this opponent's words have been worth so far. Lives on the
     # state rather than in `hint_evidence` so it accumulates across the
     # whole mini-game: a peer caught lying once is discounted for the rest
