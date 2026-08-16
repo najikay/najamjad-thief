@@ -173,7 +173,7 @@ horizon = 3
 stall_trigger = 3
 
 [strength]
-level = "sandbagged"
+level = "full"
 
 # How much of our own evidence we hand the opponent each turn.
 #

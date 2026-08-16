@@ -66,8 +66,14 @@ def test_our_thief_outlasts_our_cop(params: GameParams) -> None:
     """
     result = run_cop_duel(CopBrain(), [], params, thief_brain=ThiefBrain())
 
-    assert result.barriers_used >= 1, "a cop that spends no barriers is not the adversary here"
-
+    # No assertion on barriers spent, and the reason is the point. It used to
+    # demand at least one, so that this could not pass by the cop quietly
+    # giving up on walls. Since the thief started keeping a 4x4 in reach before
+    # the cop can cut it off, our cop spends **none** here — not because it
+    # stopped trying but because it is never offered ground worth a wall. Same
+    # symptom, opposite cause. The wall-spending guarantee moved to
+    # `test_the_stalled_chase_starts_walling_and_the_young_one_does_not`, which
+    # measures it against a thief that does give it the chance.
     assert not result.captured, f"our thief was caught at step {result.step}"
     assert result.step == OUR_THIEF_SURVIVES_OUR_COP
 

@@ -128,8 +128,23 @@ class ThiefBrain:
             # and a thief's is always zero, so passing it disabled the cut-cell
             # guard for the only role that needs it. The board carries the
             # cop's true remaining count.
-            tied = thief_safety.choose(board, origin, cop, legal)
-            return self._break_tie(self._provably_safe(board, origin, cop, tied) or tied, facts)
+            # **The solve filters the candidates, not the winners.** It used
+            # to run over `tied` — the moves the heuristics had already called
+            # equal-best — so a move that is provably lost but *uniquely*
+            # top-ranked never reached it, and `or tied` then played it. That
+            # is not a tie-break, it is the difference between playing well and
+            # playing correctly, and it is exactly how a sealing cop takes us:
+            # the heuristics like a cell for its room while the solve knows the
+            # cop can force a capture from it.
+            #
+            # Filtering first costs nothing when nothing is losing, which on an
+            # intact grid is always. Falling back to the whole legal set when
+            # *everything* loses is deliberate: a lost position is where an
+            # imperfect opponent might still err, and refusing to move is not
+            # available to us.
+            options = self._provably_safe_moves(board, origin, cop, legal) or legal
+            tied = thief_safety.choose(board, origin, cop, options)
+            return self._break_tie(tied, facts)
         open_cells = sum(1 for cell in board.cells() if board.is_open(cell))
         if blind.uninformative(belief, open_cells):
             # A belief spread across most of the board cannot name a *direction*
@@ -212,6 +227,18 @@ class ThiefBrain:
         """
         safe = set(solver.safe_landings(board, cop, origin))
         return tuple(move for move in tied if apply(board, origin, move) in safe)
+
+    def _provably_safe_moves(
+        self, board: Board, origin: Position, cop: Position, legal: tuple[Move, ...]
+    ) -> tuple[Move, ...]:
+        """The legal moves that do not hand the cop a forced capture.
+
+        The same filter as `_provably_safe`, applied to the candidates before
+        they are ranked rather than to the ranking's winners. Kept as its own
+        method because the two are asked at different moments and only this one
+        is allowed to be empty.
+        """
+        return self._provably_safe(board, origin, cop, legal)
 
     def _cop_cell(self, belief: dict[Position, float]) -> Position | None:
         """The cop's cell when the belief actually names one, else None.
