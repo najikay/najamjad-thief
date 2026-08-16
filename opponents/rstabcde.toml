@@ -1,0 +1,70 @@
+# rstabcde
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+#
+# THEIR THIEF DOOR. Used by najamjad-cop, which faces their thief in every window it plays (2/4/6, since we open as thief).
+url      = "https://explode-refutable-policy.ngrok-free.dev/mcp"
+group_id = "rstabcde"
+name     = "rstabcde"
+notes    = """Rosette Khell and Arthur Rennert (rstabcde). First meeting, so the diversity reward rides on
+whoever wins the counted series — they read it the same way, in writing.
+
+TWO PROCESSES, one per role, same arrangement as ours. Their cop dials our
+thief door and their thief dials our cop door, so no per-window retarget is
+needed on either side.
+
+  repos        github.com/Rosette28/Police-AI-Agents-Project
+               github.com/Rosette28/Thief-AI-Agents-Project
+  agent email  ArthurRennert@gmail.com
+
+NGROK STATIC DOMAINS, stable across their restarts - they said so explicitly
+and these are `.ngrok-free.dev` reserved names rather than the rotating
+`*-free.app` kind. So no re-carding between sessions, unlike ali-ahm1. They go
+live shortly before T; a connection refused before then is them not started yet,
+not a wrong address.
+
+  their cop    https://anyone-paragraph-spruce.ngrok-free.dev/mcp
+  their thief  https://explode-refutable-policy.ngrok-free.dev/mcp
+
+If either address ever does change, update the `url` line only:
+`match_day.py card` rewrites the whole file and would drop these notes.
+
+SETTLED IN WRITING BEFORE PLAY:
+  terms digest    a284082dfb1572236f1b614d29295a99625539c7d33a096f7f8921bafbc3d08d
+                  computed independently on their side and identical - the
+                  handshake should lock first try.
+  scent model     81ebee59640e80eae8ca9ee5f86abd26e7edf5cdbb27d15925cb6ee45ca6ddf4
+                  subtractive_chebyshev_v1, they compute the same hash.
+  wire shape      course reference, four tools, no variant.
+  move order      thief-first, confirmed.
+  emission        they send scent AND hints, so we play --talk and match them.
+  opening role    WE OPEN AS THIEF (they configure police for mini-game 1):
+                  najamjad-thief takes windows 1/3/5, najamjad-cop takes 2/4/6.
+  llm_model       "template" - pure Python, zero tokens on their side.
+  counted so far  1 (vibecode). We are at 3, one of which is also vibecode; that
+                  overlap does not affect diversity, which is about first
+                  meeting between the two groups.
+
+STILL OUTSTANDING, chase before the warm-up:
+  1. both ngrok URLs (they arrive at T-10);
+  2. both 40-character commit hashes, one per repo, from a clean tree;
+  3. DOES THEIR RECEIVER DECAY AN ARRIVING GRID? They offered to confirm. We
+     transmit pre-decay (0.9 peak). If they also decay on receipt our trail nets
+     one decay, which is right. If they take frames as-is we must send the
+     decayed form instead, or they read our field one step stale all series.
+
+EXPECT DETERMINISM. `llm_model: template` means no LLM anywhere in their loop,
+which is the profile of the two opponents that played byte-identical lines
+against us - uoh-sqak solved one thief line three times running. Their hints are
+template text, so `parse_locally` will most likely read nothing from them; that
+costs us nothing, it just means the hint channel is decorative this series."""
+
+# Awaiting their reply, promised before the warm-up. Full 40 characters, one per
+# repo - their cop and thief are separate checkouts, so the pair can differ.
+# `scripts/audit_opponent.py` compares these per role against the `github_commit`
+# their step-0 declares.
+[armed_commits]
+cop   = ""
+thief = ""
