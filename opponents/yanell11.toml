@@ -1,0 +1,96 @@
+# yanell11
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+#
+# ONE door for both their roles - they run a single process for all six
+# mini-games. There is deliberately no `yanell11-cop.toml`: a second card would
+# imply a second door they do not have.
+url      = "https://dpi-rights-budgets-accompanying.trycloudflare.com/mcp"
+group_id = "yanell11"
+name     = "yanell11"
+notes    = """Nell Kh and Yanal Serhan (yanell11). First meeting for both of us - they are at
+0 counted, we are at 3 - so the diversity reward rides on the counted series.
+
+ONE PROCESS, ONE DOOR on THEIR side, both roles, for all six mini-games (a
+fresh handler swapped in per game behind one long-lived server).
+
+**We still run two processes. Rule 1 is unconditional and does not bend for a
+peer's topology** - Appendix ה Table 7 rule 1, two completely separate
+processes, sanction `כישלון מוחלט`, and §2.4.2 disqualifies a solution that
+breaks it even when the game works technically. An earlier version of this card
+said to play unsplit against them; that was wrong and is why this paragraph
+exists.
+
+Their single door costs us nothing: both our processes dial the one address they
+send, and `peer_endpoint.declared_endpoint` takes a lone declared server
+whatever key it is labelled under. What THEY must do is change their outbound
+target per mini-game - our thief door in 1/3/5, our cop door in 2/4/6 - which is
+cheap for them because they already swap a handler per game, and both addresses
+are in our `mcp_servers` block every handshake.
+
+If they cannot do that before the warm-up, the answer is to agree something with
+them, not to fold our two processes into one.
+
+We open as THIEF (agreed in writing): najamjad-thief takes windows 1/3/5 and
+najamjad-cop takes 2/4/6, both with `--opens thief`.
+
+  agent email  yanalserhan3@gmail.com  (cc nellkh2007@gmail.com if asked)
+  repos        github.com/Nell-Kh/police-agent · github.com/Nell-Kh/thief-agent
+               private until submission, so a 404 is expected rather than wrong
+  commit       27060c13a7847b94d552b81ca60d78af2f1e1cf2 - ONE hash for both
+               roles, since both run from a single checkout
+  llm_model    claude-haiku-4-5, hints and dialogue only, moves plain Python
+
+CLOUDFLARE QUICK TUNNEL (moved off ngrok 2026-08-16 after their free-tier
+per-minute cap starved a series): their address re-mints on every restart and they know
+it. They send it right before play and again after any restart. RE-CARD
+IMMEDIATELY BEFORE EVERY SESSION - a stale URL is a silent 900-second opponent
+wait, not an error. Update the `url` line only; `match_day.py card` rewrites the
+whole file and would drop these notes.
+
+SETTLED IN WRITING:
+  terms         they reproduced our a284082d... digest from our fourteen keys.
+                Their own object differed on `setting` alone ("Haifa" vs "New
+                York") and they took ours, so the contract is byte-identical.
+  wire shape    course reference, and they already send the reference argument
+                names - `message` on negotiate/receive_turn/receive_control,
+                `payload` on submit_audit. Audit reveal is an envelope with
+                `sender` and `records`, same as ours. No adapter needed.
+  move order    thief-first, confirmed.
+  opening role  we are thief in 1/3/5, they are police; swapping each game.
+  emission      they send scent AND hints, so we play --talk.
+
+THE SCENT MODEL IS THE ONE OPEN BLOCKER, and the fact that settles it is ours:
+we declare the hash under the key `scent_model_sha256`, which is exactly the key
+their negotiate refuses on when two peers declare the same locked family with
+different hashes. So we DO collide: ours is subtractive_chebyshev_v1
+(81ebee59...), theirs is the kit's multiplicative_book_v1 (934c220d...).
+
+What is asymmetric, and worth telling them plainly: **we never read theirs.**
+Nothing in this repo consumes a peer's `scent_model_sha256` - the only refusal
+on our side is the byte-identical terms check (rule 11). So the refusal is
+theirs alone, and either side omitting the key clears it.
+
+THEIR FIELD IS NOT SHAPED LIKE OURS, and they have it backwards about ours:
+they think we send a fresh 5x5 window. We do not - `emission.FULL` sends
+`ScentField.snapshot()`, the whole accumulated board-wide trail, exactly like
+theirs. The 5x5 in our brief is the *deposit kernel*, not the wire message. Tell
+them: it matters because they are building a fit-quality guard against the wrong
+picture of our field, and their inversion may work better than they expect.
+
+Their receiver does NOT decay an arriving frame, and we promised the decayed
+form to anyone in that position. We have no switch for it today (modes are
+full/window/none, all sent before the turn's decay), so either we add one or
+they decay on receipt. Worth measuring before promising: the peak sits on our
+true cell either way, so the difference is one decay step of magnitude, not
+position."""
+
+# Awaiting their reply, promised before the warm-up. They run both roles from
+# ONE checkout, so a single hash covers both - unlike every other opponent so
+# far. `scripts/audit_opponent.py` compares it against the `github_commit` their
+# step-0 declares.
+[armed_commits]
+cop   = "27060c13a7847b94d552b81ca60d78af2f1e1cf2"
+thief = "27060c13a7847b94d552b81ca60d78af2f1e1cf2"
