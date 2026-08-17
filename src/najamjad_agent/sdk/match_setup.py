@@ -27,6 +27,7 @@ from ..shared.gatekeeper import ApiGatekeeper
 from ..shared.rate_limits import for_service, load_rate_limits
 from ..strategy.cop_brain import CopBrain
 from ..strategy.thief_brain import ThiefBrain
+from ..strategy.variants import candidate
 from .plugins import resolve
 from .state_setup import state_factory
 
@@ -68,10 +69,23 @@ def brain_factory(manager: Any = None) -> Any:
         if _accepts(brain, "strength"):
             tuning[role]["strength"] = level
 
+    shipped = {Role.COP: cop, Role.THIEF: thief}
+    opponent = str(manager.get("network.opponent_group_id", "") if manager else "")
+
     def build(role: Role, state: GameState) -> Any:
-        """Instantiate the brain for one mini-game."""
+        """Instantiate the brain for one mini-game, honouring the probe.
+
+        A warm-up plays a different candidate per window; a counted run plays the
+        one that won this opponent's warm-up. Both resolve to the shipped brain on
+        any doubt — `candidate` swallows its own failures, because rule 35 scores
+        a match we could not start as a loss and a preference file is not allowed
+        to cost one.
+        """
         supplier = lambda: state.board  # noqa: E731 - a one-line accessor is clearer inline
-        return (cop if role is Role.COP else thief)(board_supplier=supplier, **tuning[role])
+        window = getattr(state, "sub_game", 1)
+        brain, dials = candidate(role, window, level, opponent, shipped[role])
+        merged = {**tuning[role], **{k: v for k, v in dials.items() if _accepts(brain, k)}}
+        return brain(board_supplier=supplier, **merged)
 
     return build
 
