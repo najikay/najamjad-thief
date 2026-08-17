@@ -56,7 +56,11 @@ def sub_game_rows(
             "score": {ours: outcome.our_score, theirs: outcome.their_score},
             "tokens": {ours: int(game.get("tokens", 0)), theirs: int(declared.get("tokens", 0))},
             "github_commit": {
-                ours: commit,
+                # The commit the *playing* process recorded, not the filer's.
+                # A split series has two HEADs and this row belongs to one of
+                # them; `commit` remains the fallback for an unsplit run and for
+                # older halves that predate the field (T-2710).
+                ours: str(game.get("our_commit") or commit),
                 # Step-0 first, then what they declared at the handshake.
                 # uoh-ay26 send `git_commit_hash` in their identity and omit
                 # it from step-0, so reading only the sealed record filed

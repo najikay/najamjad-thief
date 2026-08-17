@@ -13,9 +13,26 @@ fail at filing time — which rule 35 scores as not having played at all.
 from datetime import UTC, datetime
 from typing import Any
 
+from ..shared.sysinfo import git_commit
 from .audit import AuditReport
 from .game_state import GameState
 from .series import SubGameOutcome
+
+
+def our_commit() -> str:
+    """The commit *this* process is playing from, stamped per mini-game.
+
+    Rule 53 asks which code played a game, and in a split series the answer
+    differs by window: the thief repo plays 1/3/5 and the cop repo 2/4/6, from
+    two separate checkouts with two separate HEADs. `result_blocks` read one
+    `git_commit()` at filing time and wrote it on all six rows, so the filer
+    stamped its own commit over the three games its sibling had played — the
+    2026-08-17 MOAAMOHA practice attributed our thief's games to the cop repo,
+    while the opponent's own report had the pair right from our step-0. Recorded
+    here, at the moment the game is remembered, so the value belongs to the
+    process that actually played it and rides through `write_partial` unchanged.
+    """
+    return git_commit()
 
 
 def now_iso() -> str:
@@ -43,6 +60,7 @@ def played_record(
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": state.role.value,
@@ -84,6 +102,7 @@ def unplayed_record(sub_game: int, started_at: str, outcome: SubGameOutcome) -> 
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": outcome.role.value,
@@ -123,6 +142,7 @@ def abandoned_record(
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": outcome.role.value,
