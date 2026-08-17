@@ -86,7 +86,9 @@ PracticeOption = Annotated[bool, typer.Option("--practice/--counted", help="redi
 #: working. Not the shipped default and deliberately not a config edit: the
 #: panel renders our belief grid and our sealed state (rules 8-9), so exposing
 #: it is a per-run decision the event log records, not a committed one.
-DashHostOption = Annotated[str, typer.Option("--dashboard-host", help="bind the dashboard elsewhere, e.g. 0.0.0.0")]
+#: Takes `HOST`, `HOST:PORT` or `:PORT` — a split match needs the second
+#: process off 8000 or it serves nothing while appearing to serve a panel.
+DashHostOption = Annotated[str, typer.Option("--dashboard-host", help="bind the dashboard elsewhere, e.g. 0.0.0.0 or :8010")]
 
 
 @app.command()
@@ -156,12 +158,16 @@ def match(
             f"{game['audit']}{clash}"
         )
     typer.echo(f"series: {result.total_score} winner={result.winner_group or 'tie'}")
-    if dashboard:
+    if sdk.actions.dashboard_url:
         # The process used to exit here, taking the dashboard with it — so the
         # socket dropped ("reconnecting in 10s…") and the report panel froze on
         # "waiting for the match to end" moments after the mail had gone. The
         # one moment an operator most wants to read those panels is now.
-        typer.echo("dashboard still serving — Ctrl+C when you have finished reading it")
+        #
+        # Asking the SDK rather than the flag: when the port was taken this held
+        # a terminal open for a panel served by the sibling process, and named
+        # no URL, so the operator could not tell whose board they were reading.
+        typer.echo(f"dashboard serving {sdk.actions.dashboard_url} — Ctrl+C when finished")
         _serve_until_interrupted(sdk)
 
 

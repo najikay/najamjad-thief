@@ -25,10 +25,13 @@ def test_it_is_not_running_before_it_starts():
 
 
 def test_starting_launches_a_daemon_thread():
-    server = build()
+    # Port 0 because `start()` now claims the socket itself: a fixed port would
+    # make these tests collide with each other exactly as the two match
+    # processes did, which is the bug under test rather than a fixture detail.
+    server = build(port=0)
 
     with mock.patch("uvicorn.Server") as runner:
-        runner.return_value.run = lambda: None
+        runner.return_value.run = lambda sockets=None: None
         assert server.start() is True
 
     assert server.error == ""
@@ -46,7 +49,7 @@ def test_starting_twice_does_not_start_twice():
 
 def test_a_failure_to_start_is_reported_and_survivable():
     """The whole point: the match continues without a dashboard."""
-    server = build()
+    server = build(port=0)
 
     with mock.patch("uvicorn.Config", side_effect=RuntimeError("port taken")):
         started = server.start()
@@ -57,7 +60,7 @@ def test_a_failure_to_start_is_reported_and_survivable():
 
 
 def test_a_missing_web_stack_is_survivable():
-    server = build()
+    server = build(port=0)
 
     with mock.patch.dict("sys.modules", {"uvicorn": None}):
         assert server.start() is False

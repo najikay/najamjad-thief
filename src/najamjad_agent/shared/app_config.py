@@ -71,8 +71,12 @@ LOOPBACK = "127.0.0.1"
 LOOPBACK_HOSTS = frozenset({LOOPBACK, "localhost", "::1"})
 
 
-def dashboard_bind(setup: dict[str, Any]) -> tuple[str, int]:
+def dashboard_bind(setup: dict[str, Any], override: str = "") -> tuple[str, int]:
     """Where the dashboard listens — `ui.host` and `ui.port`, both honoured.
+
+    `override` is the per-run `--dashboard-host` value, applied here rather than
+    by the caller so `bootstrap` needs no second import for it: that file sits
+    at its line budget, and isort would spend six lines on the name alone.
 
     `ui.host` has sat in `config/setup.json`, with a note explaining why it is
     loopback, since the file was written; nothing ever read it, so the bind was
@@ -88,4 +92,29 @@ def dashboard_bind(setup: dict[str, Any]) -> tuple[str, int]:
     event log records, not something a default should make for them.
     """
     host = str(setting(setup, "ui.host", LOOPBACK) or LOOPBACK)
-    return host, int(setting(setup, "ui.port", 8000))
+    return dashboard_override(override, (host, int(setting(setup, "ui.port", 8000))))
+
+
+def dashboard_override(value: str, default: tuple[str, int]) -> tuple[str, int]:
+    """Read `--dashboard-host` as `HOST`, `HOST:PORT`, or `:PORT`.
+
+    A split match runs two processes and both panels defaulted to 8000, so the
+    second bound nothing while its terminal still implied a dashboard — the
+    operator read the *first* process's board for the whole series. Giving the
+    second its own port is the fix, and it rides on the existing flag rather
+    than a new one because `cli.py` stands at the 150-line cap and the course
+    rule is to split files, never to compress them (guidelines §3.2).
+
+    Only a *single* colon separates a port, so bare IPv6 literals such as `::1`
+    pass through as hosts. A non-numeric port raises here, at startup, which is
+    the right moment: quietly ignoring the typo is the defect this whole change
+    exists to remove.
+    """
+    host, port = default
+    text = value.strip()
+    if not text:
+        return host, port
+    if text.count(":") == 1:
+        left, _, right = text.partition(":")
+        return (left or host), (int(right) if right else port)
+    return text, port

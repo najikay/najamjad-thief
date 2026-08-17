@@ -219,3 +219,76 @@ def room_we_reach_first(board: Board, cell: Position, cop: Position) -> int:
     ours = distances_from(board, cell)
     theirs = distances_from(board, cop)
     return sum(1 for spot, gap in ours.items() if gap < theirs.get(spot, UNREACHABLE))
+
+
+#: Collinear walls before we call it a fence under construction. Two is enough:
+#: a cop does not place two walls in one line by accident, and waiting for three
+#: is waiting one turn too long.
+FENCE_WALLS = 2
+
+
+def fence_gaps(board: Board, cop: Position) -> list[Position]:
+    """Open cells on the straight line the cop is most plainly walling.
+
+    The counter to a sealing cop, and it is a rule rather than a heuristic: the
+    Barrier Law lets the cop wall its own cell or one step from it, **never the
+    cell the thief is standing on**. So a thief that stands in the gap of an
+    unfinished fence cannot be walled around — the cop must either abandon the
+    line or come and take us, and coming costs it the turns the fence needed.
+
+    Returns the gaps of the busiest line, furthest from the cop first, so the
+    caller can stand in the one that is also safe to stand in.
+    """
+    rows: dict[int, int] = {}
+    cols: dict[int, int] = {}
+    for cell in board.cells():
+        if not board.is_open(cell):
+            rows[cell[0]] = rows.get(cell[0], 0) + 1
+            cols[cell[1]] = cols.get(cell[1], 0) + 1
+    # `-1` rather than `None` for the empty board: the count beside it is 0, so
+    # the guard below returns before the index is read, and keeping it an `int`
+    # keeps a `Position` a pair of ints all the way out of here.
+    best_row = max(rows.items(), key=lambda kv: kv[1], default=(-1, 0))
+    best_col = max(cols.items(), key=lambda kv: kv[1], default=(-1, 0))
+    if max(best_row[1], best_col[1]) < FENCE_WALLS:
+        return []
+    if best_col[1] >= best_row[1]:
+        line = [(r, best_col[0]) for r in range(board.size)]
+    else:
+        line = [(best_row[0], c) for c in range(board.size)]
+    gaps = [cell for cell in line if board.is_open(cell)]
+    return sorted(gaps, key=lambda cell: -Board.manhattan(cell, cop))
+
+
+def sealing_cells(board: Board, cell: Position, far: int = FAR_ENOUGH) -> set[Position]:
+    """The cells a cop would have to wall to seal `cell` off — whatever the shape.
+
+    The general form of fence-blocking, and the reason a straight-line detector
+    is not enough: the seal that beat us against MOAAMOHA was `(4,6)`, `(6,5)`,
+    `(5,6)` — an L around a corner, sharing neither row nor column. A diagonal
+    staircase shares neither either, and on this board a diagonal is a *complete*
+    cut, since one orthogonal step changes `r + c` by exactly one.
+
+    So the fence is not a line, it is a **cut**, and `seal_cost`'s flow network
+    already knows exactly which cells form it: the saturated ones on the minimum
+    cut. Standing on any of them is the block, because the Barrier Law forbids
+    walling the cell the thief occupies.
+
+    Returns the empty set when the cut is wider than a cop could finish, since
+    there is then nothing to block and the thief should be running instead.
+    """
+    if not board.is_open(cell):
+        return set()
+    reachable = distances_from(board, cell)
+    sinks = {spot for spot, gap in reachable.items() if gap >= far and board.is_open(spot)}
+    if not sinks:
+        return set()
+    cut: set[Position] = set()
+    for spot, gap in reachable.items():
+        if spot == cell or spot in sinks or not board.is_open(spot) or gap >= SEAL_CAP:
+            continue
+        # A cell is on some minimum cut when walling it strictly cheapens the
+        # seal — exactly the cells a fence is made of.
+        if seal_cost(board.with_barrier(spot), cell, far) < seal_cost(board, cell, far):
+            cut.add(spot)
+    return cut if len(cut) <= SEAL_CAP else set()

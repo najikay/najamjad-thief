@@ -34,9 +34,13 @@ Snapshot timing needs nothing: they decay-deposit-send, we deposit-send-decay,
 and both put peak 0.9 on the wire.
 """
 
-# Awaiting their reply. Full 40 characters, one per repo - their cop and thief
-# are separate checkouts, so the pair can differ. `scripts/audit_opponent.py`
-# compares these per role against the `github_commit` their step-0 declares.
+# Sent by them 2026-08-17, one per repo - their cop and thief are separate
+# checkouts, so the pair differs. `scripts/audit_opponent.py` compares these per
+# role against the `github_commit` their step-0 declares; a mismatch is a rule-53
+# finding reported as evidence, and the likeliest cause is a push they forgot to
+# resend rather than anything to accuse them of.
+#   police-agent  branch Moaawiyah
+#   Ai_thief      branch moaawiyah11
 [armed_commits]
-cop   = ""
-thief = ""
+cop   = "5be1241e3d00bf630a5eae0224b4a7a91635f60d"
+thief = "46d78a6da6c0d1e1c06bb551de9a2a7b729b6f86"

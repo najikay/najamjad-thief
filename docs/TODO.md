@@ -750,7 +750,7 @@ Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
 - [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
 
 
-## E27 — Process separation: two roles, two processes (8 tasks)
+## E27 — Process separation: two roles, two processes (9 tasks)
 
 Opened 2026-08-15. Book Appendix ה Table 7 rule 1 requires the cop's and thief's code to run in
 two completely separate processes (sanction `כישלון מוחלט`); §2.4.2 disqualifies the solution
@@ -765,6 +765,7 @@ FR-NET-6 and `runbook-network.md` had specified against since the beginning. See
 - [x] **T-2708** (P0) Identify a replayed attempt by deletion, not by a clock: each process clears its own halves as its series starts — DoD: `sibling_merge.clear_partials`, called from `actions.play_match` and nowhere earlier; regression test fails when the call is removed [FR-NET-6b, rules 33-35]
 - [x] **T-2706** (P1) Declare per-role endpoints only when both doors are genuinely served — DoD: `served_endpoints` publishes the split in split mode and the single served door otherwise; `is_our_own` still recognises both hostnames [FR-NET-3]
 - [ ] **T-2707** (P0) Activate it: play a full practice series with `opening_role` set in both repos, confirm six windows across two processes and one correctly merged report, then flip the key for counted play — DoD: a merged six-game report reconciled field-for-field against the opponent's; not to be done in the hours before a scheduled match [FR-NET-6a] — *2026-08-15: played four processes locally (`scripts/split_rehearsal.py --games 6`), two split teams. Six windows across our two processes, 1/3/5 and 2/4/6, rejoined into one six-game report, every audit `Verified OK`. It found T-2708, which had defeated the whole module. Still owed for the DoD: the same against a real opponent, reconciled field-for-field.*
+- [x] **T-2709** (P0) Refuse a dashboard port out loud instead of serving the sibling's board through this process's URL — DoD: `DashboardServer._claim` binds on the caller's thread; `--dashboard-host` takes `:PORT` so both processes can hold a live panel; `dashboard.unavailable` published; `tests/unit/test_ui/test_dashboard_identity.py`, 9 tests [FR-UI-1, rules 8-9] — *Found while hunting a reported starting-position bug: the operator watched one panel across a split series and saw our piece at the corner [0,0] rather than the agreed [3,3]. The engine was never wrong — all 156 archived mini-games start at the agreed cell, checked from the sealed step-1 records, and `state_setup` picks the start by role — but uvicorn binds inside `Server.run()`, which we launch on a daemon thread, so a taken port made it log, `sys.exit(1)`, and die alone while `start()` had already returned True with an empty `error`. The thief terminal therefore printed a URL the cop process was serving, and the panel showed the cop's board, correctly labelled `police` in its own header, for all six sub-games. The pre-split imreeyal series looked right because one process means one truthful URL. **Sixth instance of the silent-success defect class in this project** (`attach_game`, `reconcile`, `step_zero`, `ui.host`, `clear_partials`, now this), and the most expensive to diagnose, because the component reported success and the wrong answer it produced was plausible: a corner is a legal cell for a piece to stand on. Reproduced before fixing — a squatter on the port, then `start()` returning True with `error=''` and `running=False` — and the two-panel fix verified end to end: HTTP 200 on 8000 and 8010 at once, a third attempt refused with `OSError: [Errno 98]`.*
 
 
 ## E28 — Barriers, measured on an instrument that can price them (4 tasks)
@@ -964,9 +965,9 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
 | E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
-| E27 | Process separation: two roles, two processes | M6 | 8 | 7 | 1 |
+| E27 | Process separation: two roles, two processes | M6 | 9 | 8 | 1 |
 | E28 | Barriers, measured on an instrument that can price them | M6 | 4 | 3 | 1 |
-| **Total** | | | **696** | **631** | **65** |
+| **Total** | | | **697** | **632** | **65** |
 
 
 

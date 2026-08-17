@@ -39,9 +39,11 @@ from .territory import (
     component_size,
     cut_cells,
     distances_from,
+    fence_gaps,
     keeps_a_free_square,
     room_we_reach_first,
     seal_cost,
+    sealing_cells,
 )
 
 #: Below this the cop is adjacent and can take us on its next move.
@@ -327,6 +329,27 @@ def choose(
     candidates = safe_moves(board, origin, cop, legal, reach)
     if not candidates:
         return (Move.STAY,)
+    # **Stand in the gap of a fence being built.** The Barrier Law forbids
+    # walling our own cell, so occupying the line the cop is walling stops
+    # the seal outright: it must abandon the fence or come and take us, and
+    # coming costs it exactly the turns the fence needed. Measured against
+    # the halving cop at the agreed start, which otherwise takes us on step
+    # 35 having spent thirteen walls.
+    #
+    # Only among moves that already passed every safety filter above, so
+    # blocking never costs distance or room — it is a tie-break with teeth.
+    # Line first, cut second, and the order was measured: a *union* of the two
+    # spreads the preference over every cell of every minimum cut and stops
+    # forcing us onto the gap that matters — we were taken on step 35 again.
+    # The straight line is the fence a cop is visibly building; the general cut
+    # is the fallback for the shapes a line cannot see, like the L of `(4,6)`,
+    # `(6,5)`, `(5,6)` that MOAAMOHA sealed a corner with.
+    gaps = set(fence_gaps(board, cop)) or sealing_cells(board, origin)
+    if gaps:
+        blocking = tuple(
+            move for move in candidates if apply(board, origin, move) in gaps
+        )
+        candidates = blocking or candidates
     # Prefer the moves that are still safe a turn later. Only a preference:
     # when nothing survives the reply we are already losing, and refusing to
     # move would forfeit the chance that the cop answers imperfectly.

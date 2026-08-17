@@ -114,9 +114,25 @@ class AgentActions:
         """
         self._dashboard = dashboard
 
+    @property
+    def dashboard_url(self) -> str:
+        """The panel *this* process serves, empty when it serves none."""
+        panel = self._dashboard
+        return panel.url if panel is not None and panel.running else ""
+
     def start_dashboard(self) -> str:
-        """Serve the UI; returns its URL, or "" when it could not start."""
-        if self._dashboard is None or not self._dashboard.start():
+        """Serve the UI; returns its URL, or "" when it could not start.
+
+        A refusal is published rather than swallowed. The usual cause is the
+        sibling process already holding the port, and the operator needs to
+        know, because the alternative is reading the sibling's board and
+        believing it is this one's (see `ui/server.py::_claim`).
+        """
+        if self._dashboard is None:
+            return ""
+        if not self._dashboard.start():
+            self._emit({"event": "dashboard.unavailable", "url": self._dashboard.url,
+                        "reason": self._dashboard.error or "port already in use"})
             return ""
         return self._dashboard.url
 

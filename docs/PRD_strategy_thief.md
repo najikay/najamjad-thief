@@ -390,3 +390,30 @@ the board still held open 4x4s, all of them on the cop's side. Measured across
 the 61 archived opponent cop lines, requiring the square to merely exist scores
 54; requiring it reachable first scores 60; adding the graded fallback for
 positions where no square survives scores **61 of 61, every one at 35 steps**.
+
+
+## Blocking a fence — the rule the sealing cop cannot answer (2026-08-17)
+
+A cop executing the table's recipe — halve the board, halve the half, finish in
+a 3x3 — beats the thief described above: at the agreed start it takes us on step
+35 having spent thirteen barriers. That cop is not hypothetical in shape; it is
+the plan yanell11 played against us in miniature, three walls around a corner.
+
+The counter is a rule, not a heuristic. **The Barrier Law puts a barrier on the
+cop's own cell or one orthogonal step from it, and never on the cell the thief
+occupies.** A thief standing in the last gap of a half-built fence therefore
+cannot be walled around: the cop must abandon the line or come and take us, and
+coming costs it exactly the turns the fence still needed. On a 35-step horizon
+that is decisive.
+
+`territory.fence_gaps` names the line the cop is most plainly walling — the row
+or column holding the most barriers, two being enough, since a cop does not
+place two in one line by accident — and returns its open cells furthest from the
+cop first, because the far gap is the one that is also safe to stand in.
+
+**Priority matters and was measured both ways.** Applied *after* the room
+filters, blocking only delays the seal and we are still taken on step 35.
+Applied *before* them, we survive. The room filters are about the shape of the
+board we will have; blocking is about preventing that shape from existing, and
+prevention has to come first. Both orderings hold 61 of 61 on the archived
+opponent lines, so this costs nothing measurable elsewhere.
