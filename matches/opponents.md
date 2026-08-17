@@ -6,9 +6,12 @@ Recruitment opens 2026-08-03. Target: ≥ 8 teams contacted by Aug 5, ≥ 4
 confirmed by Aug 6 (below that, the contingency in `docs/LEAGUE_OPS.md` §4
 trips), ≥ 6 counted matches by Aug 10.
 
-Send everyone `docs/MATCH_TERMS.md` — the complete terms, the conformance
-requirements, and the block of details we need back. `HOW_TO_PLAY_US.md`
-remains the friendlier one-pager for a first approach.
+Send everyone the full terms document — the complete terms, the conformance
+requirements, and the block of details we need back. It is kept **outside both
+repositories** (`opening-message-new-opponent.md` in the parent directory) and
+sent over WhatsApp or email, deliberately: these repos are public under rule 49,
+and a demand sheet naming other teams' defects is not something to publish at
+them. `docs/HOW_TO_PLAY_US.md` is the public one-pager for a first approach.
 
 ## Status key
 
