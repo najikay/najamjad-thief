@@ -37,8 +37,13 @@ class _Guard:
         self.expected_token = ""
         self.binds: list[str] = []
 
-    def bind(self, opponent_id: str, config_sha256: str = "", game_uid: str = "") -> None:
+    def bind(self, opponent_id: str, config_sha256: str = "", game_uid: str = "",
+             group_id: str = "") -> None:
+        # Mirrors `SessionGuard.bind` exactly, `group_id` included: a double that
+        # cannot take what production passes turns a real breakage into a
+        # TypeError in the fake, which is how a signature drifts unnoticed.
         self.expected_sender = opponent_id
+        self.expected_group = group_id
         self.expected_token = f"{config_sha256[:8]}:{game_uid[:8]}"
         self.binds.append(opponent_id)
 

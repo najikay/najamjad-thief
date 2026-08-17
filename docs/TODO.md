@@ -750,7 +750,7 @@ Opened 2026-08-15 after a counted series was lost as cop. See PLAN ADR-020/021.
 - [ ] **T-2607** (P2) Re-sweep `barrier_threshold` against a real recorded opponent line; the shipped 0.40 was measured in self-play, where our own thief's scent gives a far sharper posterior than a real peer does [FR-STR-1]
 
 
-## E27 — Process separation: two roles, two processes (12 tasks)
+## E27 — Process separation: two roles, two processes (13 tasks)
 
 Opened 2026-08-15. Book Appendix ה Table 7 rule 1 requires the cop's and thief's code to run in
 two completely separate processes (sanction `כישלון מוחלט`); §2.4.2 disqualifies the solution
@@ -770,6 +770,8 @@ FR-NET-6 and `runbook-network.md` had specified against since the beginning. See
 
 - [x] **T-2711** (P1) Let the warm-up choose the strategy: one candidate per window, three per role, and the counted run loads whichever won against *that* opponent — DoD: `strategy/variants.py` roster and dispatch, `strategy/seal_cop.py`, `sdk/probe.py`, `scripts/probe_report.py`, keyed off `strength.level` so no flag exists to forget; `tests/regression/test_probe_selection.py` and `test_probe_wiring.py`, 14 tests [FR-STRAT] — *Built because offline ranking is worthless here: all three cop candidates fail identically against our own hardened thief and all three catch a random walker, yet naive pursuit caught MOAAMOHA's thief in ten steps while our tuned pursuit held it at distance two for twenty-seven. Our thief is stronger than the teams we face, so a bench against it ranks candidates on the wrong distribution. The safety property is pinned hardest: a counted run with nothing saved builds the shipped brain with zero extra dials on all six windows, and every broken choice file — absent, empty, `{`, `[]`, a retired name — falls back instead of raising, because rule 35 scores a match we could not start as a loss.*
 - [x] **T-2712** (P1) Read the opponent's token spend from their move records, not from step 0 — DoD: `peer_declaration._metered` and `_spend`, move records only so the older step-0 gap keeps reporting no cost rather than a guess for the final mini-game; `tests/regression/test_peer_tokens_from_records.py`, 7 tests [rule 51] — *All six counted mini-games filed MOAAMOHA's spend as `0`. They publish nothing about tokens at step 0 and meter on every move, and the figures were in our own log the whole time, on records we had already re-hashed at the audit. Recovered afterwards: 6,350 in g01 at 187 a step, 20,719 in g02 at ~590, 73,517 for the series against a 200,000 budget, and self-consistent three ways in their data. Excluded from `mutual_agreement`, so it voided nothing — a factual error in a binding report, the same class as the per-window commit. Third instance of reading a field from the record *we* would have put it on.*
+
+- [x] **T-2713** (P1) Accept the peer's group id *or* their role in `sender` — DoD: `SessionGuard.expected_group` beside `expected_sender`, both bind sites pass it, refusal names both accepted forms; the `_Guard` double mirrors the real signature so a drift shows as a failure rather than a TypeError in the fake; `tests/regression/test_sender_may_be_role_or_group.py`, 9 tests [FR-NET-3] — *A live friendly locked its handshake on 2026-08-17 and then died: we rejected every message with `sender 'nis-yar1' is not the negotiated opponent 'police'`. The guard bound the peer's **role**, and that held across four counted series because three teams put exactly that in the field — 'police' or 'thief', 5,239 messages across our two logs. nis-yar1 put their group id there, which is the natural reading of a field called `sender` and is what we had asked them for. From their side it looked like repeated HTTP 400s and they diagnosed stale sessions; only our log named the cause. Both forms identify the peer we signed with, and the session token is what actually proves we negotiated together, so the guard now admits either and still refuses a third party.*
 
 
 ## E28 — Barriers, measured on an instrument that can price them (4 tasks)
@@ -969,9 +971,9 @@ Every task, in addition to its own DoD, is done only when ALL of the following h
 | E24 | Submission & freeze | M7 | 70 | 48 | 22 |
 | E25 | Opponent auditing & fair play | M6 | 12 | 11 | 1 |
 | E26 | Cop strategy: closing the capture | M6 | 8 | 5 | 3 |
-| E27 | Process separation: two roles, two processes | M6 | 12 | 11 | 1 |
+| E27 | Process separation: two roles, two processes | M6 | 13 | 12 | 1 |
 | E28 | Barriers, measured on an instrument that can price them | M6 | 4 | 3 | 1 |
-| **Total** | | | **700** | **635** | **65** |
+| **Total** | | | **701** | **636** | **65** |
 
 
 

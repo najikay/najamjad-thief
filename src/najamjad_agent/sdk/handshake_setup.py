@@ -145,7 +145,8 @@ def _bind_expected_role(inboxes, manager, terms, identity, our_role: str, emit) 
         emit({"event": "session.early_bind_skipped", "role": our_role, "group": their_group})
         return
     _, game_uid = derive_game_ids(dict(terms), our_group, their_group)
-    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid)
+    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid,
+                       group_id=their_group)
 
 
 def _bind_session(inboxes, session: dict, declared: Any, emit, our_role: str = "") -> None:
@@ -215,7 +216,8 @@ def _bind_session(inboxes, session: dict, declared: Any, emit, our_role: str = "
         # guessing would refuse an honest peer. The token still binds.
         emit({"event": "session.unbound", "reason": "our role is unknown"})
         return
-    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid)
+    inboxes.guard.bind(theirs, contract_hash(dict(terms)), game_uid,
+                       group_id=their_group)
     emit({"event": "session.peer_group", "group_id": their_group})
 
 
