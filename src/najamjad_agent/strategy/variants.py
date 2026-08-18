@@ -91,8 +91,16 @@ def side_of(role: Role) -> str:
 
 
 def probing(strength: str) -> bool:
-    """Whether this series is a probe rather than a played-for-keeps run."""
-    return str(strength).strip().lower() == PROBE_LEVEL
+    """Retired. Every series now plays the shipped brains at full strength.
+
+    The probe ran six handicapped candidates, one per window, and produced no
+    signal at all: at search depth 1 all three thieves were captured on exactly
+    step 12 and all three cops survived to exactly 34, so six windows yielded one
+    data point and a ranking decided by list order. It also meant a counted
+    series could be played by a crippled agent. Both reasons are fatal, so this
+    returns False and the roster below is kept only for reference.
+    """
+    return False
 
 
 def for_window(side: str, sub_game: int) -> Variant:

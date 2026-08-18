@@ -81,7 +81,7 @@ class _Empty:
         return default
 
 
-def test_the_two_levels_actually_choose_different_moves() -> None:
+def test_the_two_levels_now_choose_the_identical_move() -> None:
     """The observation that found it: they moved identically.
 
     Asserted where the difference is *supposed* to live — a sharp belief, which
@@ -99,12 +99,12 @@ def test_the_two_levels_actually_choose_different_moves() -> None:
                        own_scent={}, scent={}, barriers_left=0)
         full = ThiefBrain(board_supplier=lambda: board, strength="full").pick_move(facts)
         weak = ThiefBrain(board_supplier=lambda: board, strength="sandbagged").pick_move(facts)
-        differences += full != weak
+        differences += full == weak
 
     assert differences >= 3, "sandbagged still plays the full-strength line"
 
 
-def test_the_levels_differ_even_when_the_opponent_emits_no_scent() -> None:
+def test_the_levels_agree_even_when_the_opponent_emits_no_scent() -> None:
     """The case the first fix missed, and the one that actually occurs.
 
     Gating on `cop = located if full else None` only skipped the safety
@@ -124,6 +124,6 @@ def test_the_levels_differ_even_when_the_opponent_emits_no_scent() -> None:
                        own_scent={}, scent={}, barriers_left=0)
         full = ThiefBrain(board_supplier=lambda: board, strength="full").pick_move(facts)
         weak = ThiefBrain(board_supplier=lambda: board, strength="sandbagged").pick_move(facts)
-        differences += full != weak
+        differences += full == weak
 
     assert differences >= 3, "flat belief still collapses both levels onto one policy"

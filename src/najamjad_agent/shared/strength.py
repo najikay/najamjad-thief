@@ -35,8 +35,12 @@ SANDBAGGED = "sandbagged"
 
 LEVELS = (FULL, PRACTICE, SANDBAGGED)
 
-#: Levels at which the brains play everything they have.
-AT_FULL_STRENGTH = frozenset({FULL, PRACTICE})
+#: Levels at which the brains play everything they have — which is now ALL of
+#: them. Sandbagging is retired: it hid defects instead of hiding strategy,
+#: and a warm-up played at reduced strength measures nothing we can act on.
+#: `sandbagged` survives only as a label on the email routing, so a friendly
+#: still goes to the operator instead of the lecturer.
+AT_FULL_STRENGTH = frozenset({FULL, PRACTICE, SANDBAGGED})
 
 
 class StrengthError(ValueError):

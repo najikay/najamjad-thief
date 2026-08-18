@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://excluded-puzzles-cooler-extraction.trycloudflare.com/mcp"
+url      = "https://simon-executives-fence-remembered.trycloudflare.com/mcp"
 group_id = "nis-yar1"
 name     = "nis-yar1"
 notes    = """
@@ -76,6 +76,22 @@ These are **trycloudflare quick tunnels** — they rotate on restart, and they s
 persistent named hostnames will come before any counted series. Re-probe both
 doors immediately before dialling, and expect the URLs to change if they restart.
 
+2026-08-17, FOURTH URL CHANGE and a REGRESSION: they have gone back to the
+one-host, two-path ngrok setup —
+    cop    https://duckling-judgingly-frigidly.ngrok-free.dev/cop/mcp
+    thief  https://duckling-judgingly-frigidly.ngrok-free.dev/thief/mcp
+This is the exact topology that failed earlier the same evening: 21
+`McpError: Session terminated` on each side, 7 handshake attempts each, zero
+handshakes locked, no mini-game started. Both paths answer HTTP 406, which is
+precisely the trap — the tunnel answers while the MCP session dies, so a curl
+check passes and every handshake fails. They had it working on two separate
+hostnames twice tonight; this is a step backwards, not forwards.
+
+PREFLIGHT DECIDES. `opponent_tools` opens a real MCP session and is the only
+check that distinguishes this from a healthy door. If it reports
+`Session terminated` again, stop and ask them to go back to two hostnames
+rather than burning another evening on retries.
+
 STILL OPEN before a counted series:
   * `commit_reveal: "reference"` is unresolved. Ours is compact-separator
     canonical JSON, a literal `|`, then the nonce. They owe us the clause-5
@@ -113,5 +129,5 @@ repos  github.com/NisoDeri/nis-yar1-cop  ·  github.com/NisoDeri/nis-yar1-thief
 #   was cop   7633fbc808b56f92f8b7ce09a2178ba523e3e31d
 #   was thief 3f2d02160174361e4cd40dc409b7df63e9cb22fe
 [armed_commits]
-cop   = ""
-thief = ""
+cop   = "659c5f789ecb54eeeb7de4911f3598d6bbc8a5a7"
+thief = "659c5f789ecb54eeeb7de4911f3598d6bbc8a5a7"

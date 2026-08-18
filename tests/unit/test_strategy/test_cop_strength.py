@@ -58,19 +58,20 @@ def test_the_dial_exists_at_all() -> None:
     assert CopBrain(board_supplier=lambda: BOARD).strength == "full"
 
 
-def test_the_two_levels_sometimes_choose_different_moves() -> None:
-    """Interception cuts the angle; naive pursuit walks at the peak.
+def test_the_two_levels_now_play_the_identical_move() -> None:
+    """Sandbagging is retired: the levels differ only in where the report goes.
 
-    Deliberately a weak assertion, because the truth is weak: measured across 49
-    position/peak pairs on a diffused belief, the two policies pick a different
-    move only 3 times. On a 7x7 board every sane pursuit walks toward the peak,
-    so movement is simply not where a cop can hide its strength — which is why
-    the barrier and claim behaviour below carry the weakening, and why a dial
-    that only changed movement would be sandbagging in name.
+    It was withdrawn on 2026-08-18 by decision, and the reason is worth keeping.
+    A warm-up played at reduced strength measures the reduced agent, so six
+    windows of a probe produced one usable data point and a counted series was
+    very nearly played by a crippled cop. Hiding strategy from an opponent is
+    worth much less than seeing our own defects early.
+
+    So `AT_FULL_STRENGTH` contains every level and this pins the consequence
+    across the same 49 position/peak pairs the old assertion used.
     """
     positions = [(0, 0), (3, 0), (6, 6), (0, 6), (2, 2), (1, 4), (5, 1), (3, 3), (6, 0), (0, 3)]
     peaks = [(4, 4), (3, 6), (2, 1), (5, 2), (6, 0)]
-    differences = 0
     for position in positions:
         for peak in peaks:
             if position == peak:
@@ -79,34 +80,20 @@ def test_the_two_levels_sometimes_choose_different_moves() -> None:
                                                           abs(cell[1] - peak[1]))))
                       for cell in BOARD.cells()}
             facts = _facts(position, belief)
-            differences += (
-                _brain("full").pick_move(facts) != _brain("sandbagged").pick_move(facts)
-            )
-
-    assert differences >= 1, "the two levels are move-for-move identical everywhere"
+            assert _brain("full").pick_move(facts) == _brain("sandbagged").pick_move(facts)
 
 
-def test_reduced_strength_demands_more_before_it_claims() -> None:
-    """Where the weakening actually lives, with barriers.
+def test_both_levels_claim_on_the_same_evidence() -> None:
+    """The claim bar no longer moves with the level either.
 
-    A claim is the only capture most opponents honour, so a cop that waits for
-    near-certainty captures less — which is what weaker has to mean.
+    A claim is the only capture most opponents honour, so a differing bar was
+    where the weakening actually lived. With sandbagging retired the two must
+    agree, or a friendly would still be measuring a different agent from the one
+    that plays the counted series.
     """
     full, weak = _brain("full"), _brain("sandbagged")
 
-    assert weak._claim_bar() > full._claim_bar()
-
-    # A cell the full cop treats as claimable and the reduced one does not.
-    # Asserted on the claim decision rather than the move: naive pursuit walks
-    # toward the peak anyway, so the two agree on direction while disagreeing
-    # about whether they are committing to a capture — which is the thing that
-    # actually decides the game.
-    belief = {(3, 4): full.claim_threshold * 1.5}
-    facts = _facts((3, 3), belief)
-
-    assert full.capture_step_available(facts) is True
-    assert weak.capture_step_available(facts) is False, "reduced strength claimed a marginal cell"
-
+    assert weak._claim_bar() == full._claim_bar()
 
 def test_reduced_strength_lays_no_barriers() -> None:
     """The dial that decides matches: 0.05 captured 4% of games, 0.40 captured 100%.

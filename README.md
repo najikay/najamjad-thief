@@ -353,6 +353,16 @@ Two observation channels, with opposite trust properties:
 
 - **Scent** — a decaying pheromone trail the opponent emits involuntarily and *cannot fake*
   (book PAGE 22). Unfakeable but blurry.
+
+  **Two models ship, and either can be selected per match.** The book (PAGE 43-44) is
+  radial — 0.90 / 0.62 / 0.42 / 0.20 / 0.14 / 0.04 — with relative decay `τ ← (1-ρ)·τ`;
+  the reference simulator is linear in Chebyshev distance — rings 0.90 / 0.60 / 0.30 —
+  with absolute decay `τ ← τ - ρ`. Appendix F binds, so `ScentModel.BOOK` is the default
+  and reproduces the book's printed PAGE 44 example exactly; `ScentModel.REFERENCE` exists
+  because most teams start from the simulator, and matching an opponent is a config term
+  rather than a code change (`domain/scent_models.py`). Emission is separately dialled from
+  hints — `--scent full|window|none` and `--hints/--no-hints` — so a fully silent series is
+  one flag, and mutual silence is a legitimate way to settle a model disagreement.
 - **Hints** — free natural language, which the rules explicitly permit to be a lie
   (rules 26-27). Precise but untrustworthy.
 

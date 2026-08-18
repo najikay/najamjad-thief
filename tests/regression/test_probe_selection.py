@@ -14,7 +14,13 @@ from najamjad_agent.sdk.probe import load_choice, rank, save_choice, score_key, 
 from najamjad_agent.strategy.cop_brain import CopBrain
 from najamjad_agent.strategy.seal_cop import SealCop
 from najamjad_agent.strategy.thief_brain import ThiefBrain
-from najamjad_agent.strategy.variants import COPS, THIEVES, candidate, for_window
+from najamjad_agent.strategy.variants import (
+    COPS,
+    THIEVES,
+    candidate,
+    for_window,
+    probing,
+)
 
 FULL, PROBE = "full", "sandbagged"
 
@@ -34,22 +40,44 @@ def test_the_mapping_holds_when_we_open_as_police() -> None:
     assert [for_window("cop", n).name for n in (1, 3, 5)] == [one.name for one in COPS]
 
 
-def test_probing_handicaps_without_erasing_what_it_measures() -> None:
-    """The handicap must not touch a dial any candidate varies.
+def test_probing_is_retired_at_every_level() -> None:
+    """`probing` is off, and that is the whole point of the retirement.
 
-    A depth cut weakens every candidate equally; overwriting `stall_room_weight`
-    would make all three thieves identical and the probe meaningless.
+    These two tests used to assert the opposite — that a warm-up handicapped
+    each candidate to depth 1 without flattening the dial the candidates vary,
+    and that `SealCop` was reachable as window 6's cop. Both described real
+    behaviour and both were retired on 2026-08-18 for the reason recorded in
+    `variants.probing`: at depth 1 all three thieves were captured on exactly
+    step 12 and all three cops survived to exactly 34, so six windows produced
+    one data point and a ranking decided by list order — and, worse, a counted
+    series could be played by a deliberately crippled agent.
+
+    So the invariant is now the inverse: no level probes, and no level
+    handicaps.
     """
-    _brain, dials = candidate(Role.THIEF, 3, PROBE, "them", ThiefBrain)
-
-    assert dials["horizon"] == 1                    # the handicap
-    assert dials["stall_room_weight"] == 8.0        # and the candidate survives it
+    assert probing(PROBE) is False, "the level that used to probe"
+    assert probing(FULL) is False
 
 
-def test_the_sealing_cop_is_reachable_as_a_candidate() -> None:
-    brain, _dials = candidate(Role.COP, 6, PROBE, "them", CopBrain)
+def test_no_level_can_reach_a_candidate_or_a_handicap() -> None:
+    """Whatever the level, an unprobed run is the shipped brain with no dials.
 
-    assert brain is SealCop
+    `SealCop` still ships — it is what `cop_class` names in `config/*/game.toml`
+    — but it arrives through configuration, not through the window roster. This
+    test is about the roster no longer being able to substitute a brain behind a
+    match's back.
+    """
+    for level in (PROBE, FULL):
+        cop, cop_dials = candidate(Role.COP, 6, level, "them", CopBrain)
+        thief, thief_dials = candidate(Role.THIEF, 3, level, "them", ThiefBrain)
+
+        assert (cop, cop_dials) == (CopBrain, {})
+        assert (thief, thief_dials) == (ThiefBrain, {})
+
+
+def test_the_roster_is_kept_coherent_for_reference() -> None:
+    """It is documentation now, but broken documentation is worse than none."""
+    assert SealCop in {one.brain for one in COPS}, "still listed for reference"
 
 
 def test_a_counted_run_with_nothing_saved_is_exactly_what_shipped(tmp_path, monkeypatch) -> None:

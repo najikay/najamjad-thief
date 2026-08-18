@@ -1,0 +1,93 @@
+# anrbj666-cop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://cop-mcp.alon.website/mcp"
+group_id = "anrbj666"
+name     = "anrbj666-cop"
+notes    = """
+Alon Engel, Renat Karimov. Approached 2026-08-18 with the most rigorous reply
+we have had: they re-derived our terms digest and our commit-reveal vector
+through their own serializer and sealer rather than quoting ours, and they
+answered every green-light line.
+
+`url` above is their COP door. Use this card when running najamjad-thief.
+
+VERIFIED BY US:
+  * terms a284082d… — they re-derived it independently, and it matches
+  * commit-reveal 4047830b… — reproduced through their own sealer
+  * roles keyed by group id, fresh negotiate per mini-game, submit_audit pushed
+    both ways, both processes up all six windows — all confirmed by them
+    unprompted, which is the whole clause-9 list
+  * counted so far: 3, against imreeyal, vibecode and uoh-sqak — two of which we
+    have also played. So a counted series with them files
+    games_played_including_this {"anrbj666": 4, "najamjad": <ours+1>}
+
+THE ONE REAL CONFLICT — the scent model, and they are right about the split.
+They lock multiplicative_book_v1 (sha 934c220d…); we declare
+subtractive_chebyshev_v1 (81ebee59…). **Our own `domain/scent_models.py` documents
+exactly this divide and says the BOOK model is binding and our default:**
+
+    | aspect  | book (PAGE 43-44, binding)            | reference simulator
+    | falloff | radial 0.90/0.62/0.42/0.20/0.14/0.04  | Chebyshev linear 0.9/0.6/0.3
+    | decay   | relative (1-rho)*tau                  | absolute tau - rho
+
+We implement BOTH (`ScentModel.BOOK` / `ScentModel.REFERENCE`) and the module
+says switching "is a config term, not a code change". So our terms document's
+line — "a Gaussian kernel is not an equivalent and we will not play against
+one" — is contradicted by our own implementation, and we may have pushed
+MOAAMOHA off the book's own model onto the reference deviation.
+
+Note the fingerprints our code computes are b4717af3… (book) and 5ab07d0a…
+(reference), matching NEITHER the 81ebee59… we publish nor their 934c220d…, so
+the two teams also serialise the fingerprint payload differently. Matching them
+by hash is a rewrite; matching them by physics is a config flag.
+
+THEIR PROPOSAL: both sides send `smell_grid: {}` and neither declares a scent
+model, for warm-ups and counted alike. Legal for us — `scent = "none"` is a
+documented mode — but it needs one change: `negotiation/declarations.py` sends
+`scent_model_sha256` UNCONDITIONALLY, and their side refuses on a declared
+mismatch while omission never refuses. So we would have to omit it when running
+scent-none, which is arguably right anyway: declaring a model we are not using
+is a claim we are not honouring.
+
+IF WE SWITCH THE SCENT MODEL FOR THIS PAIRING, RESET IT AFTERWARDS. The model is
+a config term, so a flag set for anrbj666 stays set for whoever we play next —
+and every other opponent so far is on the reference/subtractive model. Same class
+of stale-per-opponent setting as `practice.redirect_to`. Verified 2026-08-18 that
+our BOOK model reproduces the book's PAGE 44 published field exactly:
+    0.04 0.14 0.20 0.14 0.04
+    0.14 0.42 0.62 0.42 0.14
+    0.20 0.62 0.90 0.62 0.20
+    0.14 0.42 0.62 0.42 0.14
+    0.04 0.14 0.20 0.14 0.04
+
+OPEN, to settle before playing:
+  * their per-turn envelope is 600 s against our 30 s. Confirm that is how long
+    they WAIT for us, not how long they may take — if it is their own latency we
+    will expire the turn and score technicals.
+  * both doors read 502 on 2026-08-18 (tunnel up, nothing behind it) — they said
+    they are not playing right now, so this is expected. Re-probe before dialling.
+  * their repos do not resolve, and neither do ours — see below.
+
+THEY CAUGHT TWO REAL FAULTS OF OURS, both confirmed:
+  * our doors read 530 (tunnels not connected)
+  * **our repos are PRIVATE** — github.com/najikay/{najamjad-cop,najamjad-thief}
+    both 404, `ls-remote` demands credentials, and the najikay account's nine
+    public repos include neither. Every hash we have sent to four teams points at
+    something none of them can fetch, and our own clause 9.10 holds opponents to
+    a standard we fail. Fix before any counted series.
+
+agent email  alonisrael.engel@gmail.com  — and `practice.redirect_to` in
+config/setup.json must equal it before a friendly.
+
+repos  github.com/alonengel/P2P-Police  ·  github.com/alonengel/P2P-Thief
+"""
+
+# Sent 2026-08-18. Both currently return 404 (private, same state as ours), so
+# they cannot be inspected — but `audit_opponent.py` compares these against the
+# `github_commit` their step-0 declares, which works regardless of visibility.
+[armed_commits]
+cop   = "b5fdc0c1cba05be27e1b7d4a4de83420bd05a09e"
+thief = "83e6e06c0d5adb5cf13f9a5a1a4dab9adfcb42a8"

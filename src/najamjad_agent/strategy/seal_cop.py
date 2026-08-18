@@ -90,31 +90,78 @@ class SealCop(CopBrain):
         return len(component(board, thief)) <= POCKET and left >= POCKET_RESERVE
 
     # ------------------------------------------------------------------ targets
-    def _column(self, board: Board, thief: Position) -> list[Position]:
-        """Cells of the cut column still to wall, gate and thief excluded."""
-        rows = range(board.size - 1, -1, -1) if self.gate and self.gate[0] == 0 else range(board.size)
-        return [(r, CUT) for r in rows
-                if (r, CUT) != self.gate and board.is_open((r, CUT)) and (r, CUT) != thief]
+    def _column_open(self, board: Board) -> list[Position]:
+        """Every cut-column cell still open, gate excluded — the plan's true state.
 
-    def _pick_row(self, here: Position, thief: Position, size: int) -> int | None:
-        """A row that leaves us shut in *with* the thief, never away from it."""
-        for row in (CUT, CUT - 1, CUT + 1, CUT - 2, CUT + 2):
-            if not 0 <= row < size or row in (here[0], thief[0]):
-                continue
-            if (here[0] > row) == (thief[0] > row):
-                return row
-        return None
+        **The thief's cell counts as unfinished.** It used to be filtered out
+        here, so a thief standing in the gap made the column read as complete:
+        the plan advanced to the row cut with rows 5 and 6 still open, the wall
+        sealed nothing, and the cop wandered the last fifteen turns with six
+        barriers unspent. Traced turn by turn on 2026-08-18.
+        """
+        rows = range(board.size - 1, -1, -1) if self.gate and self.gate[0] == 0 else range(board.size)
+        return [(r, CUT) for r in rows if (r, CUT) != self.gate and board.is_open((r, CUT))]
+
+    def _column(self, board: Board, thief: Position) -> list[Position]:
+        """Column cells we may place on *this* turn — the thief's is not one."""
+        return [cell for cell in self._column_open(board) if cell != thief]
+
+    def _pick_row(self, here: Position, thief: Position, size: int,
+                  region: set[Position] | None = None) -> int | None:
+        """The row that best halves the region, with the thief still on our side.
+
+        Two conditions, and the second is the one that was wrong. A cut must
+        leave the thief shut in **with** us — sealing the quarry away throws the
+        game, and the same-side test has guarded that since this was written.
+        But among the legal rows it took the *first* it found rather than the
+        best, and the order it searched put the useful cuts last: traced against
+        a room-seeking thief, cop at (4,4) and thief at (0,6) ruled out rows 3, 2
+        and 1 as separating, so it settled on row 5 and left the two of us in
+        fifteen cells instead of nine. Fifteen is not a pocket, the plan had
+        nothing further to say, and the last ten turns were spent chasing with
+        four barriers in hand.
+
+        So: score every legal row by the size of the side we would share, and
+        take the smallest. The cut is symmetric in the two halves, which is the
+        point — whichever half the thief flees to is the half we halve next.
+        """
+        rows = [r for r in range(size) if r not in (here[0], thief[0])
+                and (here[0] > r) == (thief[0] > r)]
+        if not rows:
+            return None
+        if region is None:
+            return min(rows, key=lambda r: abs(r - CUT))
+        # Among the rows that keep us on the thief's side, the one leaving it
+        # least room. Cutting from the far side and walking over first was
+        # measured on 2026-08-18 and cost a capture: the cop crosses, the thief
+        # crosses back, and the turns are gone. The same-side constraint stays.
+        return min(rows, key=lambda r: (sum(1 for c in region
+                                            if (c[0] > r) == (thief[0] > r)), abs(r - CUT)))
 
     def _row_cells(self, board: Board, here: Position, thief: Position) -> list[Position]:
-        """The cells that halve our own half, chosen once and then honoured."""
-        if self.row is not None and (here[0] > self.row) != (thief[0] > self.row):
-            self.row = None                      # it slipped across: re-plan
+        """The cells that halve our own half, chosen once and then honoured.
+
+        Halving twice and stopping is what the trace showed on 2026-08-18: the
+        column closed on turn 17 and took the region from 43 cells to 21, the row
+        finished on turn 24 and took it to 15, and the plan then had nothing left
+        to say. Cutting *again* from there was measured and made things worse —
+        it costs the turns that convert, and a random walker that was captured on
+        step 27 escaped instead. Two cuts and then finish.
+        """
+        region = set(component(board, thief))
+        # **Cutting a third time was measured and is off.** The idea is right —
+        # whichever half it flees to is the half to halve next — but each extra
+        # cut costs the turns that convert: re-cutting took a random walker from
+        # a capture on step 27 to an escape, and still did not catch the
+        # room-seeker. Two cuts and finish, until the squeeze is cheap enough to
+        # afford a third.
         if self.row is None:
-            self.row = self._pick_row(here, thief, board.size)
+            self.row = self._pick_row(here, thief, board.size, region)
         if self.row is None:
             return []
         side = [c for c in range(board.size) if (c > CUT) == (thief[1] > CUT) and c != CUT]
-        return [(self.row, c) for c in side if board.is_open((self.row, c)) and (self.row, c) != thief]
+        return [(self.row, c) for c in side
+                if board.is_open((self.row, c)) and (self.row, c) != thief]
 
     # ------------------------------------------------------------------ helpers
     def _may_wall(self, board: Board, here: Position, cell: Position, thief: Position,
@@ -131,12 +178,24 @@ class SealCop(CopBrain):
         return thief in component(walled, here) if together else True
 
     def _step(self, facts: Any, board: Board, here: Position, target: Position,
-              keep: Position | None = None) -> Move | None:
+              keep: Position | None = None, avoid: tuple[Position, ...] = ()) -> Move | None:
+        """Walk toward `target`, never landing on a cell the plan still needs.
+
+        `avoid` is not a refinement. `_may_wall` refuses `cell == here` — a cop
+        cannot wall the square it is standing on — so a cop that walks onto a
+        cut cell can *never* place there, and the column stops one cell short
+        forever. Traced 2026-08-18 against our own thief: the cop stepped onto
+        (5,3) at turn 12 with (4,3) and (5,3) still open, and spent the next
+        twenty-three turns chasing at distance 1 with four walls down, ten in
+        hand and the cut unfinished. The board never dropped below 45 cells.
+        """
         best, key = None, None
         for move in sorted(getattr(facts, "legal", ()), key=lambda m: m.value):
             dr, dc = board.delta_for(move)
             land = (here[0] + dr, here[1] + dc)
-            if not board.is_open(land) or (keep is not None and keep not in component(board, land)):
+            if land in avoid or not board.is_open(land):
+                continue
+            if keep is not None and keep not in component(board, land):
                 continue
             score = (Board.manhattan(land, target), move.value)
             if key is None or score < key:
@@ -145,7 +204,15 @@ class SealCop(CopBrain):
 
     # -------------------------------------------------------------- decisions
     def pick_barrier(self, facts: Any) -> Position | None:
-        """Wall the plan, or nothing — never an opportunistic neighbour."""
+        """Wall the plan, or nothing — never an opportunistic neighbour.
+
+        **A capture on offer outranks the plan.** Placing costs the turn, so
+        walling while standing next to the quarry trades a win for a wall. The
+        seal is how we manufacture a capture when none is offered; it is not a
+        reason to decline one. Worth 10 of 58 archived lines.
+        """
+        if self.capture_step_available(facts):
+            return None
         board, thief, left, here = self._read(facts)
         if thief is None or left <= 0 or self._settled(board, thief, left):
             return super().pick_barrier(facts)
@@ -167,7 +234,9 @@ class SealCop(CopBrain):
         return None
 
     def pick_move(self, facts: Any) -> Move:
-        """Walk the plan; inside the pocket, chase."""
+        """Take a capture if one is there; otherwise walk the plan."""
+        if self.capture_step_available(facts):
+            return super().pick_move(facts)
         board, thief, left, here = self._read(facts)
         if thief is None or self._settled(board, thief, left):
             return super().pick_move(facts)
@@ -175,17 +244,39 @@ class SealCop(CopBrain):
         same = (here[1] > CUT) == (thief[1] > CUT)
         if not self.crossed:
             todo = self._column(board, thief)
+            if self._column_open(board) and not todo:
+                # Only the thief's own cell is left: hold the line rather than
+                # declaring the cut finished. It has to step off eventually.
+                move = self._step(facts, board, here, self._column_open(board)[0])
+                return move or super().pick_move(facts)
             if todo:
                 target = (todo[0][0], self.lane) if self.lane is not None else todo[0]
-                move = self._step(facts, board, here, target if board.is_open(target) else todo[0])
-                return move or super().pick_move(facts)
+                move = self._step(facts, board, here, target if board.is_open(target) else todo[0],
+                                  avoid=tuple(todo))
+                return move or self._step(facts, board, here, target) or super().pick_move(facts)
             if self.gate and board.is_open(self.gate) and not (here == self.gate or same):
                 move = self._step(facts, board, here, self.gate)
                 return move or super().pick_move(facts)
             self.crossed = True
+        # **Shut the gate before cutting the row.** The column is only a wall
+        # once its last cell is closed: with the gate open both halves stay one
+        # region, so a row cut isolates nothing and the barriers spent on it are
+        # wasted. Traced 2026-08-18 — six column walls by turn 13, three row
+        # walls by turn 19, and the gate still open at turn 25 with the thief
+        # long gone. So if the quarry is on our side and the gate is open, walk
+        # to the gate and close it first; the row comes after.
+        gate = self.gate
+        walk_to_gate = (gate is not None and not self.gate_shut and same
+                        and board.is_open(gate) and here != gate
+                        and gate not in board.neighbours(here))
+        if walk_to_gate and gate is not None:
+            move = self._step(facts, board, here, gate, keep=thief)
+            if move:
+                return move
         todo = self._row_cells(board, here, thief)
         if todo:
-            move = self._step(facts, board, here, todo[0], keep=thief)
+            move = (self._step(facts, board, here, todo[0], keep=thief, avoid=tuple(todo))
+                    or self._step(facts, board, here, todo[0], keep=thief))
             if move:
                 return move
         return super().pick_move(facts)

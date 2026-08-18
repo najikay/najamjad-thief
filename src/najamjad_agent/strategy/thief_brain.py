@@ -33,7 +33,7 @@ from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
 from ..shared.strength import plays_full_strength
-from . import blind, solver, thief_safety
+from . import blind, solver, thief_safety, wall_safety
 from .base import apply, confident_peak, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
 
@@ -225,8 +225,25 @@ class ThiefBrain:
         since a lost position is exactly where an imperfect opponent might
         still err.
         """
-        safe = set(solver.safe_landings(board, cop, origin))
+        safe = set(self._safe_landings(board, cop, origin))
         return tuple(move for move in tied if apply(board, origin, move) in safe)
+
+    def _safe_landings(self, board: Board, cop: Position, origin: Position) -> tuple[Position, ...]:
+        """Landings that survive the chase *and* the cop's next barrier.
+
+        `solver` has no barrier moves, so it calls a landing safe that one wall
+        turns into a forced capture. Against a cop holding fourteen of them that
+        is not safety, and it is the likeliest reason this thief was caught at
+        step 13 in three consecutive counted mini-games while knowing the cop's
+        exact cell the whole time.
+        """
+        moves = solver.safe_landings(board, cop, origin)
+        left = int(getattr(self, "_their_barriers_left", 14) or 0)
+        tightened = wall_safety.safe_landings(board, cop, origin, left, moves)
+        # Never return empty when the loose oracle had something: a position
+        # that loses to a perfect waller may still be held against a real one,
+        # and an empty shortlist would drop us into the blind fallback.
+        return tightened or moves
 
     def _provably_safe_moves(
         self, board: Board, origin: Position, cop: Position, legal: tuple[Move, ...]

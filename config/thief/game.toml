@@ -128,7 +128,7 @@ project_token_budget = 5000000
 # Book Appendix F Table 20: the ONLY permitted destination for agent reports.
 recipient = "rmisegal+uoh26finalgame@gmail.com"
 # "draft" while developing; the league requires "send".
-mode = "draft"
+mode = "send"
 
 [strategy]
 # Scalars first: a bare key belongs to the most recent table header, so putting
@@ -137,7 +137,13 @@ mode = "draft"
 #
 # Empty means the shipped brains; a "module:Attribute" path loads a plugin
 # (docs/EXTENDING.md §1).
-cop_class = ""
+# The sealing cop IS the strategy: halve the board, shut the gate, halve the
+# half, and force the win in the pocket. Measured 2026-08-18 — it captures
+# our own hardened ThiefBrain on step 23, which naive pursuit has never done
+# at all, and 51 of 58 archived real opponent lines. It never chases: the
+# only non-plan move it will make is stepping onto a thief already adjacent,
+# which ends the game that turn rather than spending one.
+cop_class = "najamjad_agent.strategy.seal_cop:SealCop"
 thief_class = ""
 
 # The dials the sweep varies and the notebook measures. Shipped values are the

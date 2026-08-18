@@ -1,0 +1,77 @@
+# bestteam
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://itinerary-single-overjoyed.ngrok-free.dev/mcp"
+group_id = "bestteam"
+name     = "bestteam"
+notes    = """
+Itay Malich, Diana Koroblov. Approached 2026-08-17 and answered the whole
+green-light block, re-deriving rather than eyeballing.
+
+VERIFIED BY US, not taken on trust:
+  * terms digest a284082d… re-derived from their own payload — matches
+  * commit-reveal vector 4047830b… — matches, so audits cannot fail on format
+  * scent 81ebee59… subtractive_chebyshev_v1, and they pass the league kit's
+    own pheromone.json fixture 4/4
+  * BOTH COMMITS RESOLVE PUBLICLY — the first team where they do. Pushed
+    2026-08-17T17:55Z, "chore: config for najamjad match". Their runner refuses
+    to start on a dirty, unpushed or branchless commit, so a hash they send is
+    always fetchable.
+  * roles keyed by group id, checked in their own report builder
+  * step 1 = after the first move; counted so far 0, declared honestly
+
+ENDPOINTS are reserved ngrok domains, one per role — they do not rotate, but
+only answer WHILE THEY ARE ARMED. A 404 between sessions is normal here, unlike
+a Cloudflare named tunnel. They message "we are up" first; probe both doors
+immediately before dialling.
+  their cop    https://customs-countdown-uncork.ngrok-free.dev/mcp
+  their thief  https://itinerary-single-overjoyed.ngrok-free.dev/mcp
+
+THEIR TWO OPEN QUESTIONS, both answered "no change needed":
+  * their negotiate carries the group id inside `identity.group_id` rather than
+    a top-level `sender`. Fine. `SessionGuard.check` only compares `sender` when
+    the field is non-empty, so an absent one is admitted, and since T-2713 a
+    present one may be either the role or the group id. Nothing for them to add.
+  * retry backoff starts at 3 s and grows, capped. Fine — bounded, and nowhere
+    near the 1.3 s hot loop that clause 9 item 9 is actually about. (Their
+    2026-08-17 card said flat 3 s capped at 120 s; their 2026-08-18 block says
+    backoff that grows. Either is acceptable; noted so the card is not read as
+    contradicting them.)
+
+Their per-turn window is 30 s, matching ours, and as of 2026-08-18 they wait
+**900 s** for a busy peer, up from the ~400 s first declared. We wait 360 s, so
+they are the patient side and no timeout mismatch needs managing.
+
+TWO ATTEMPTS AGAINST THEM PRODUCED ALMOST NO GAME — read this before dialling.
+  attempt2 2026-08-17T19:24Z  4 technical endings of 6, sub-games 1-1
+  attempt3 2026-08-18T10:44Z  5 technical endings of 6, records EMPTY in all six
+In attempt3 every mini-game logged `result: "timeout"` with `records: []` and
+`opponent_records: []`, and g01 ran from 10:25:06.676 to 10:25:06.764 — **88
+milliseconds**. Nothing timed out; the dial failed instantly, which is what an
+unarmed ngrok door looks like from our side. `mutual_agreement.confirmed` was
+false in all six because there was never a game to agree about.
+
+So their paperwork is the best we have seen and our two attempts still produced
+no playable series. The cause is arming and reachability, not terms. **Probe both
+doors and require a live 200 before dialling, and do not let a counted series be
+the run that discovers the door is shut** — five technical endings filed as
+counted is a rule 33-35 void, not a loss.
+`url` above is their THIEF door. Use this card when running najamjad-cop.
+
+agent email  itay.malich2@gmail.com  — and `practice.redirect_to` in
+config/setup.json must equal it before a friendly, or our report goes to
+whichever team we played last.
+
+repos  github.com/Diana-Koroblov/bestteam-cop
+       github.com/Diana-Koroblov/bestteam-thief
+"""
+
+# Resent by them 2026-08-18 and armed the same day; supersedes the
+# 2026-08-17 pair (8fb15254 / 5a24c2cd), which must not be used.
+# `scripts/audit_opponent.py` compares these per role against the
+# `github_commit` their step-0 declares.
+[armed_commits]
+cop   = "deca8eabf00f3f4a9795d2745b5fa9ab676dfe28"
+thief = "18710161d63b7086a4267dd4d26b2e286e5bd882"
