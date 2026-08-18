@@ -31,6 +31,7 @@ from typing import Any
 
 from ..constants import Move
 from ..domain.board import Board
+from ..domain.endgame import MAX_CELLS, winning_action
 from ..domain.params import Position
 from .base import confident_peak
 from .cop_brain import CopBrain
@@ -138,6 +139,11 @@ class SealCop(CopBrain):
         return min(rows, key=lambda r: (sum(1 for c in region
                                             if (c[0] > r) == (thief[0] > r)), abs(r - CUT)))
 
+    @staticmethod
+    def _share(region: set[Position], thief: Position, row: int) -> int:
+        """How many cells of `region` stay on the thief's side of `row`."""
+        return sum(1 for cell in region if (cell[0] > row) == (thief[0] > row))
+
     def _row_cells(self, board: Board, here: Position, thief: Position) -> list[Position]:
         """The cells that halve our own half, chosen once and then honoured.
 
@@ -156,7 +162,25 @@ class SealCop(CopBrain):
         # room-seeker. Two cuts and finish, until the squeeze is cheap enough to
         # afford a third.
         if self.row is None:
-            self.row = self._pick_row(here, thief, board.size, region)
+            row = self._pick_row(here, thief, board.size, region)
+            # **Close before cutting.** `_pick_row` is optimal for where we
+            # stand, and that is the trap: the same-side rule makes the smallest
+            # legal cut the row just below us, so the pocket we get is decided by
+            # how near we were when we started walling, not by the board. Against
+            # anrbj666 on 2026-08-18 we cut at row 4 and left a 4x3 of twelve
+            # cells; row 3 was one row away and leaves the 3x3 of nine that the
+            # exact table calls a forced win. One row, and the difference between
+            # a won pocket and a region with no answer.
+            #
+            # So a cut is only taken when it is worth taking. If the best legal
+            # row still leaves more than a pocket, place nothing and let
+            # `pick_move` walk us toward the quarry; every row we close shrinks
+            # the smallest legal cut by three cells, so this converges rather
+            # than stalling — and an early wall spent on a 15-cell region is a
+            # wall we do not get back.
+            if row is not None and self._share(region, thief, row) > POCKET:
+                return []
+            self.row = row
         if self.row is None:
             return []
         side = [c for c in range(board.size) if (c > CUT) == (thief[1] > CUT) and c != CUT]
@@ -202,6 +226,29 @@ class SealCop(CopBrain):
                 best, key = move, score
         return best
 
+    def _endgame(self, facts: Any) -> tuple[str, Position] | None:
+        """The exact winning action inside a small pocket, if one exists.
+
+        The whole plan exists to manufacture this position, and until now we
+        reached it and then handed it to ordinary pursuit. That is how a proven
+        win gets thrown: the exact table says a 3x3 falls to a single barrier and
+        a 3x4 to two, but only if the cop plays the line — and heuristic chasing
+        inside a pocket is not the line. Against anrbj666 on 2026-08-18 the seal
+        cut one row wide, delivered a 3x4, and their thief walked out.
+
+        Bounded by `MAX_CELLS`, so this is a handful of cells and the search is
+        cheap; outside a pocket it returns None immediately and the plan runs as
+        before. Barriers already carved out of `region` by `component`, so the
+        solver is handed an open sub-board and an empty wall set.
+        """
+        board, thief, left, here = self._read(facts)
+        if thief is None:
+            return None
+        region = frozenset(component(board, thief))
+        if len(region) > MAX_CELLS or here not in region:
+            return None
+        return winning_action(region, here, thief, frozenset(), left)
+
     # -------------------------------------------------------------- decisions
     def pick_barrier(self, facts: Any) -> Position | None:
         """Wall the plan, or nothing — never an opportunistic neighbour.
@@ -213,6 +260,9 @@ class SealCop(CopBrain):
         """
         if self.capture_step_available(facts):
             return None
+        exact = self._endgame(facts)
+        if exact is not None:
+            return exact[1] if exact[0] == "wall" else None
         board, thief, left, here = self._read(facts)
         if thief is None or left <= 0 or self._settled(board, thief, left):
             return super().pick_barrier(facts)
@@ -238,6 +288,12 @@ class SealCop(CopBrain):
         if self.capture_step_available(facts):
             return super().pick_move(facts)
         board, thief, left, here = self._read(facts)
+        exact = self._endgame(facts)
+        if exact is not None and exact[0] == "move":
+            for move in getattr(facts, "legal", ()):
+                row, col = board.delta_for(move)
+                if (here[0] + row, here[1] + col) == exact[1]:
+                    return move
         if thief is None or self._settled(board, thief, left):
             return super().pick_move(facts)
         self._commit(board, thief)

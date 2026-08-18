@@ -69,3 +69,34 @@ def forced_capture(cells: frozenset[Cell], cop: Cell, thief: Cell,
     if len(cells) > MAX_CELLS or cop == thief:
         return cop == thief
     return _win(cells, cop, thief, walls, min(left, MAX_BUDGET), True, plies)
+
+def winning_action(cells: frozenset[Cell], cop: Cell, thief: Cell,
+                   walls: frozenset[Cell], left: int,
+                   plies: int = 26) -> tuple[str, Cell] | None:
+    """The step or barrier that *keeps* the forced capture, or None.
+
+    `forced_capture` only answers whether a pocket is won. Knowing that and then
+    chasing heuristically is how a proven win gets thrown: the table said the
+    3x3 falls to one barrier, and our cop still handed the pocket back to
+    ordinary pursuit the moment `_settled` was true. This returns the action to
+    actually play — `("move", landing)` or `("wall", cell)`.
+
+    Parity is the part worth stating. `_win` is entered with `cop_turn=True`, so
+    after *our* action the position is the thief's to move; every probe below
+    therefore passes `False`. Asking with `True` would score our own move twice
+    and call lost positions won.
+    """
+    if len(cells) > MAX_CELLS or cop not in cells:
+        return None
+    budget = min(left, MAX_BUDGET)
+    for landing in _steps(cells, walls, cop):
+        if landing == thief:
+            return ("move", landing)
+        if _win(cells, landing, thief, walls, budget, False, plies - 1):
+            return ("move", landing)
+    for cell in _steps(cells, walls, cop) if budget > 0 else ():
+        if cell == thief:
+            continue                    # the Barrier Law forbids walling them
+        if _win(cells, cop, thief, walls | {cell}, budget - 1, False, plies - 1):
+            return ("wall", cell)
+    return None

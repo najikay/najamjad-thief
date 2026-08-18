@@ -1,9 +1,9 @@
-# yanell11
+# yanell11-cop
 #
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://situated-workstation-reed-investigators.trycloudflare.com/mcp"
+url      = "https://agenda-landscapes-zealand-communication.trycloudflare.com/mcp"
 group_id = "yanell11"
-name     = "yanell11"
+name     = "yanell11-cop"
 notes    = ""
