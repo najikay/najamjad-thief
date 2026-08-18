@@ -52,6 +52,14 @@ POCKET_RESERVE = 2
 #: What the whole plan costs: six column cells, the gate, three row cells. We
 #: hold fourteen, so the reserve above is affordable by construction.
 SEAL_BUDGET = 10
+#: The largest region the exact table still calls a forced win — 3x5 on two
+#: barriers. Sixteen holds, fifteen falls. This is the bar for *taking* a cut,
+#: deliberately looser than `POCKET`, which is the bar for stopping and
+#: converting. Setting both to nine stopped the cop cutting at all: it refused
+#: perfectly winnable 3x4 and 3x5 cuts, reverted to pursuit, and the second seal
+#: vanished from the board — seen on the dashboard on 2026-08-18 before any
+#: bench caught it, because the benches measure captures and not shape.
+WINNABLE = 15
 
 
 @dataclass
@@ -178,7 +186,7 @@ class SealCop(CopBrain):
             # the smallest legal cut by three cells, so this converges rather
             # than stalling — and an early wall spent on a 15-cell region is a
             # wall we do not get back.
-            if row is not None and self._share(region, thief, row) > POCKET:
+            if row is not None and self._share(region, thief, row) > WINNABLE:
                 return []
             self.row = row
         if self.row is None:
