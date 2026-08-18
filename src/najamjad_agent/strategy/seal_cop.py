@@ -170,25 +170,16 @@ class SealCop(CopBrain):
         # room-seeker. Two cuts and finish, until the squeeze is cheap enough to
         # afford a third.
         if self.row is None:
-            row = self._pick_row(here, thief, board.size, region)
-            # **Close before cutting.** `_pick_row` is optimal for where we
-            # stand, and that is the trap: the same-side rule makes the smallest
-            # legal cut the row just below us, so the pocket we get is decided by
-            # how near we were when we started walling, not by the board. Against
-            # anrbj666 on 2026-08-18 we cut at row 4 and left a 4x3 of twelve
-            # cells; row 3 was one row away and leaves the 3x3 of nine that the
-            # exact table calls a forced win. One row, and the difference between
-            # a won pocket and a region with no answer.
-            #
-            # So a cut is only taken when it is worth taking. If the best legal
-            # row still leaves more than a pocket, place nothing and let
-            # `pick_move` walk us toward the quarry; every row we close shrinks
-            # the smallest legal cut by three cells, so this converges rather
-            # than stalling — and an early wall spent on a 15-cell region is a
-            # wall we do not get back.
-            if row is not None and self._share(region, thief, row) > WINNABLE:
-                return []
-            self.row = row
+            # **Take the cut you can get.** A guard here once refused any row
+            # leaving more than a pocket, on the theory that the cop should
+            # close first and cut better. It replaced working behaviour with
+            # broken behaviour: the old code walled all three cells of row 4 and
+            # sealed correctly, one row wider than ideal; the guard left the cop
+            # placing a single wall and wandering. Twelve cells is a 3x4, which
+            # the exact table still calls a forced win on two barriers, so the
+            # wider cut was never the disaster — refusing to cut was. Reverted
+            # 2026-08-18 from Naji's reading of a live board.
+            self.row = self._pick_row(here, thief, board.size, region)
         if self.row is None:
             return []
         side = [c for c in range(board.size) if (c > CUT) == (thief[1] > CUT) and c != CUT]

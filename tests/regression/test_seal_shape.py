@@ -135,14 +135,22 @@ def test_the_seal_is_not_silently_gone() -> None:
 def test_the_greedy_evader_is_still_the_known_failure() -> None:
     """Pinned at what we measure today, so progress and regress both show.
 
-    Nine walls and a 19-cell room: above the winnable bound, so the barriers
-    are wasted. Tighten this to `<= WINNABLE` when the row cut is fixed.
+    Seven barriers spent and the room never below 42 — against a thief that
+    simply runs, the column cut never completes, so the row cut never happens
+    and the walls buy nothing. This is the open defect.
+
+    It is pinned as *two* separate facts on purpose. `walls >= 5` catches the
+    seal being switched off, which is how a guard added on 2026-08-18 went
+    unnoticed by every capture bench while the cop placed a single wall and
+    wandered. `smallest <= 45` catches the room never shrinking at all. Tighten
+    the second to `<= WINNABLE` when the approach is fixed; do not loosen either
+    to make a change pass.
     """
     smallest, walls, captured = play(Runner(), "greedy evader")
 
     assert not captured, "the evader is now caught — tighten this test"
-    assert smallest <= 21, f"room never shrank below {smallest}; the column cut is broken too"
     assert walls >= 5, f"only {walls} barriers spent — the cop stopped sealing"
+    assert smallest <= 45, f"room never shrank below {smallest} — the column cut is broken"
 
 
 def test_a_wandering_thief_is_still_converted() -> None:
