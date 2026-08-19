@@ -70,7 +70,22 @@ response_timeout_seconds = 30
 # It still matters, just for a different reason: the MCP SDK's own default is
 # 30 s, so a push that is delivered but never answered plus one retry blows past
 # our own liveness clock with no single call in the log looking slow.
-call_timeout_seconds = 10
+# Raised 10 -> 30 on 2026-08-19, mid-series with anrbj666. Every failed call to
+# their thief door was a TimeoutError, never a refusal or a 502: the socket
+# connects and they do not answer inside our window. Their per-turn budget is
+# 604 s and their thief spends it pushing greetings at us, so a peer that serves
+# and calls on one thread cannot answer us while it is mid-outbound. Ten seconds
+# expired in that gap on all thirty attempts of one window.
+#
+# It also un-breaks our own recovery. `rate_limits.json` reasons about "30 s per
+# attempt, and PeerSession reconnects once inside it" — that note was written
+# against 30 and the value has been 10 since, which is SHORTER than the
+# reconnect, so the reconnect has never completed once in a real match.
+#
+# Total wall clock is still bounded by the gatekeeper's deadline_seconds = 45,
+# which is what keeps us inside the agreed 60 s watchdog. This buys longer
+# individual calls, not longer overall patience.
+call_timeout_seconds = 30
 watchdog_threshold_seconds = 60
 max_retries = 3
 # T-2447: a failed agreement exchange retries the SAME sub-game this many
