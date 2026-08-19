@@ -119,6 +119,28 @@ class SealCop(CopBrain):
                 continue
             break
 
+    def _capture_now(self, facts: Any, board: Board, here: Position,
+                     thief: Position) -> Move | None:
+        """The move that lands exactly on the thief, or None. Never pursuit.
+
+        `CopBrain.capture_step_available` answers a softer question — whether a
+        *believed* capture is within a step, judged against a probability bar —
+        and `pick_move` then handed the turn to the pursuit brain. So every turn
+        the cop stood near the thief it dropped the script and chased, and the
+        seal was abandoned half-built. Naji watched it happen in a live game and
+        it is the single thing he has had to repeat most.
+
+        The plan IS the strategy: the seal is how a capture is manufactured, not
+        an alternative to taking one that is already there. So the only thing
+        allowed to interrupt the script is a move that ends the game this turn —
+        a landing on the thief's own cell — and stepping toward it is not that.
+        """
+        for move in getattr(facts, "legal", ()):
+            row, col = board.delta_for(move)
+            if (here[0] + row, here[1] + col) == thief:
+                return move
+        return None
+
     def _endgame(self, facts: Any) -> tuple[str, Position] | None:
         board, thief, left, here = self._read(facts)
         if thief is None:
@@ -150,8 +172,9 @@ class SealCop(CopBrain):
     # -------------------------------------------------------------- decisions
     def pick_barrier(self, facts: Any) -> Position | None:
         """Wall the script's current cell, and only from the square it names."""
-        if self.capture_step_available(facts):
-            return None
+        board_now, thief_now, _l, here_now = self._read(facts)
+        if thief_now is not None and self._capture_now(facts, board_now, here_now, thief_now):
+            return None                 # a real capture next; do not spend the turn walling
         exact = self._endgame(facts)
         if exact is not None:
             return exact[1] if exact[0] == "wall" else None
@@ -167,16 +190,28 @@ class SealCop(CopBrain):
         walled = board.with_barrier(wall)
         if not walled.neighbours(here):
             return None
+        # **Never seal ourselves away from the quarry.** The old scoring version
+        # checked this before every placement and the rewrite dropped it, which
+        # is how the cop walled the thief into the half it was not standing in
+        # and then had no way back. A cut is only ever taken with the thief on
+        # OUR side of it; if this wall would separate us, the plan is stale
+        # rather than the wall wrong — the thief has changed halves while we
+        # were building, so rebuild for the half it is actually in.
+        if thief not in component(walled, here):
+            self.script = self._row_script(thief) if self.phase == "row" else []
+            self.phase = "row" if self.phase == "row" else self.phase
+            return None
         self.script.pop(0)
         return wall
 
     def pick_move(self, facts: Any) -> Move:
         """Walk to the square the script names next."""
-        if self.capture_step_available(facts):
-            return super().pick_move(facts)
         board, thief, _left, here = self._read(facts)
         if thief is None:
             return super().pick_move(facts)
+        taking = self._capture_now(facts, board, here, thief)
+        if taking is not None:
+            return taking
         exact = self._endgame(facts)
         if exact is not None and exact[0] == "move":
             for move in getattr(facts, "legal", ()):
