@@ -89,5 +89,5 @@ repos  github.com/alonengel/P2P-Police  ·  github.com/alonengel/P2P-Thief
 # they cannot be inspected — but `audit_opponent.py` compares these against the
 # `github_commit` their step-0 declares, which works regardless of visibility.
 [armed_commits]
-cop   = "b5fdc0c1cba05be27e1b7d4a4de83420bd05a09e"
-thief = "83e6e06c0d5adb5cf13f9a5a1a4dab9adfcb42a8"
+cop   = "ab5cc9236c4ce367da2317abccf264bd8d11c8ef"
+thief = "a94a98bd936f8bf339b115c96d9f5e020bbbee11"
