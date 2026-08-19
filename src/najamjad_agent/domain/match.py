@@ -31,6 +31,19 @@ from .settle import settle
 from .turn_loop import run_turn_loop
 from .who_failed import who_failed
 
+#: How many times a mini-game that died mid-play is re-offered under the same
+#: number before it is scored. Bounded, so a genuinely dead peer still ends the
+#: series rather than looping; two is enough to survive a boundary transient.
+#:
+#: The bound is also what makes ONE behaviour work against BOTH kinds of peer,
+#: which is the point — we stop re-tuning per opponent. A settlement-gated peer
+#: holds the window open and we match it on the first re-offer. A peer that also
+#: advances on abandon has moved on, so we re-offer twice, exhaust the bound,
+#: record and advance too — converging instead of deadlocking. An unbounded
+#: retry would only ever suit the first kind.
+ABANDON_RETRIES = 2
+
+
 StateFactory = Callable[[GameParams, Role, int], GameState]
 # The brain factory receives the state as well as the role, because a brain
 # reasons over the *current* board — barriers appear mid-game — and gets it from
@@ -127,6 +140,7 @@ class MatchRunner:
         the game the same way. `match_resolution` holds both shapes.
         """
         abandoned = False
+        self._attempts: dict[int, int] = getattr(self, "_attempts", {})
         while not self.tracker.is_complete:
             sub_game = self.tracker.advance_to_ours()
             if sub_game is None:
@@ -157,9 +171,29 @@ class MatchRunner:
                     "role": role.value, "error": f"{type(error).__name__}: {error}",
                     **fault,
                 })
-                self.games.append(
-                    resolve_abandoned(self.tracker, sub_game, role, steps, fault)
-                )
+                # **Re-offer the same window before giving up on it.**
+                # `advance_to_ours` only reads the next number; it is
+                # `tracker.record`, inside `resolve_abandoned`, that consumes
+                # it. So declining to record keeps us on this sub-game.
+                #
+                # We used to record immediately, which advanced past a window
+                # that never played. Against a settlement-gated peer that is
+                # unrecoverable and it cost us two full series: ours abandoned
+                # 3 and moved to 5 while anrbj666 held 3 open and pushing, and
+                # from that moment every window either side offered was refused
+                # by the other's pairing guard. Their own log named it —
+                # "sub_game_number: mine=3 theirs=5". A skipped window cannot be
+                # filed anyway, so advancing past it costs the artifact too.
+                self._attempts[sub_game] = self._attempts.get(sub_game, 0) + 1
+                if self._attempts[sub_game] < ABANDON_RETRIES:
+                    self._emit({
+                        "event": "subgame.retrying", "sub_game": sub_game,
+                        "attempt": self._attempts[sub_game], "of": ABANDON_RETRIES,
+                    })
+                else:
+                    self.games.append(
+                        resolve_abandoned(self.tracker, sub_game, role, steps, fault)
+                    )
                 abandoned = True
             finally:
                 # Whatever happened, we are between mini-games now, so the

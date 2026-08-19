@@ -57,11 +57,19 @@ opponent_group_id = "them"
 handshake_timeout_seconds = 60
 # Appendix F Table 19: response timeout 30 s, watchdog 60 s (both negotiable).
 response_timeout_seconds = 30
-# Cap on ONE outbound MCP call, and it must stay strictly under the signed
-# response timeout above — `build_transport` refuses to start otherwise. The
-# MCP SDK's own default is 30 s, so a push that is delivered but never answered
-# plus one retry breaches a 30 s deadline we signed, with no single call in the
-# log looking slow.
+# Cap on ONE outbound MCP call, and it must stay strictly under our own
+# response timeout above — `build_transport` refuses to start otherwise.
+#
+# **Nothing here is signed.** This note used to call the 30 s a "deadline we
+# signed"; anrbj666 corrected it on 2026-08-19 and they are right. The fourteen
+# signed terms are board, starts, steps, barriers, scent, scoring and setting —
+# `terms.REFERENCE_TERM_KEYS` — and no timeout appears among them. Every clock
+# in this file is our own private envelope, and the peer's is theirs; slowness
+# between two teams is judged by each side's own budget, not by a shared term.
+#
+# It still matters, just for a different reason: the MCP SDK's own default is
+# 30 s, so a push that is delivered but never answered plus one retry blows past
+# our own liveness clock with no single call in the log looking slow.
 call_timeout_seconds = 10
 watchdog_threshold_seconds = 60
 max_retries = 3
