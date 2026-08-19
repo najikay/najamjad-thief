@@ -165,3 +165,55 @@ def test_the_inbox_is_peeked_and_never_waited_on() -> None:
                            send=refuses, receive=receive)
 
     assert seen == [0.0]
+
+
+def test_an_agreement_already_adopted_is_not_taken_from_the_queue_again() -> None:
+    """anrbj666, 2026-08-19: ten retries ate ten of their greetings.
+
+    A delivery failure sends the whole handshake round again. Without holding
+    what we already adopted, each pass consumed a fresh negotiate from the
+    inbox — so the peer's queue drained while nothing started, and the peer saw
+    a listener that never answered. Their agreement does not expire between our
+    attempts; only our delivery failed.
+    """
+    receive = inbox(their_agreement(), their_agreement())
+    theirs = their_agreement()
+
+    peer = exchange_agreement(
+        terms=TERMS, identity={}, declarations=dict(OURS),
+        send=refuses, receive=receive, in_hand=theirs,
+    )
+
+    assert peer == theirs
+    assert receive(0.0) is not None, "the queue must be untouched"
+    assert receive(0.0) is not None, "both of theirs still waiting"
+
+
+def test_a_held_agreement_is_used_on_the_busy_path_too() -> None:
+    """The other door into the same retry, and it must not drain them either."""
+    from najamjad_agent.net.match_gate import BUSY_REASON
+
+    receive = inbox(their_agreement())
+    theirs = their_agreement()
+
+    peer = exchange_agreement(
+        terms=TERMS, identity={}, declarations=dict(OURS),
+        send=lambda _p: {"accepted": False, "errors": [BUSY_REASON]},
+        receive=receive, in_hand=theirs,
+    )
+
+    assert peer == theirs
+    assert receive(0.0) is not None
+
+
+def test_nothing_held_still_peeks_as_before() -> None:
+    """The ordinary first attempt is unchanged."""
+    receive = inbox(their_agreement())
+
+    peer = exchange_agreement(
+        terms=TERMS, identity={}, declarations=dict(OURS),
+        send=refuses, receive=receive, in_hand=None,
+    )
+
+    assert peer["terms"] == TERMS
+    assert receive(0.0) is None, "the peek consumed it, as it always did"

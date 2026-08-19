@@ -65,7 +65,15 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         # — and the address that finally works is the one their identity
         # declares, which we only learn from the message we just adopted.
         sent: dict[str, Any] = {}
+        # An agreement of theirs we already adopted for THIS window. A failed
+        # delivery sends us round again, and without this the retry consumed a
+        # fresh negotiate from the inbox every time: ten cycles against anrbj666
+        # on 2026-08-19 ate ten of their greetings and started nothing. Their
+        # agreement does not expire between our attempts — only our delivery
+        # failed — so it is held and re-used, and the queue is left alone.
+        held: dict[int, Any] = session.setdefault("held_agreements", {})
         peer = exchange_agreement(
+            in_hand=held.get(sub_game),
             terms=terms,
             identity=session["identity"],
             declarations=negotiate_declarations(manager, terms, role, sub_game),
@@ -106,8 +114,12 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 # we narrowed the declaration.
                 ours=dict(manager.get("game.mcp_servers", {}) or {}),
             )
+        held[sub_game] = peer
         # After the retarget, never before: the whole point is the corrected door.
+        # Raises when our side still cannot be delivered; `held` keeps their
+        # agreement so the next attempt costs one call rather than three.
         _deliver_late(transport, sent, bus.publish)
+        held.pop(sub_game, None)
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
 

@@ -77,6 +77,7 @@ def exchange_agreement(
     timeout: float = 60.0,
     emit: Emit | None = None,
     declarations: dict[str, Any] | None = None,
+    in_hand: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Sign our terms, swap with the opponent, and verify they signed the same.
 
@@ -97,7 +98,7 @@ def exchange_agreement(
         # accepts and answers an inbound negotiate whether or not our own send
         # works, and until now nothing ever started the window that acceptance
         # promised. `inbound_first` holds the whole rule.
-        peer = agreement_in_hand(receive, declarations, announce, error)
+        peer = in_hand or agreement_in_hand(receive, declarations, announce, error)
         if peer is None:
             raise
         return _lock(contract, terms, peer, announce)
@@ -122,7 +123,7 @@ def exchange_agreement(
         # joining while they time out waiting for our first turn. The window
         # number in `inbound_first` is what keeps this honest — a gate shut over
         # some *earlier* game has no agreement here that names ours.
-        peer = agreement_in_hand(receive, declarations, announce, busy)
+        peer = in_hand or agreement_in_hand(receive, declarations, announce, busy)
         if peer is None:
             raise busy
         return _lock(contract, terms, peer, announce)
