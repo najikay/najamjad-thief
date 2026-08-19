@@ -8,9 +8,16 @@ would still abandon.
 
 The address that finally works is the one their identity declares — the door
 their *this*-role process answers on, which is exactly what we did not have
-when the send failed. So the retry belongs after the retarget, and it belongs
-in a function that cannot raise: we already hold an agreed window, and losing
-it to a second connection failure would repeat the trade that cost g03.
+when the send failed. So the retry belongs after the retarget.
+
+It does **not** belong in a function that cannot raise. This file said the
+opposite until anrbj666 g6 on 2026-08-19 disproved it live: delivery failed
+against a 502 door, we started the window on their agreement alone, they
+re-sent their negotiate thirty times into a gate we had just shut, and the
+watchdog scored the game TIMEOUT at `step=0`. An agreement is mutual or it is
+nothing, and a window only one side holds is worse than a window neither does —
+a handshake we retry costs seconds, this cost four minutes and a technical
+result.
 """
 
 from __future__ import annotations
@@ -18,6 +25,8 @@ from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from najamjad_agent.sdk.handshake_setup import _deliver_late, _record_send
 
@@ -62,13 +71,22 @@ def test_an_undelivered_agreement_is_pushed_once_the_door_is_known() -> None:
     assert [event["event"] for event in events] == ["handshake.delivered_late"]
 
 
-def test_a_second_failure_is_reported_and_never_raised() -> None:
-    """We hold an agreed window; an exception here would throw it away."""
+def test_a_second_failure_refuses_the_window_rather_than_starting_it_alone() -> None:
+    """anrbj666 g6: the window we started alone cost four minutes and a TIMEOUT.
+
+    Raising sends us back through `agree_on_terms`, which retries — and their
+    next negotiate then meets an open gate instead of the "a mini-game is in
+    progress" refusal that deadlocked both sides.
+    """
+    from najamjad_agent.negotiation.handshake import HandshakeError
+
     transport, sent, events = _Transport(working=False), {}, []
 
     with suppress(ConnectionError):
         _record_send(transport, sent, PAYLOAD)
-    _deliver_late(transport, sent, events.append)
+
+    with pytest.raises(HandshakeError, match="only one side holds this window"):
+        _deliver_late(transport, sent, events.append)
 
     assert [event["event"] for event in events] == ["handshake.delivery_failed"]
     assert "ConnectionError" in events[0]["error"]

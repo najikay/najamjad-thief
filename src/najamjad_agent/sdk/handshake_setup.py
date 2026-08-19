@@ -123,22 +123,38 @@ def _record_send(transport, sent: dict[str, Any], payload: dict[str, Any]) -> An
 
 
 def _deliver_late(transport, sent: dict[str, Any], emit) -> None:
-    """Hand them our agreement now, if the window started without it.
+    """Hand them our agreement now, or refuse to start a window they have not.
 
-    Never raises. The window is already agreed from their side and our turns
-    are what they are waiting for; turning a failure here into an exception
-    would throw away a mini-game we are able to play, which is the same trade
-    that lost g03 in the first place.
+    This swallowed its failure on the reasoning that we already held an agreed
+    window and our turns were what they were waiting for. **anrbj666 g6, live,
+    2026-08-19, disproved it in four minutes.** We locked on their agreement,
+    our delivery failed against a 502 door, and we started the mini-game anyway.
+    They never considered it agreed, so they re-sent their negotiate thirty
+    times; our gate had shut the moment we started, and answered every one of
+    them "a mini-game is in progress, re-send at the boundary". We waited for a
+    first turn that could not come, the watchdog fired at 180 s of silence with
+    `step=0, full_turns=0`, and the window scored TIMEOUT with the audit skipped.
+
+    An agreement is mutual or it is nothing. Starting a window on half of one
+    manufactures the deadlock this whole module exists to prevent — and unlike a
+    handshake we simply retry, it burns the watchdog and files a technical
+    result. So a failed delivery now raises, `agree_on_terms` retries the window,
+    and their next negotiate meets an open gate instead of a busy one.
     """
     payload = sent.get("payload")
     if payload is None or sent.get("delivered"):
         return
     try:
         transport.send_negotiate(payload)
-    except Exception as error:  # noqa: BLE001 - reported, never fatal to the window
+    except Exception as error:  # noqa: BLE001 - re-raised as a refused handshake
         emit({"event": "handshake.delivery_failed",
               "error": f"{type(error).__name__}: {error}"})
-        return
+        from ..negotiation.handshake import HandshakeError
+
+        raise HandshakeError(
+            "we adopted their agreement but could not deliver ours, so only one "
+            "side holds this window — retrying rather than starting it alone"
+        ) from error
     emit({"event": "handshake.delivered_late"})
 
 
