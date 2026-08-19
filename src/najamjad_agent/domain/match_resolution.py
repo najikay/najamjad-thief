@@ -67,3 +67,40 @@ def tokens_for(meter: Any, sub_game: int) -> int:
     if meter is None:
         return 0
     return int(getattr(meter, "per_sub_game", {}).get(sub_game, 0))
+
+#: How many times a mini-game that died mid-play is re-offered under the same
+#: number before it is scored. Bounded, so a genuinely dead peer still ends the
+#: series rather than looping; two survives a boundary transient.
+#:
+#: The bound is what makes ONE behaviour correct against BOTH kinds of peer, so
+#: we stop re-tuning per opponent. A settlement-gated peer is still holding the
+#: window, so we match it on the first re-offer; a peer that also advances on
+#: abandon has moved on, so we exhaust the bound, record and advance too —
+#: converging rather than deadlocking. Unbounded would only suit the first kind.
+ABANDON_RETRIES = 2
+
+
+def retry_or_resolve(tracker: Any, attempts: dict[int, int], sub_game: int,
+                     role: Role, steps: int, fault: dict[str, Any] | None,
+                     emit: Any) -> dict[str, Any] | None:
+    """Re-offer the window, or score it once the retries are spent.
+
+    Returns the record to file, or None while we are still re-offering.
+
+    `advance_to_ours` only READS the next number; `tracker.record`, inside
+    `resolve_abandoned`, is what consumes it. So declining to record keeps us on
+    this sub-game, and that is the whole mechanism.
+
+    We used to record immediately, advancing past a window that never played.
+    Against a settlement-gated peer that is unrecoverable: ours abandoned 3 and
+    went to 5 while anrbj666 held 3 open, and every window either side offered
+    was then refused by the other's guard — "sub_game_number: mine=3 theirs=5"
+    in their own log. A skipped window cannot be filed anyway, so advancing past
+    it costs the artifact too.
+    """
+    attempts[sub_game] = attempts.get(sub_game, 0) + 1
+    if attempts[sub_game] < ABANDON_RETRIES:
+        emit({"event": "subgame.retrying", "sub_game": sub_game,
+              "attempt": attempts[sub_game], "of": ABANDON_RETRIES})
+        return None
+    return resolve_abandoned(tracker, sub_game, role, steps, fault)
