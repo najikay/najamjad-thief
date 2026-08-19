@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://cdna-visit-river-extraction.trycloudflare.com/mcp"
+url      = "https://buses-chen-francisco-manager.trycloudflare.com/mcp"
 group_id = "najamjad-b"
 name     = "amjad"
-notes    = "Teammate — NEVER counted (rule 31), so the one partner we rehearse at FULL strength. Quick tunnel, rotates every restart: re-ask every session. He opens as thief and dials our cop, so we run najamjad-cop. Merged to d566a62/efb104e."
+notes    = ""

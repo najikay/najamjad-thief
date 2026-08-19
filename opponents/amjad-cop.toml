@@ -1,8 +1,9 @@
-# Amjad's cop half, role-swapped run. He takes --group-id najamjad-b, so this
-# card expects that id: `opponent_group_id` must equal what their handshake
-# declares or the filer's rename never fires and the report is keyed by a
-# placeholder instead of their name.
-url      = "https://gains-isle-colored-criteria.trycloudflare.com/mcp"
+# amjad-cop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://buses-chen-francisco-manager.trycloudflare.com/mcp"
 group_id = "najamjad-b"
-name     = "Amjad (practice, cop)"
-notes    = "Quick tunnel — his third this session. cloudflared can stay alive while Cloudflare drops the hostname, so re-ask before each match; 502 = up-but-idle, NXDOMAIN = name gone."
+name     = "amjad-cop"
+notes    = ""
