@@ -64,9 +64,18 @@ def negotiate_declarations(
     declarations: dict[str, Any] = {
         "sub_game_number": int(sub_game),
         "role": _role_value(role),
-        "scent_model_sha256": SCENT_MODEL_SHA256,
         "info_mode_sha256": INFO_MODE_SHA256,
     }
+    # Declare the emission model only when we are actually emitting. Under a
+    # mutually-silent arrangement — both sides sending `{}`, which anrbj666
+    # proposed on 2026-08-19 and the kit records as a convention — a declared
+    # model is a claim about a field nobody is putting on the wire, and their
+    # spec refuses on a declared *mismatch* while omission never refuses. So
+    # declaring here would be both untrue and the thing most likely to refuse
+    # an honest peer. Silence is symmetric or it is nothing (see the terms
+    # document, section 4), and this is the handshake half of that rule.
+    if str(manager.get("emission.scent", "full")).strip().lower() != "none":
+        declarations["scent_model_sha256"] = SCENT_MODEL_SHA256
     # Without their group id the uid we would compute is keyed on a placeholder
     # and would refuse an honest peer. Better to send nothing than a wrong
     # value: their spec refuses on a declared *mismatch*, never on absence.
