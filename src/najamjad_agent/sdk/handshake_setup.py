@@ -118,7 +118,7 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         # After the retarget, never before: the whole point is the corrected door.
         # Raises when our side still cannot be delivered; `held` keeps their
         # agreement so the next attempt costs one call rather than three.
-        _deliver_late(transport, sent, bus.publish)
+        _deliver_late(transport, sent, bus.publish, inboxes)
         held.pop(sub_game, None)
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
@@ -137,13 +137,16 @@ def _record_send(transport, sent: dict[str, Any], payload: dict[str, Any],
     """
     sent["payload"] = payload
     if inboxes is not None:
+        # Remember the count as it stands now, so a reply that carries our
+        # agreement AFTER this point is recognised as the delivery it is.
+        sent["sent_at"] = getattr(inboxes, "agreement_sent", 0)
         inboxes.our_agreement = payload
     answer = transport.send_negotiate(payload)
     sent["delivered"] = True
     return answer
 
 
-def _deliver_late(transport, sent: dict[str, Any], emit) -> None:
+def _deliver_late(transport, sent: dict[str, Any], emit, inboxes: Any = None) -> None:
     """Hand them our agreement now, or refuse to start a window they have not.
 
     This swallowed its failure on the reasoning that we already held an agreed
@@ -164,6 +167,16 @@ def _deliver_late(transport, sent: dict[str, Any], emit) -> None:
     """
     payload = sent.get("payload")
     if payload is None or sent.get("delivered"):
+        return
+    # Their call already carried ours home. A peer running one process per
+    # window only exists while its window is open, so the moment it dials us is
+    # the only moment we are certain a door is there at all — and our reply went
+    # back down that same connection. Dialling again here is asking a door that
+    # may not exist yet, which is the flooding that cost three windows: our cop
+    # hammered their thief throughout a mini-game their thief peer had not been
+    # spawned for.
+    if getattr(inboxes, "agreement_sent", 0) > int(sent.get("sent_at", 0)):
+        emit({"event": "handshake.delivered_in_reply"})
         return
     try:
         transport.send_negotiate(payload)

@@ -35,12 +35,30 @@ from typing import Any
 
 from ..shared.events import Emit
 
+#: How long to *listen* after our own call to a peer has failed, instead of
+#: sleeping and dialling again.
+#:
+#: A peer that runs one process per window does not exist between windows, so
+#: for most of a mini-game there is no door to dial and no amount of patience
+#: invents one. What does exist is the moment their next window opens — and the
+#: first thing it does is dial *us*. That knock is the only reliable signal that
+#: a door is there at all, and it arrives on a connection they opened, which is
+#: precisely the direction we have never had trouble with.
+#:
+#: So a failed call is followed by listening rather than by another call. It
+#: costs the same wall clock as the sleep it replaces, and against anrbj666 on
+#: 2026-08-19 our cop spent a whole mini-game dialling a thief process that had
+#: not been spawned yet — 8-9 greetings a minute arriving here while every call
+#: of ours timed out. The signal was in our inbox the entire time.
+LISTEN_SECONDS = 10.0
+
 
 def agreement_in_hand(
     receive: Any,
     declarations: dict[str, Any] | None,
     announce: Emit,
     error: Exception,
+    wait: float = 0.0,
 ) -> dict[str, Any] | None:
     """Their agreement for *this* window, if it is already waiting for us.
 
@@ -51,12 +69,13 @@ def agreement_in_hand(
     Setup: none; `receive` is polled with a zero timeout, so this never adds a
         wait to a path that is already failing.
 
-    Not waiting is deliberate. The caller retries on a cadence of its own and
-    each retry peeks again, so a message that arrives a few seconds from now is
-    picked up by the next attempt rather than by a blocking read here — and a
-    peer that is simply absent costs us nothing at all.
+    `wait` is how long to listen. Zero is a peek, which is right when the peer
+    has just answered us and is therefore demonstrably there. When our call
+    failed outright, listening is strictly better than peeking-and-redialling:
+    the peer may not have spawned yet, and their first act on spawning is to
+    dial us.
     """
-    peer = receive(0.0)
+    peer = receive(wait)
     if peer is None:
         return None
     ours = _window(declarations or {})

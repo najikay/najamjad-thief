@@ -152,8 +152,21 @@ def test_their_terms_are_verified_exactly_as_on_the_ordinary_path() -> None:
         )
 
 
-def test_the_inbox_is_peeked_and_never_waited_on() -> None:
-    """A path that is already failing must not also become a slow one."""
+def test_a_failed_call_listens_instead_of_peeking() -> None:
+    """Re-pinned 2026-08-19, and the reversal is the point.
+
+    This used to assert `seen == [0.0]` — never wait, because a failing path
+    should not also be a slow one. That was right while the only reason a call
+    failed was a broken link. Against a peer that runs one process per window it
+    is wrong: for most of a mini-game there is no door to dial, and the event we
+    need is their next window spawning and dialling *us*. Peeking for zero
+    seconds and hanging up guarantees we miss it.
+
+    The wall clock is unchanged — this wait replaces the sleep that used to sit
+    between attempts, so it costs nothing and listens instead of idling.
+    """
+    from najamjad_agent.negotiation.inbound_first import LISTEN_SECONDS
+
     seen: list[float] = []
 
     def receive(timeout):
@@ -164,7 +177,7 @@ def test_the_inbox_is_peeked_and_never_waited_on() -> None:
         exchange_agreement(terms=TERMS, identity={}, declarations=dict(OURS),
                            send=refuses, receive=receive)
 
-    assert seen == [0.0]
+    assert seen == [LISTEN_SECONDS], "a failed call should leave us listening"
 
 
 def test_an_agreement_already_adopted_is_not_taken_from_the_queue_again() -> None:

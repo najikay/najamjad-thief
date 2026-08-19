@@ -71,6 +71,30 @@ def test_an_undelivered_agreement_is_pushed_once_the_door_is_known() -> None:
     assert [event["event"] for event in events] == ["handshake.delivered_late"]
 
 
+def test_a_reply_that_carried_ours_counts_as_delivery() -> None:
+    """The elegant half: their call already took our agreement home.
+
+    A peer running one process per window only exists while that window is
+    open, so the moment it dials us is the only moment we know a door is there
+    — and our reply rode back down that same connection. Dialling again would
+    be asking a door that may not exist yet, which is exactly the flooding that
+    cost three windows on 2026-08-19.
+    """
+    class _Boxes:
+        agreement_sent = 0
+
+    boxes, transport, sent, events = _Boxes(), _Transport(working=False), {}, []
+
+    with suppress(ConnectionError):
+        _record_send(transport, sent, PAYLOAD, boxes)
+    boxes.agreement_sent += 1          # their negotiate arrived; we answered it
+
+    _deliver_late(transport, sent, events.append, boxes)
+
+    assert [e["event"] for e in events] == ["handshake.delivered_in_reply"]
+    assert transport.sent == [], "must not dial a door that may not be there"
+
+
 def test_a_second_failure_refuses_the_window_rather_than_starting_it_alone() -> None:
     """anrbj666 g6: the window we started alone cost four minutes and a TIMEOUT.
 
@@ -106,6 +130,6 @@ def test_the_late_delivery_runs_after_the_retarget() -> None:
     source = Path("src/najamjad_agent/sdk/handshake_setup.py").read_text(encoding="utf-8")
     exchange = source.index("peer = exchange_agreement(")
     retarget = source.index("            retarget(\n                transport.client,")
-    late = source.index("_deliver_late(transport, sent, bus.publish)")
+    late = source.index("_deliver_late(transport, sent, bus.publish, inboxes)")
 
     assert exchange < retarget < late, "deliver to the corrected address, not the failed one"

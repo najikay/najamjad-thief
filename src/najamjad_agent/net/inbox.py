@@ -61,6 +61,12 @@ class Inboxes:
         #: Answering in-band completes the exchange over the connection the peer
         #: already opened. Set by the handshake, read by the server thread.
         self.our_agreement: dict[str, Any] | None = None
+        #: How many negotiate replies have carried it out. This is *delivery*,
+        #: counted where it actually happens. A peer who dials us has already
+        #: given us the one connection we need, and our reply rides it home —
+        #: so once this rises, our agreement is in their hands and a second
+        #: outbound call of our own would be asking a door that may not exist.
+        self.agreement_sent: int = 0
 
     def accept(self, kind: str, raw: Any) -> ParseResult:
         """Validate and enqueue one inbound message, returning the verdict."""

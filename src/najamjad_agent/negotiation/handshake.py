@@ -21,7 +21,7 @@ from typing import Any
 from ..net.match_gate import BUSY_REASON
 from ..shared.events import Emit
 from .contract import Contract, ContractError
-from .inbound_first import agreement_in_hand
+from .inbound_first import LISTEN_SECONDS, agreement_in_hand
 from .terms import describe_mismatch
 
 
@@ -98,7 +98,11 @@ def exchange_agreement(
         # accepts and answers an inbound negotiate whether or not our own send
         # works, and until now nothing ever started the window that acceptance
         # promised. `inbound_first` holds the whole rule.
-        peer = in_hand or agreement_in_hand(receive, declarations, announce, error)
+        # Listen rather than peek: our call failed, so the peer may simply not
+        # be there yet, and their spawning announces itself here.
+        peer = in_hand or agreement_in_hand(
+            receive, declarations, announce, error, wait=LISTEN_SECONDS
+        )
         if peer is None:
             raise
         return _lock(contract, terms, peer, announce)

@@ -44,6 +44,7 @@ def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
         # unknown response fields exactly as it tolerates unknown request ones.
         if kind == "negotiate" and inboxes.our_agreement is not None:
             answer["agreement"] = inboxes.our_agreement
+            inboxes.agreement_sent += 1
         return answer
 
     def _body(message: dict | None, payload: dict | None) -> dict:
