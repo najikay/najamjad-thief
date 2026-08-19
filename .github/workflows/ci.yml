@@ -13,7 +13,16 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20 minutes was set when the suite was small and became unreachable on
+    # 2026-08-16, when `test_the_whole_archive.py` added a single 301-second
+    # test. Every run since has been killed mid-`tests/regression` and read as
+    # "canceled", which looks like flakiness rather than a budget. Measured
+    # 2026-08-19: regression + integration alone is 12:00 locally WITHOUT
+    # coverage, and CI runs the whole tree with it on a slower runner. Sixty is
+    # headroom, not an estimate — the heavy archive and duel benches belong in
+    # the nightly workflow beside the other statistical gates, and moving them
+    # is the real fix this only buys time for.
+    timeout-minutes: 60
     steps:
       # Both target the node24 runtime. The previous pins (checkout@v4,
       # setup-uv@v5) ran on node20, which GitHub deprecated in Sept 2025 and
