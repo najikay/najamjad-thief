@@ -85,7 +85,12 @@ response_timeout_seconds = 30
 # Total wall clock is still bounded by the gatekeeper's deadline_seconds = 45,
 # which is what keeps us inside the agreed 60 s watchdog. This buys longer
 # individual calls, not longer overall patience.
-call_timeout_seconds = 30
+#
+# 25 and not 30, because `match_setup.build_transport` refuses a per-call cap at
+# or above `response_timeout_seconds`: at 30 a single retry could outlast the
+# signed 30 s turn deadline, which is a term we agreed and not a dial. The guard
+# caught this on start-up rather than in a match, which is where it belongs.
+call_timeout_seconds = 25
 watchdog_threshold_seconds = 60
 max_retries = 3
 # T-2447: a failed agreement exchange retries the SAME sub-game this many
