@@ -95,25 +95,27 @@ def test_the_storm_actually_happened(stalled) -> None:
     assert storming.refused > 0, "the injected storm never refused a send"
 
 
-def test_a_storm_costs_at_most_the_game_it_hits_and_the_one_after(stalled) -> None:
-    """The measured blast radius, recorded rather than wished for.
+def test_a_storm_now_costs_no_games_at_all(stalled) -> None:
+    """The blast radius, re-measured after the window is re-offered.
 
-    The assertion here was originally `== 1`, and that was the property I wanted
-    rather than the one the system has. It is **2**: the storm kills the game it
-    lands in, and the following game too, because when we abandon mid-mini-game
-    the peer does not know we have — it is still waiting on a turn, and it burns
-    its own watchdog before both sides resynchronise at the next boundary.
+    It was **2** — the storm killed the game it landed in and the one after,
+    because abandoning advanced us past a window the peer was still waiting on,
+    and the two sides then resynchronised a game late. `T-2485` tracked
+    shrinking it.
 
-    Two is bounded and survivable; six is not, and six is what used to happen.
-    Recording the real number keeps the gate honest, and `T-2485` tracks
-    shrinking it — the peer should be told we are abandoning rather than left to
-    time out.
+    It is now **0**. A mini-game that dies mid-play is re-offered under the same
+    number (`match.ABANDON_RETRIES`), and a transient has passed by the retry,
+    so the window plays. Nothing is skipped, so nothing desynchronises and no
+    game is scored against a storm that has already blown over.
+
+    Kept as a range rather than `== 0`: the point is that a transient is
+    survivable, not that this particular fixture never times out.
     """
     ours, _ = stalled
     reasons = [str(game.get("end_reason", "")) for game in ours.games]
 
-    assert reasons.count(EndReason.TIMEOUT.value) <= 2
-    assert reasons.count(EndReason.TIMEOUT.value) >= 1, "the storm cost nothing at all"
+    assert reasons.count(EndReason.TIMEOUT.value) <= 1, "a transient still costs a game"
+    assert len(ours.games) == 6, "every window must still be filed"
 
 
 def test_the_stalled_game_reports_the_steps_it_really_played(stalled) -> None:
@@ -125,8 +127,13 @@ def test_the_stalled_game_reports_the_steps_it_really_played(stalled) -> None:
     ours, _ = stalled
     stalled_game = ours.games[DEAD_SUB_GAME - 1]
 
-    assert stalled_game["end_reason"] == EndReason.TIMEOUT.value
+    # The window is re-offered now, so the storm's game is normally *played*
+    # rather than abandoned. Either outcome is honest; what must never happen is
+    # filing it as though it had not happened at all.
+    assert stalled_game["end_reason"] in {EndReason.TIMEOUT.value, EndReason.SURVIVAL.value,
+                                          EndReason.CAPTURE.value}
     assert stalled_game["steps"] >= 0
+    assert stalled_game["sub_game"] == DEAD_SUB_GAME
 
 
 def test_every_sub_game_is_filed_exactly_once(stalled) -> None:
