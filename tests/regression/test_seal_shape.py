@@ -132,25 +132,25 @@ def test_the_seal_is_not_silently_gone() -> None:
     assert max(walls) > 0, "the cop placed no barriers at all — the seal is gone"
 
 
-def test_the_greedy_evader_is_still_the_known_failure() -> None:
-    """Pinned at what we measure today, so progress and regress both show.
+def test_the_greedy_evader_is_now_converted() -> None:
+    """Was the known failure; now a capture, and pinned so it stays one.
 
-    Seven barriers spent and the room never below 42 — against a thief that
-    simply runs, the column cut never completes, so the row cut never happens
-    and the walls buy nothing. This is the open defect.
+    Until the plan was rewritten to Naji's script on 2026-08-19 this asserted
+    the opposite — seven barriers spent and a room that never fell below 42,
+    because the cop walled its own route to the gate and stood still. It now
+    walks the lane, crosses each gate before sealing it behind, and converts
+    the 3x3 with the exact solver.
 
-    It is pinned as *two* separate facts on purpose. `walls >= 5` catches the
-    seal being switched off, which is how a guard added on 2026-08-18 went
-    unnoticed by every capture bench while the cop placed a single wall and
-    wandered. `smallest <= 45` catches the room never shrinking at all. Tighten
-    the second to `<= WINNABLE` when the approach is fixed; do not loosen either
-    to make a change pass.
+    Bounds rather than exact numbers: the capture step and wall count are what
+    a routing change moves, and pinning them exactly turns every improvement
+    into a failing test. What must not regress is that it captures at all,
+    inside the agreed horizon, having actually shrunk the room.
     """
     smallest, walls, captured = play(Runner(), "greedy evader")
 
-    assert not captured, "the evader is now caught — tighten this test"
-    assert walls >= 5, f"only {walls} barriers spent — the cop stopped sealing"
-    assert smallest <= 45, f"room never shrank below {smallest} — the column cut is broken"
+    assert captured, "the evader escapes again — the seal has regressed"
+    assert smallest <= WINNABLE, f"room only reached {smallest}; the cuts are not landing"
+    assert walls <= 12, f"spent {walls} barriers; the plan costs ten plus the finish"
 
 
 def test_a_wandering_thief_is_still_converted() -> None:

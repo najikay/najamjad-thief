@@ -73,30 +73,40 @@ def forced_capture(cells: frozenset[Cell], cop: Cell, thief: Cell,
 def winning_action(cells: frozenset[Cell], cop: Cell, thief: Cell,
                    walls: frozenset[Cell], left: int,
                    plies: int = 26) -> tuple[str, Cell] | None:
-    """The step or barrier that *keeps* the forced capture, or None.
+    """The action that captures **soonest**, or None if the pocket is not won.
 
-    `forced_capture` only answers whether a pocket is won. Knowing that and then
-    chasing heuristically is how a proven win gets thrown: the table said the
-    3x3 falls to one barrier, and our cop still handed the pocket back to
-    ordinary pursuit the moment `_settled` was true. This returns the action to
-    actually play — `("move", landing)` or `("wall", cell)`.
+    Fastest, not merely winning, and that distinction is the whole point. An
+    earlier version returned the first action `_win` approved, and `_steps`
+    lists the cop's own square first — so `STAY` was approved every turn and
+    returned every turn. The cop built a perfect 3x3 on step 26 and then stood
+    still until the clock ran out: winning "within 26 plies" is preserved by
+    doing nothing, because the horizon moves with you.
 
-    Parity is the part worth stating. `_win` is entered with `cop_turn=True`, so
-    after *our* action the position is the thief's to move; every probe below
-    therefore passes `False`. Asking with `True` would score our own move twice
-    and call lost positions won.
+    So each candidate is scored by the smallest depth at which it still wins,
+    and the smallest depth is taken. That is a real capture sequence, and it
+    strictly decreases, so the game finishes.
+
+    Parity: `_win` is entered with `cop_turn=True`, so after our own action the
+    position is the thief's to move and every probe passes `False`.
     """
     if len(cells) > MAX_CELLS or cop not in cells:
         return None
     budget = min(left, MAX_BUDGET)
+    best: tuple[int, str, Cell] | None = None
     for landing in _steps(cells, walls, cop):
         if landing == thief:
             return ("move", landing)
-        if _win(cells, landing, thief, walls, budget, False, plies - 1):
-            return ("move", landing)
+        for depth in range(1, plies):
+            if _win(cells, landing, thief, walls, budget, False, depth):
+                if best is None or depth < best[0]:
+                    best = (depth, "move", landing)
+                break
     for cell in _steps(cells, walls, cop) if budget > 0 else ():
         if cell == thief:
             continue                    # the Barrier Law forbids walling them
-        if _win(cells, cop, thief, walls | {cell}, budget - 1, False, plies - 1):
-            return ("wall", cell)
-    return None
+        for depth in range(1, plies):
+            if _win(cells, cop, thief, walls | {cell}, budget - 1, False, depth):
+                if best is None or depth < best[0]:
+                    best = (depth, "wall", cell)
+                break
+    return (best[1], best[2]) if best else None
