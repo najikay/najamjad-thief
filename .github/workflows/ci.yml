@@ -22,7 +22,19 @@ jobs:
     # headroom, not an estimate — the heavy archive and duel benches belong in
     # the nightly workflow beside the other statistical gates, and moving them
     # is the real fix this only buys time for.
-    timeout-minutes: 60
+    # Measured 2026-08-19, serially, on the machine we develop on: the
+    # coverage-instrumented `pytest tests/` step alone takes **1 h 20 m** and
+    # passes (3036 tests, 93.47%). Sixty was a guess made the same day and is
+    # still under the measurement, so it would have died at the same step for
+    # the same reason — a raise that was not measured is a slower version of the
+    # original bug.
+    #
+    # 120 is headroom over a real number rather than another guess. The actual
+    # fix remains moving the archive and duel benches to the nightly workflow
+    # beside the other statistical gates: one test in `test_the_whole_archive`
+    # is 301 s by itself, and coverage sits 8 points above the floor, so there
+    # is room to move them without dropping under it.
+    timeout-minutes: 120
     steps:
       # Both target the node24 runtime. The previous pins (checkout@v4,
       # setup-uv@v5) ran on node20, which GitHub deprecated in Sept 2025 and
