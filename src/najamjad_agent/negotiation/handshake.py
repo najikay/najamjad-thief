@@ -128,6 +128,16 @@ def exchange_agreement(
             raise busy
         return _lock(contract, terms, peer, announce)
 
+    # Their agreement, if it rode back on the reply to our own call. The mirror
+    # of what our server now does, and it costs one dict lookup. When our
+    # outbound works and theirs does not, this is the only path that completes
+    # the exchange — and it completes it instantly rather than after a 60 s wait
+    # for a message their side cannot deliver.
+    riding = answer.get("agreement") if isinstance(answer, dict) else None
+    if isinstance(riding, dict) and riding.get("terms") is not None:
+        announce({"event": "handshake.agreement_in_reply"})
+        return _lock(contract, terms, riding, announce)
+
     peer = receive(timeout)
     if peer is None:
         raise HandshakeError(

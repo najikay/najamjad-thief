@@ -53,6 +53,14 @@ class Inboxes:
         self.sequence = TurnSequence()
         self.guard = guard or SessionGuard(emit=emit, max_per_minute=max_per_minute)
         self.gate = gate or MatchGate(emit=emit)
+        #: Our signed agreement for the window being negotiated, so the server
+        #: can hand it back in the reply to *their* negotiate. A handshake needs
+        #: both agreements to cross, and it has cost us three windows that those
+        #: are two separate outbound calls: when ours fails and theirs works, the
+        #: link is fine in the direction that matters and we still cannot finish.
+        #: Answering in-band completes the exchange over the connection the peer
+        #: already opened. Set by the handshake, read by the server thread.
+        self.our_agreement: dict[str, Any] | None = None
 
     def accept(self, kind: str, raw: Any) -> ParseResult:
         """Validate and enqueue one inbound message, returning the verdict."""

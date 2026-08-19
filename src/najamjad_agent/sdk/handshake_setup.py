@@ -77,7 +77,7 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
             terms=terms,
             identity=session["identity"],
             declarations=negotiate_declarations(manager, terms, role, sub_game),
-            send=lambda payload: _record_send(transport, sent, payload),
+            send=lambda payload: _record_send(transport, sent, payload, inboxes),
             # The inbox hands back a validated pydantic model; the handshake and
             # the contract both work in plain dicts, and `verify_peer` indexes
             # the message directly.
@@ -126,9 +126,18 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
     return run
 
 
-def _record_send(transport, sent: dict[str, Any], payload: dict[str, Any]) -> Any:
-    """Send our agreement, remembering the payload and whether it got through."""
+def _record_send(transport, sent: dict[str, Any], payload: dict[str, Any],
+                 inboxes: Any = None) -> Any:
+    """Send our agreement, remembering the payload and whether it got through.
+
+    Also publishes it on the inboxes, so the server can answer *their* negotiate
+    with it. That is the half of the exchange that survives a one-directional
+    link: our outbound may be failing while theirs works perfectly, and a reply
+    travels on the connection they opened rather than one we have to open.
+    """
     sent["payload"] = payload
+    if inboxes is not None:
+        inboxes.our_agreement = payload
     answer = transport.send_negotiate(payload)
     sent["delivered"] = True
     return answer

@@ -43,6 +43,22 @@ from ..shared.events import Emit
 #: is still bounded, so a genuinely dead peer is resolved rather than waited on.
 BUSY_RETRIES = 100
 BUSY_BACKOFF_SECONDS = 10.0
+#: The bound that actually binds, in seconds of wall clock.
+#:
+#: `BUSY_RETRIES x BUSY_BACKOFF_SECONDS` was quoted to anrbj666 in writing as
+#: "16.7 minutes per window". It was wrong by an order of magnitude, and the
+#: arithmetic error is worth naming: the attempts do not cost only the sleep
+#: between them. Each one also spends the gatekeeper's full deadline failing —
+#: about 100 s against an unreachable door — so a hundred attempts is closer to
+#: **three hours**. On 2026-08-19 a cop process sat in that loop for fourteen
+#: minutes and would have stayed for hours if it had not been stopped by hand.
+#:
+#: Counting attempts cannot express "wait one opponent window", because the cost
+#: of an attempt depends entirely on how the peer fails: a refusal returns in
+#: milliseconds, a dead door takes a hundred seconds. Wall clock is the quantity
+#: we actually meant, so it is the quantity we now measure, and the number we
+#: quote to an opponent is one they can hold us to.
+WINDOW_BUDGET_SECONDS = 1000.0
 #: Failures that mean "the peer is not listening *yet*", as opposed to "the peer
 #: is broken". Under a sequential-window contract — anrbj666 confirmed theirs on
 #: 2026-08-19: windows run 1..6 and N+1 is not spawned until N settles — a door
@@ -66,6 +82,7 @@ def agree_on_terms(
     emit: Emit,
     role: str = "",
     sleep: Any = None,
+    clock: Any = None,
 ) -> bool:
     """Run the pre-game handshake, retrying the *same* sub-game on failure.
 
@@ -88,10 +105,12 @@ def agree_on_terms(
     operator needs to hear about before it happens mid-series.
     """
     sleep = sleep or time.sleep
+    clock = clock or time.monotonic
     if handshake is None:
         return True
     ordinary = 0
     busy_seen = 0
+    deadline = clock() + WINDOW_BUDGET_SECONDS
     while True:
         try:
             _invoke(handshake, role, sub_game)
@@ -104,7 +123,7 @@ def agree_on_terms(
             # sub-game ended. So the two are counted separately.
             if type(error).__name__ in ("HandshakeBusyError", *NOT_READY_YET):
                 busy_seen += 1
-                spent = busy_seen > BUSY_RETRIES
+                spent = busy_seen > BUSY_RETRIES or clock() >= deadline
                 emit({
                     "event": "handshake.exhausted" if spent else "handshake.waiting_for_window",
                     "sub_game": sub_game,

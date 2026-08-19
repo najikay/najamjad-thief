@@ -38,7 +38,13 @@ def build_server(inboxes: Inboxes, emit: Emit | None = None) -> FastMCP:
         if not result.ok:
             publish({"event": "server.rejected", "tool": kind, "errors": result.errors})
             return result.error_response(kind)
-        return {"accepted": True, "kind": kind}
+        answer: dict[str, Any] = {"accepted": True, "kind": kind}
+        # Ride our own agreement back on their connection. Additive and ignored
+        # by any peer that does not look for it — the reference tolerates
+        # unknown response fields exactly as it tolerates unknown request ones.
+        if kind == "negotiate" and inboxes.our_agreement is not None:
+            answer["agreement"] = inboxes.our_agreement
+        return answer
 
     def _body(message: dict | None, payload: dict | None) -> dict:
         """Whichever argument name the caller used.
