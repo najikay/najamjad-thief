@@ -190,6 +190,17 @@ class SealCop(CopBrain):
         walled = board.with_barrier(wall)
         if not walled.neighbours(here):
             return None
+        # **Never seal ourselves away from the quarry.** The old scoring version
+        # checked this before every placement and the rewrite dropped it, which
+        # is how the cop walled the thief into the half it was not standing in
+        # and then had no way back. A cut is only ever taken with the thief on
+        # OUR side of it; if this wall would separate us, the plan is stale
+        # rather than the wall wrong — the thief has changed halves while we
+        # were building, so rebuild for the half it is actually in.
+        if thief not in component(walled, here):
+            self.script = self._row_script(thief) if self.phase == "row" else []
+            self.phase = "row" if self.phase == "row" else self.phase
+            return None
         self.script.pop(0)
         return wall
 
