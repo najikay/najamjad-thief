@@ -160,9 +160,17 @@ certainly accept", which described an intention rather than the code.
   sorted keys, raw UTF-8, default `", "` / `": "` separators, signed before the
   `חתימת_קונסנזוס_משותפת` key is inserted. Signing compact here produces a digest
   that never matches, at the exact moment both reports must agree.
-* **The pheromone model is subtractive Chebyshev**, not the book's radial
-  variant. Nothing crashes if we disagree — the grid is not hashed — but both of
-  us would read each other's field wrongly for the whole series.
+* **The pheromone model has two defensible answers and we implement both.** The
+  book (PAGE 43-44) is radial with relative decay; the reference simulator is
+  linear in Chebyshev distance with absolute decay. Appendix F is binding, so the
+  book model is the correct one and is our code's default — but we have
+  historically *declared* the reference model, because most teams start from the
+  simulator. Selecting between them is a config term, not a code change, so tell
+  us which you run and we will match it. Nothing crashes if we disagree — the grid
+  is not hashed — but both of us would read each other's field wrongly for a whole
+  series. Verify by the numeric 5×5, not only by a digest: two correct
+  implementations of the same physics can hash differently, because the
+  fingerprint payload is not itself standardised.
 
 All four are settled in the same direction by the interop kit at
 `github.com/Imreec/copthief-league-protocol`, which we cross-checked our

@@ -67,10 +67,20 @@ def test_an_unset_level_means_full_strength() -> None:
     assert normalise("") == FULL
 
 
-def test_only_the_sandbagged_level_holds_back() -> None:
-    assert plays_full_strength(FULL)
-    assert plays_full_strength(PRACTICE)
-    assert not plays_full_strength(SANDBAGGED)
+def test_no_level_holds_back_any_more() -> None:
+    """Every level plays the shipped strategy; only the report differs.
+
+    This asserted `not plays_full_strength(SANDBAGGED)` until 2026-08-18. The
+    weak warm-up policy was retired because it cost real games and because
+    maintaining two strategies is two ways to lose; what a warm-up still changes
+    is where the report is sent, which is the only thing it was ever needed for.
+
+    Kept as a positive assertion over the whole set rather than deleted, so
+    reintroducing a held-back level is a failing test rather than a surprise in
+    a match.
+    """
+    for level in (FULL, PRACTICE, SANDBAGGED):
+        assert plays_full_strength(level), f"{level} must play the shipped policy"
 
 
 def test_the_guard_returns_the_normalised_level_for_the_caller() -> None:

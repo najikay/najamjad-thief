@@ -176,6 +176,13 @@ dialogue, token budget, and the report panel. On WSL2, pass
 `--dashboard-host 0.0.0.0` and open it on the WSL address if a Windows browser
 cannot reach loopback. Put it back to loopback for a counted match (rules 8-9).
 
+`--dashboard-host` takes `HOST`, `HOST:PORT`, or `:PORT`. **In a split match
+give the second process `--dashboard-host :8010`**, or it is refused the port
+and runs blind. Whichever panel you open, read the role tag beside the title in
+the header: it says `thief` or `police`, and it is the difference between our
+thief at the agreed [3,3] and our cop at [0,0]. Mistaking one for the other is
+what sent us hunting a starting-position bug that the engine never had.
+
 **Ctrl+C when you have finished reading the panels.** The process keeps serving
 after the series ends, and a forgotten run holds the port against the next one.
 

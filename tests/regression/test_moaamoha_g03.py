@@ -95,13 +95,22 @@ def test_the_full_strength_thief_keeps_its_distance(board: Board, belief: dict) 
     assert move is Move.EAST, f"stepped {move.value} into the cop's reach"
 
 
-def test_the_sandbagged_thief_is_the_one_that_walked_into_it(board: Board, belief: dict) -> None:
-    """Sandbagging has to be visibly weaker or a warm-up leaks the real policy.
+def test_the_sandbagged_thief_no_longer_walks_into_it_either(board: Board, belief: dict) -> None:
+    """Both levels now avoid the move that lost this mini-game.
 
-    Pinned to the exact position that cost a real mini-game rather than to a
-    synthetic one: this is the difference the dial is *for*, and if the two
-    strengths ever agree here the warm-up has stopped protecting anything.
+    This test asserted the reverse until 2026-08-18: that a sandbagged thief
+    still played `NORTH` into the cop's reach, because a warm-up was meant to be
+    visibly weaker so it did not leak the real policy. Naji retired that after
+    losing games to it. Sandbagging only conceals anything if the weak version is
+    convincing, and a warm-up played by a deliberately worse agent stops being
+    the place bugs surface — it becomes a second policy to maintain and a second
+    way to lose.
+
+    The level now changes exactly one thing, and it is not on the board: where
+    the report is sent. So the loss this file is named for must not be
+    reproducible at *any* level.
     """
     move = ThiefBrain(strength=SANDBAGGED).pick_move(Facts(board, belief))
 
-    assert move is Move.NORTH, "the sandbagged policy no longer reproduces the loss"
+    assert move is Move.EAST, f"stepped {move.value} into the cop's reach"
+    assert move is ThiefBrain().pick_move(Facts(board, belief)), "levels must agree"

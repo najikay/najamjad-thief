@@ -34,10 +34,28 @@ from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
 from .base import apply, reachable_within
-from .territory import UNREACHABLE, component_size, cut_cells, distances_from
+from .territory import (
+    UNREACHABLE,
+    component_size,
+    cut_cells,
+    distances_from,
+    fence_gaps,
+    keeps_a_free_square,
+    room_we_reach_first,
+    seal_cost,
+    sealing_cells,
+)
 
 #: Below this the cop is adjacent and can take us on its next move.
 SAFE_DISTANCE = 2
+#: Barriers it must take to seal a cell off before we will stand on it while
+#: the cop still holds any. A corner costs 2, an edge 3, the middle 4, and
+#: those fall as a fence goes up — so a floor of 3 refuses corners outright and
+#: refuses any cell a half-built fence has already thinned. Not a maximand:
+#: preferring the *most* sealable-resistant cell makes STAY win whenever
+#: standing still holds the most room, and the thief parks (`test_amjad_g02`).
+#: A floor removes the cells that lose games and leaves the rest to the ranking.
+MIN_SEAL_COST = 3
 #: A room smaller than this is a trap being closed, however far away the cop is.
 CRAMPED_ROOM = 6
 
@@ -311,6 +329,27 @@ def choose(
     candidates = safe_moves(board, origin, cop, legal, reach)
     if not candidates:
         return (Move.STAY,)
+    # **Stand in the gap of a fence being built.** The Barrier Law forbids
+    # walling our own cell, so occupying the line the cop is walling stops
+    # the seal outright: it must abandon the fence or come and take us, and
+    # coming costs it exactly the turns the fence needed. Measured against
+    # the halving cop at the agreed start, which otherwise takes us on step
+    # 35 having spent thirteen walls.
+    #
+    # Only among moves that already passed every safety filter above, so
+    # blocking never costs distance or room — it is a tie-break with teeth.
+    # Line first, cut second, and the order was measured: a *union* of the two
+    # spreads the preference over every cell of every minimum cut and stops
+    # forcing us onto the gap that matters — we were taken on step 35 again.
+    # The straight line is the fence a cop is visibly building; the general cut
+    # is the fallback for the shapes a line cannot see, like the L of `(4,6)`,
+    # `(6,5)`, `(5,6)` that MOAAMOHA sealed a corner with.
+    gaps = set(fence_gaps(board, cop)) or sealing_cells(board, origin)
+    if gaps:
+        blocking = tuple(
+            move for move in candidates if apply(board, origin, move) in gaps
+        )
+        candidates = blocking or candidates
     # Prefer the moves that are still safe a turn later. Only a preference:
     # when nothing survives the reply we are already losing, and refusing to
     # move would forfeit the chance that the cop answers imperfectly.
@@ -320,6 +359,57 @@ def choose(
         if survives_the_reply(board, apply(board, origin, move), cop, legal)
     )
     candidates = lasting or candidates
+    # **Refuse ground a fence could close around us, while one still can.**
+    # A maximand here makes STAY win whenever standing still holds the most
+    # room, and the thief parks — `test_amjad_g02` caught exactly that. As a
+    # floor it only removes the cells that lose games: a corner needs two
+    # barriers to seal, an edge three, the middle four, and those numbers fall
+    # as a fence goes up. Against MOAAMOHA on 2026-08-16 we stepped into a
+    # 2-cost corner with the cop adjacent holding eleven barriers and were
+    # walled in by step 14.
+    #
+    # Falls back to the unfiltered set when nothing clears the floor, for the
+    # same reason `safe_moves` does: a thief with no good move still has to
+    # move, and refusing to choose is the one option never available.
+    if remaining > 0:
+        roomy = tuple(
+            move for move in candidates
+            if seal_cost(board, apply(board, origin, move)) >= MIN_SEAL_COST
+        )
+        candidates = roomy or candidates
+        # **And keep a 4x4 in reach**, which is the invariant the forced-win
+        # table actually names. `seal_cost` prices the wall we could be shut in
+        # by *now*; this prices the room we will still have after the next few.
+        # Seven of our sixty-one losses against real cop lines were exactly this
+        # gap: a cell costing three to seal, entered legally, in a corner whose
+        # escape was walled two turns later — (5,6) on step 12 against uoh-ay26,
+        # (5,0) on step 18 against amjad.
+        roomier = tuple(
+            move for move in candidates
+            if keeps_a_free_square(board, apply(board, origin, move), cop)
+        )
+        if roomier:
+            candidates = roomier
+        else:
+            # Graded, never all-or-nothing — the same discipline `safe_moves`
+            # learned. With no 4x4 left to keep, take the moves that keep the
+            # most ground we reach first, rather than handing the choice to keys
+            # that cannot see a fence going up.
+            # **Standing still never sets the bar.** It wins this measure
+            # almost by definition — every cell we already hold, we reach in
+            # zero — so letting STAY define the maximum lets it eliminate every
+            # move that backs away, which is the freeze `test_amjad_g02` was
+            # written for. Measured at [5,5] against a cop on [3,2]: STAY scores
+            # 19 and stepping north 17, and STAY would win outright. The bar
+            # comes from the moving options; STAY is kept only if it matches.
+            movers = tuple(move for move in candidates if move is not Move.STAY)
+            room = {
+                move: room_we_reach_first(board, apply(board, origin, move), cop)
+                for move in candidates
+            }
+            best = max((room[move] for move in movers), default=None)
+            if best is not None:
+                candidates = tuple(m for m in candidates if room[m] == best) or candidates
     cuts = frozenset(cut_cells(board, origin)) if remaining > 0 else frozenset()
     scored = [(rank(board, origin, move, reach, cuts), move) for move in candidates]
     best = max(score for score, _ in scored)

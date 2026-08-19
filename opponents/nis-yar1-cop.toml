@@ -1,0 +1,133 @@
+# nis-yar1-cop
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://strategy-spyware-drinking-ken.trycloudflare.com/mcp"
+group_id = "nis-yar1"
+name     = "nis-yar1-cop"
+notes    = """
+Nissim Deri, Yarden Tziar. First contact 2026-08-17, and the most prepared
+approach we have had: they built a compatibility config against our terms and
+validated it before asking for a game.
+
+TERMS ALREADY SETTLED. We re-derived the digest from their own `signed_terms`
+through our loader: a284082dfb1572236f1b614d29295a99625539c7d33a096f7f8921bafbc3d08d,
+byte for byte, all fourteen keys, correct types. Nothing to negotiate.
+
+They also declare, unprompted: `roles_keyed_by_group_id: true` (the field that
+broke MOAAMOHA's digest), `step_one_is_after_first_move: true` (our convention),
+`busy_peer_seconds: 360` and `retries: 3` (they read the timeout warning),
+`thief_opens: true`, `two_processes: true`.
+
+TWO DOORS ON ONE HOST, and this is the open question rather than a finding:
+  their cop    https://brother-blocking-discount-jackson.trycloudflare.com/mcp
+  their thief  https://minister-angel-opponent-strategy.trycloudflare.com/mcp
+One reserved ngrok domain, two paths. That is compatible with rule 1 if a proxy
+sits in front of two processes, and a breach if one server handles both routes —
+ask before playing, do not assume. Note also that a single free-plan ngrok agent
+session means both doors die together, so a dropped tunnel costs all six windows
+rather than three.
+
+COUNTED COUNT — they declared **2** counted series so far (2026-08-17). Nothing
+configures this: `reporting/league.py` reads it live from their handshake under
+either `counted_matches_played` or `counted_games_played`, and **a peer declaring
+neither prints zero**. So it is written here as the value to CHECK, not to set.
+
+`games_played_including_this` counts the series being filed, so after our counted
+series our report must read:
+
+    games_played_including_this: {"nis-yar1": 3, "najamjad": 5}
+
+A `1` there means their declaration was not read and we filed a silent zero —
+the same defect shape as their commit and their token spend, both of which we
+read under our own field name and got wrong. Rule 38 judges this field on mutual
+consistency between the two teams' files, so a mismatch is a finding against
+both of us.
+
+2026-08-17, their reply to our handshake diagnosis. Fixed on their side:
+  * every negotiate now carries `sender` and `group_id` at top level, so the
+    session binds — that was 143 unauthenticated calls in three minutes
+  * handshake and transport retries now use bounded exponential backoff with a
+    five-second ceiling, replacing the ~1.3 s hot loop
+  * signed terms and commit-reveal construction untouched
+Their quick tunnels did not survive, and they are replacing the one-host,
+two-path setup with **two persistent hostnames** — cop on 8802, thief on 8801 —
+exactly as asked. They asked us not to retry until those arrive. AWAITING: two
+URLs, and fresh commits for both repos.
+
+REPOS NOT REACHABLE, checked 2026-08-17. Both agent repos return HTTP 404 on
+plain HTTPS and on the GitHub API, unauthenticated:
+    github.com/NisoDeri/nis-yar1-cop    404
+    github.com/NisoDeri/nis-yar1-thief  404
+The owner exists and has six public repos, none of them these two — so the pair
+is private or was never pushed. That also explains their resending the identical
+hashes after changing code: local commits that never left the machine. Neither
+declared commit resolves to anything anyone can inspect, which is fine for a
+friendly and not fine for a counted series (rules 49 and 53).
+
+2026-08-17, second attempt. They now serve **two separate hostnames**, one per
+process, replacing the one-host/two-path setup whose proxy killed every MCP
+session. Both answered HTTP 406 on probe, which is the healthy MCP signature.
+They also matched both digests we asked for:
+    commit-reveal 4047830b8108320cbf48c1c1e1f09c6c0d47da51c225ce2cf40c7857cefc3030
+    scent rings   0.90 / 0.60 / 0.30
+These are **trycloudflare quick tunnels** — they rotate on restart, and they say
+persistent named hostnames will come before any counted series. Re-probe both
+doors immediately before dialling, and expect the URLs to change if they restart.
+
+2026-08-17, FOURTH URL CHANGE and a REGRESSION: they have gone back to the
+one-host, two-path ngrok setup —
+    cop    https://duckling-judgingly-frigidly.ngrok-free.dev/cop/mcp
+    thief  https://duckling-judgingly-frigidly.ngrok-free.dev/thief/mcp
+This is the exact topology that failed earlier the same evening: 21
+`McpError: Session terminated` on each side, 7 handshake attempts each, zero
+handshakes locked, no mini-game started. Both paths answer HTTP 406, which is
+precisely the trap — the tunnel answers while the MCP session dies, so a curl
+check passes and every handshake fails. They had it working on two separate
+hostnames twice tonight; this is a step backwards, not forwards.
+
+PREFLIGHT DECIDES. `opponent_tools` opens a real MCP session and is the only
+check that distinguishes this from a healthy door. If it reports
+`Session terminated` again, stop and ask them to go back to two hostnames
+rather than burning another evening on retries.
+
+STILL OPEN before a counted series:
+  * `commit_reveal: "reference"` is unresolved. Ours is compact-separator
+    canonical JSON, a literal `|`, then the nonce. They owe us the clause-5
+    vector: payload {"hint":"","intent":"probe east","move":"MOVE:E",
+    "position":[3,4],"role":"thief","state":"ok","step":1,"sub_game":1} under
+    nonce "a"*32 must give
+    4047830b8108320cbf48c1c1e1f09c6c0d47da51c225ce2cf40c7857cefc3030
+  * scent model digest unconfirmed. Name matches
+    (subtractive_chebyshev_v1); we want
+    81ebee59640e80eae8ca9ee5f86abd26e7edf5cdbb27d15925cb6ee45ca6ddf4
+    or the rings 0.90 / 0.60 / 0.30.
+
+2026-08-17: both doors answered ngrok ERR_NGROK_3200 (endpoint offline), which
+is their agent not running rather than a fault. Re-probe immediately before
+dialling; a healthy MCP door answers 406, never 404.
+
+agent email  yardentziar@gmail.com  — and `practice.redirect_to` in
+config/setup.json must equal it before a friendly, or our report goes to
+whichever team we played last.
+
+repos  github.com/NisoDeri/nis-yar1-cop  ·  github.com/NisoDeri/nis-yar1-thief
+`url` above is their COP door. Use this card when running najamjad-thief.
+"""
+
+# Sent by them 2026-08-17 in their compatibility config, one per repo.
+# `scripts/audit_opponent.py` compares these per role against the
+# `github_commit` their step-0 declares; a mismatch is a rule-53 finding
+# reported as evidence, and the likeliest cause is a push they forgot to resend.
+# STALE — blanked deliberately on 2026-08-17. They shipped protocol fixes after
+# sending these (top-level sender/group_id, bounded exponential backoff with a
+# 5 s ceiling), so the pair below no longer matches what their step-0 will
+# declare. An empty expectation is *skipped* by `audit_opponent.py`, whereas a
+# known-stale one would report a rule-53 MISMATCH against an honest team who had
+# simply pushed a fix. Re-arm from their resend before the counted series.
+#   was cop   7633fbc808b56f92f8b7ce09a2178ba523e3e31d
+#   was thief 3f2d02160174361e4cd40dc409b7df63e9cb22fe
+[armed_commits]
+cop   = "659c5f789ecb54eeeb7de4911f3598d6bbc8a5a7"
+thief = "659c5f789ecb54eeeb7de4911f3598d6bbc8a5a7"

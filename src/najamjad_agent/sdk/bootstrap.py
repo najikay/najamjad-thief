@@ -247,8 +247,9 @@ def _attach_dashboard(
     # overrides it for one run only, the same way `--group-id` does: the shipped
     # config keeps the value a test pins for rules 8-9, and reaching the panel
     # from another machine never becomes a committed change nobody reviews.
-    host, port = dashboard_bind(load_setup())
-    host = host_override or host
+    # The flag also carries an optional port (`:8010`, `0.0.0.0:8010`) so a
+    # split match can run a live panel per process instead of one silent one.
+    host, port = dashboard_bind(load_setup(), host_override)
     if host not in LOOPBACK_HOSTS:
         # Loud, because the note beside the key is a rules argument rather than
         # taste: anyone who can reach this sees our belief grid and our sealed

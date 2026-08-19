@@ -22,7 +22,12 @@ SEND_MODULES = {"egress.py", "artifacts.py", "gmail_sender.py"}
 # `app_config.py` writes `config/setup.json`, which is the operator's own
 # settings file — it is never sent, never audited, and validating it against a
 # wire schema would be theatre for the same reason the two above are exempt.
-LOCAL_STATE_MODULES = {"counted_games.py", "events.py", "app_config.py"}
+LOCAL_STATE_MODULES = {"counted_games.py", "events.py", "app_config.py",
+                       # `probe.py` writes `workspace/probe_choice.json`: which
+                       # candidate strategy won a warm-up against one opponent.
+                       # Never sent, never audited, never hashed — the same
+                       # category as the counted ledger above it.
+                       "probe.py"}
 
 
 def _sources() -> list[Path]:

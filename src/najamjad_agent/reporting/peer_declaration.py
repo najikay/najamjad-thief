@@ -43,16 +43,70 @@ def peer_facts(games: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
     declared = {
         int(game.get("sub_game", 0)): _declaration(game.get("their_records")) for game in games
     }
+    metered = {
+        int(game.get("sub_game", 0)): _metered(game.get("their_records")) for game in games
+    }
     order = sorted(declared)
     facts: dict[int, dict[str, Any]] = {}
+    running = 0
     for index, number in enumerate(order):
         payload = declared[number]
         following = declared[order[index + 1]] if index + 1 < len(order) else None
+        stepwise, highest = metered.get(number, (0, 0))
+        spend = _spend(stepwise, highest, running) or _spend_between(payload, following)
+        running = max(running, highest)
         facts[number] = {
             "commit": str(payload.get("github_commit") or UNKNOWN_COMMIT),
-            "tokens": _spend_between(payload, following),
+            "tokens": spend,
         }
     return facts
+
+
+def _metered(records: Any) -> tuple[int, int]:
+    """Their per-step costs summed, and the highest running total they showed.
+
+    Read from the **move** records, which is where a peer actually meters. We
+    read only step-0 before, and MOAAMOHA publish nothing about tokens there —
+    so all six counted mini-games filed their spend as `0` while their own report
+    said 37,360 and every figure sat in our log, on records we had already
+    re-hashed at the audit. Same defect class as the commit lookup above it: a
+    field read from the record *we* would have put it on.
+    """
+    stepwise = highest = 0
+    for record in records or ():
+        payload = record.get("payload", record) if isinstance(record, dict) else {}
+        if not isinstance(payload, dict):
+            continue
+        # **Move records only.** A step-0 declaration may also carry a running
+        # total, and reading it here would override the older path deliberately:
+        # with nothing but step-0 totals the final mini-game's cost is unknowable,
+        # and `_spend_between` reports no cost rather than a guess. Answering with
+        # a height instead of a gap would turn that honest blank into a wrong
+        # number, which is the trade this whole module refuses.
+        if int(payload.get("step", 0) or 0) <= 0 or str(payload.get("type", "")) in STEP_ZERO_TYPES:
+            continue
+        try:
+            stepwise += max(int(payload.get("tokens_step", 0) or 0), 0)
+            highest = max(highest, int(payload.get("tokens_total", 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    return stepwise, highest
+
+
+def _spend(stepwise: int, highest: int, running: int) -> int:
+    """One mini-game's cost from its own records, or 0 when they meter nothing.
+
+    Three shapes, because peers differ and none of them is wrong. Per-step costs
+    are meter-agnostic and win when present. Otherwise a running total that has
+    grown past the previous game's is a series-long meter and the gap is the
+    cost; one that has not is a meter reset per mini-game, and its own high mark
+    is the cost.
+    """
+    if stepwise > 0:
+        return stepwise
+    if highest <= 0:
+        return 0
+    return highest - running if highest > running else highest
 
 
 #: What a step-0 record calls itself, across the implementations we have met.

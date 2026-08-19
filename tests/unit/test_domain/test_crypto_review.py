@@ -122,7 +122,10 @@ def test_canonicalisation_is_pinned_in_one_module() -> None:
     audit separators would be unreadable to the person who edits it. It never
     touches a payload anyone verifies.
     """
-    allowed = {"canonical.py", "nonce_vault.py", "app_config.py"}
+    # `probe.py` joins `app_config.py` as a deliberate counter-example: it
+    # writes an indented, human-readable local note about an opponent, which
+    # an operator has to be able to read and check. Nothing hashes it.
+    allowed = {"canonical.py", "nonce_vault.py", "app_config.py", "probe.py"}
     offenders = [
         path.name for path in SOURCES if "json.dumps" in _read(path) and path.name not in allowed
     ]

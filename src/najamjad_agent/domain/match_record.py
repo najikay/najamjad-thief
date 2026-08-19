@@ -11,11 +11,42 @@ fail at filing time — which rule 35 scores as not having played at all.
 """
 
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
+from ..shared.sysinfo import git_commit
 from .audit import AuditReport
 from .game_state import GameState
 from .series import SubGameOutcome
+
+
+@lru_cache(maxsize=1)
+def our_commit() -> str:
+    """The commit *this* process is playing from, stamped per mini-game.
+
+    **Cached, and that is not an optimisation.** `git_commit()` spawns
+    `git rev-parse HEAD`, 64ms on this machine, and the first version called it
+    once per mini-game record — six subprocesses inside a series, each landing
+    at a game boundary where the peer is already waiting on us. The in-process
+    stall harness compresses its deadlines to fractions of a second (T-2485), so
+    that delay pushed a third mini-game past its watchdog and
+    `test_a_storm_costs_at_most_the_game_it_hits_and_the_one_after` saw a blast
+    radius of 3 where the measured bound is 2. Step-0 declares this value once
+    per process anyway: a series in which it changed would be misdeclaring the
+    code that played, so one lookup is the correct number as well as the cheap
+    one.
+
+    Rule 53 asks which code played a game, and in a split series the answer
+    differs by window: the thief repo plays 1/3/5 and the cop repo 2/4/6, from
+    two separate checkouts with two separate HEADs. `result_blocks` read one
+    `git_commit()` at filing time and wrote it on all six rows, so the filer
+    stamped its own commit over the three games its sibling had played — the
+    2026-08-17 MOAAMOHA practice attributed our thief's games to the cop repo,
+    while the opponent's own report had the pair right from our step-0. Recorded
+    here, at the moment the game is remembered, so the value belongs to the
+    process that actually played it and rides through `write_partial` unchanged.
+    """
+    return git_commit()
 
 
 def now_iso() -> str:
@@ -43,6 +74,7 @@ def played_record(
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": state.role.value,
@@ -84,6 +116,7 @@ def unplayed_record(sub_game: int, started_at: str, outcome: SubGameOutcome) -> 
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": outcome.role.value,
@@ -123,6 +156,7 @@ def abandoned_record(
     """
     return {
         "sub_game": sub_game,
+        "our_commit": our_commit(),
         "started_at": started_at,
         "ended_at": now_iso(),
         "role": outcome.role.value,

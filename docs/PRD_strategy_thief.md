@@ -342,3 +342,78 @@ distance rather than trading one for the other; a defence that answers
 encirclement by sitting in the most encirclable cell on the board has not
 answered it. Open, not solved.
 
+
+## The forced-win table, and why the invariant is a 4x4 — 2026-08-16
+
+Everything below is exact: backward induction over every position of the named
+board, thief moves first, both sides may stay, capture on co-location either
+way, and the cop may spend a barrier *instead* of moving under the Barrier Law.
+No heuristics, no sampling.
+
+**Which boards the cop wins, and at what budget.** The entry is the fewest
+barriers in hand that force a capture:
+
+|       | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|
+| **2** | 1 | 1 | 1 | 1 | 2 | 3 |
+| **3** | 1 | 1 | 2 | 4 | 4 | 4 |
+| **4** | 1 | 2 | 5 | 5 | 6 | 6 |
+| **5** | 1 | 4 | 5 | 6 | 8 | 9 |
+| **6** | 2 | 4 | 6 | 8 | 10 | 10 |
+| **7** | 3 | 4 | 6 | 9 | 10 | 11 |
+
+Read the diagonal boundary: **width decides, not area.** A 3x5 pocket is fifteen
+cells and falls to two barriers; a 4x4 is sixteen and needs five. Everything
+three or fewer cells wide collapses cheaply, and 4x4 is the first shape that
+does not.
+
+**Our board is 7x7 and the cop holds 14.** The table says 11 suffice, and the
+recipe composes: wall a column of 7 to halve it, wall a column of 3 to make 3x6,
+wall another to make 3x3 and 2x3, each a forced win with one barrier still in
+hand. 13 spent of 14. So on barrier count alone this game is a cop win, and any
+thief that treats survival as guaranteed is wrong.
+
+**What saves us is turns, not barriers.** A barrier costs the turn it is placed
+in, and the Barrier Law means walking a line places roughly one wall per two
+turns. The halving recipe costs about 23 turns of building plus a 6-turn
+endgame plus the approach — around 31 of the 35 available, before the thief
+interferes at all, and it can interfere by standing on the cell the cop wants
+(walling the thief's own square is forbidden). The cheap plans — an 11-turn 3x3
+corner seal, a 9-turn 2x3 — fit comfortably but need the thief already in the
+corner.
+
+**Hence the invariant.** Every winning shape in that table is at most three
+wide, so a thief that always keeps a 4x4 block *reachable before the cop* can
+never be in one. That is `territory.keeps_a_free_square`, and the "before the
+cop" half is the whole of it: at the moment of every real loss in our archive
+the board still held open 4x4s, all of them on the cop's side. Measured across
+the 61 archived opponent cop lines, requiring the square to merely exist scores
+54; requiring it reachable first scores 60; adding the graded fallback for
+positions where no square survives scores **61 of 61, every one at 35 steps**.
+
+
+## Blocking a fence — the rule the sealing cop cannot answer (2026-08-17)
+
+A cop executing the table's recipe — halve the board, halve the half, finish in
+a 3x3 — beats the thief described above: at the agreed start it takes us on step
+35 having spent thirteen barriers. That cop is not hypothetical in shape; it is
+the plan yanell11 played against us in miniature, three walls around a corner.
+
+The counter is a rule, not a heuristic. **The Barrier Law puts a barrier on the
+cop's own cell or one orthogonal step from it, and never on the cell the thief
+occupies.** A thief standing in the last gap of a half-built fence therefore
+cannot be walled around: the cop must abandon the line or come and take us, and
+coming costs it exactly the turns the fence still needed. On a 35-step horizon
+that is decisive.
+
+`territory.fence_gaps` names the line the cop is most plainly walling — the row
+or column holding the most barriers, two being enough, since a cop does not
+place two in one line by accident — and returns its open cells furthest from the
+cop first, because the far gap is the one that is also safe to stand in.
+
+**Priority matters and was measured both ways.** Applied *after* the room
+filters, blocking only delays the seal and we are still taken on step 35.
+Applied *before* them, we survive. The room filters are about the shape of the
+board we will have; blocking is about preventing that shape from existing, and
+prevention has to come first. Both orderings hold 61 of 61 on the archived
+opponent lines, so this costs nothing measurable elsewhere.

@@ -137,7 +137,13 @@ mode = "draft"
 #
 # Empty means the shipped brains; a "module:Attribute" path loads a plugin
 # (docs/EXTENDING.md §1).
-cop_class = ""
+# The sealing cop IS the strategy: halve the board, shut the gate, halve the
+# half, and force the win in the pocket. Measured 2026-08-18 — it captures
+# our own hardened ThiefBrain on step 23, which naive pursuit has never done
+# at all, and 51 of 58 archived real opponent lines. It never chases: the
+# only non-plan move it will make is stepping onto a thief already adjacent,
+# which ends the game that turn rather than spending one.
+cop_class = "najamjad_agent.strategy.seal_cop:SealCop"
 thief_class = ""
 
 # The dials the sweep varies and the notebook measures. Shipped values are the
@@ -173,7 +179,7 @@ horizon = 3
 stall_trigger = 3
 
 [strength]
-level = "sandbagged"
+level = "full"
 
 # How much of our own evidence we hand the opponent each turn.
 #

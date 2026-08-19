@@ -66,8 +66,14 @@ def test_our_thief_outlasts_our_cop(params: GameParams) -> None:
     """
     result = run_cop_duel(CopBrain(), [], params, thief_brain=ThiefBrain())
 
-    assert result.barriers_used >= 1, "a cop that spends no barriers is not the adversary here"
-
+    # No assertion on barriers spent, and the reason is the point. It used to
+    # demand at least one, so that this could not pass by the cop quietly
+    # giving up on walls. Since the thief started keeping a 4x4 in reach before
+    # the cop can cut it off, our cop spends **none** here — not because it
+    # stopped trying but because it is never offered ground worth a wall. Same
+    # symptom, opposite cause. The wall-spending guarantee moved to
+    # `test_the_stalled_chase_starts_walling_and_the_young_one_does_not`, which
+    # measures it against a thief that does give it the chance.
     assert not result.captured, f"our thief was caught at step {result.step}"
     assert result.step == OUR_THIEF_SURVIVES_OUR_COP
 
@@ -111,12 +117,25 @@ def test_the_cop_takes_a_thief_that_lets_it_reach_striking_range(params: GamePar
     assert result.step <= 13, f"closed at {result.step}, slower than the measured 13"
 
 
-def test_a_sandbagged_cop_lays_no_barriers_and_does_not_close(params: GameParams) -> None:
-    """Warm-ups must not leak the real policy — barriers are the real policy."""
-    result = run_cop_duel(CopBrain(strength=SANDBAGGED), [], params, thief_brain=Evader())
+def test_a_sandbagged_cop_now_plays_exactly_the_full_policy(params: GameParams) -> None:
+    """The levels are the same strategy; only the report's recipient differs.
 
-    assert result.barriers_used == 0
-    assert not result.captured
+    This test used to assert the opposite — no barriers, no capture — because a
+    warm-up was meant to hide the real policy. Naji retired that on 2026-08-18
+    after two games were lost to it: a held-back cop finds nothing, so a warm-up
+    stopped being the place bugs surface and became a second policy to maintain
+    and a second way to lose. Sandbagging also only conceals anything if the
+    weak version is convincing, and ours was not.
+
+    So the level no longer touches play. `AT_FULL_STRENGTH` carries all three,
+    and what a warm-up still changes is the one thing that was ever the point:
+    the counted report goes to the grader, the friendly one does not.
+    """
+    full = run_cop_duel(CopBrain(), [], params, thief_brain=Evader())
+    held = run_cop_duel(CopBrain(strength=SANDBAGGED), [], params, thief_brain=Evader())
+
+    assert (held.captured, held.step) == (full.captured, full.step)
+    assert held.barriers == full.barriers, "same walls, same order"
 
 
 def test_the_harness_scores_only_captures_an_opponent_would_honour(params: GameParams) -> None:

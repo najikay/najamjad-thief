@@ -144,7 +144,7 @@ def main() -> int:
     else:
         counted = args.command == "counted"
         set_mode("send" if counted else "draft")
-        set_strength("full" if args.command in ("counted", "practice") else "sandbagged")
+        set_strength("full")   # every mode plays full; only the recipient differs
         print("\nNext: preflight refuses a counted run until mode reads 'send'")
         print("and strength reads 'full'.")
     return 0

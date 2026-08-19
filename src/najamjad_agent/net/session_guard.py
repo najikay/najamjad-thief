@@ -61,6 +61,16 @@ class SessionGuard:
     """Admits only the negotiated opponent, at an honest rate."""
 
     expected_sender: str = ""
+    #: A second name the same peer may legitimately use in `sender`. Peers do
+    #: not agree on what the field means: three teams put their **role** there
+    #: ("police"/"thief" — 5,239 messages across our logs) and nis-yar1 put
+    #: their **group id**, which is the more natural reading of a field called
+    #: `sender` and is what we asked them for. Both name the peer we signed
+    #: with, so refusing either is refusing an honest opponent over a
+    #: convention nobody wrote down. The token below is what actually proves
+    #: "we negotiated together"; this field only keeps a *third party* out, and
+    #: neither form is a third party.
+    expected_group: str = ""
     expected_token: str = ""
     max_per_minute: int = DEFAULT_MAX_PER_MINUTE
     emit: Emit | None = None
@@ -72,9 +82,11 @@ class SessionGuard:
         """True once a match is under way and an identity is enforced."""
         return bool(self.expected_sender)
 
-    def bind(self, opponent_id: str, config_sha256: str = "", game_uid: str = "") -> None:
+    def bind(self, opponent_id: str, config_sha256: str = "", game_uid: str = "",
+             group_id: str = "") -> None:
         """Lock this agent to one opponent for the duration of a match."""
         self.expected_sender = opponent_id
+        self.expected_group = str(group_id or "")
         if config_sha256 and game_uid:
             self.expected_token = session_token(config_sha256, game_uid)
         self._event("session.bound", opponent=opponent_id, token_enforced=bool(self.expected_token))
@@ -82,6 +94,7 @@ class SessionGuard:
     def release(self) -> None:
         """Unbind at the end of a match so the next negotiation can proceed."""
         self.expected_sender = ""
+        self.expected_group = ""
         self.expected_token = ""
         self._timestamps.clear()
         self._event("session.released")
@@ -95,9 +108,11 @@ class SessionGuard:
             # match starts. Nothing game-affecting is accepted at this stage.
             return None
         sender = str(getattr(message, "sender", "") or "")
-        if sender and sender != self.expected_sender:
+        allowed = {self.expected_sender, self.expected_group} - {""}
+        if sender and sender not in allowed:
             self._event("session.rejected", reason="sender", sender=sender)
-            return f"sender {sender!r} is not the negotiated opponent {self.expected_sender!r}"
+            return (f"sender {sender!r} is not the negotiated opponent "
+                    f"{sorted(allowed)!r}")
         token = str(getattr(message, "session_token", "") or "")
         if self.expected_token and token and not hmac.compare_digest(token, self.expected_token):
             self._event("session.rejected", reason="token")
