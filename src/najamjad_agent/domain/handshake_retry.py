@@ -32,8 +32,31 @@ from ..shared.events import Emit
 #: still bounded, so a peer that is genuinely wedged is eventually resolved
 #: rather than waited on forever. Nothing is spent unless the peer keeps
 #: *answering* "busy", which is a live process telling us it is fine.
-BUSY_RETRIES = 90
-BUSY_BACKOFF_SECONDS = 4.0
+#: Priced against the OPPONENT's window, not our own clock. anrbj666 sequence
+#: their windows — N+1 is not spawned until N settles — so waiting for a peer's
+#: next window means waiting out a whole mini-game plus their process boot. They
+#: measured it for us on 2026-08-19: a game can run ten minutes or more (their
+#: g03 spent 604 seconds on the handshake alone) and each window costs another
+#: 15-20 seconds to spawn. Six minutes was priced against our own cold start and
+#: was simply the wrong quantity; a hundred attempts at ten seconds is sixteen
+#: minutes, which outlasts their longest observed window with room to spare and
+#: is still bounded, so a genuinely dead peer is resolved rather than waited on.
+BUSY_RETRIES = 100
+BUSY_BACKOFF_SECONDS = 10.0
+#: Failures that mean "the peer is not listening *yet*", as opposed to "the peer
+#: is broken". Under a sequential-window contract — anrbj666 confirmed theirs on
+#: 2026-08-19: windows run 1..6 and N+1 is not spawned until N settles — a door
+#: with nothing behind it is the ordinary state of the *next* window while the
+#: current one is still being played. It is the busy case wearing a different
+#: coat: a timeout or a 502 rather than a refusal, because there is no process
+#: there to say "busy".
+#:
+#: It cost us a series. Our ordinary budget is priced in minutes and theirs in
+#: whole mini-games, so we exhausted it against a peer who was healthy and had
+#: simply not reached that window yet, then advanced past a window that never
+#: played. Connection-class failures therefore draw on the generous budget.
+NOT_READY_YET = ("TimeoutError", "ConnectError", "ConnectTimeout", "ReadTimeout",
+                 "RemoteProtocolError", "HandshakeError")
 
 
 def agree_on_terms(
@@ -79,11 +102,11 @@ def agree_on_terms(
             # spending the real budget on it is how a few seconds of skew became
             # a lost series, because the budget ran out long before their
             # sub-game ended. So the two are counted separately.
-            if type(error).__name__ == "HandshakeBusyError":
+            if type(error).__name__ in ("HandshakeBusyError", *NOT_READY_YET):
                 busy_seen += 1
                 spent = busy_seen > BUSY_RETRIES
                 emit({
-                    "event": "handshake.exhausted" if spent else "handshake.busy_retry",
+                    "event": "handshake.exhausted" if spent else "handshake.waiting_for_window",
                     "sub_game": sub_game,
                     "attempt": busy_seen,
                     "error": f"{type(error).__name__}: {error}",

@@ -78,6 +78,9 @@ def tokens_for(meter: Any, sub_game: int) -> int:
 #: abandon has moved on, so we exhaust the bound, record and advance too —
 #: converging rather than deadlocking. Unbounded would only suit the first kind.
 ABANDON_RETRIES = 2
+#: The same rule for a handshake that never agreed. Three, because each attempt
+#: already spans a generous wait, so this is measured in whole windows.
+HANDSHAKE_REOFFERS = 3
 
 
 def retry_or_resolve(tracker: Any, attempts: dict[int, int], sub_game: int,
@@ -104,3 +107,27 @@ def retry_or_resolve(tracker: Any, attempts: dict[int, int], sub_game: int,
               "attempt": attempts[sub_game], "of": ABANDON_RETRIES})
         return None
     return resolve_abandoned(tracker, sub_game, role, steps, fault)
+
+def reoffer_or_quit(tracker: Any, attempts: dict[int, int], sub_game: int,
+                    role: Role, emit: Any) -> dict[str, Any] | None:
+    """Re-offer a window whose handshake never agreed, or finally score it.
+
+    Returns the record to file, or None while the window is being re-offered.
+
+    The abandon path stopped consuming unplayed numbers; this is the same rule
+    for the other door. anrbj666's sequencing contract — windows run 1..6 and
+    N+1 is not spawned until N settles — means a handshake that cannot agree is
+    usually a window that has not started on their side yet, not one that never
+    will. Scoring it `OPPONENT_QUIT` and advancing put our thief on 5 while they
+    held 3, and every window either side offered was then refused by the other.
+
+    Counted in the same dict as the abandon retries, deliberately: a window gets
+    a fixed number of chances in total, however it failed, so a peer that is
+    genuinely gone still ends the series.
+    """
+    attempts[sub_game] = attempts.get(sub_game, 0) + 1
+    if attempts[sub_game] < HANDSHAKE_REOFFERS:
+        emit({"event": "subgame.reoffering", "sub_game": sub_game,
+              "attempt": attempts[sub_game], "of": HANDSHAKE_REOFFERS})
+        return None
+    return resolve_unplayed(tracker, sub_game, role, EndReason.OPPONENT_QUIT)

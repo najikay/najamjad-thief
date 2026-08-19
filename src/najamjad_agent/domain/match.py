@@ -22,7 +22,7 @@ from .game_state import GameState
 from .handshake_retry import agree_on_terms
 from .match_audit import audit_or_skip
 from .match_record import now_iso, played_record
-from .match_resolution import resolve_unplayed, retry_or_resolve, tokens_for
+from .match_resolution import reoffer_or_quit, retry_or_resolve, tokens_for
 from .orchestrator import Orchestrator
 from .params import GameParams
 from .scent_audit import verify_trail
@@ -140,12 +140,12 @@ class MatchRunner:
             # to discover it, by hanging until the per-call cap fires, once per
             # attempt, until the sub-game is scored unplayed.
             self._transport.new_session()
-            if not agree_on_terms(
-                self._handshake, sub_game, self._handshake_retries, self._emit, role.value
-            ):
-                self.games.append(
-                    resolve_unplayed(self.tracker, sub_game, role, EndReason.OPPONENT_QUIT)
-                )
+            if not agree_on_terms(self._handshake, sub_game, self._handshake_retries,
+                                  self._emit, role.value, self._sleep):
+                unplayed = reoffer_or_quit(self.tracker, self._attempts, sub_game, role,
+                                           self._emit)
+                if unplayed is not None:
+                    self.games.append(unplayed)
                 continue
             try:
                 self.play_sub_game(sub_game, role)
@@ -171,9 +171,8 @@ class MatchRunner:
                 # settling first meant refusing every handshake the peer
                 # sent during the wait — turning the one-dead-game problem
                 # this exists to prevent into the very thing it caused.
-                settle(
-                    self._watchdog_seconds, abandoned, self._sleep, self._emit, sub_game
-                )
+                settle(self._watchdog_seconds, abandoned, self._sleep,
+                       self._emit, sub_game)
                 abandoned = False
         result = self.tracker.result()
         self._emit({"event": "series.complete", "sub_games": len(self.tracker.outcomes)})

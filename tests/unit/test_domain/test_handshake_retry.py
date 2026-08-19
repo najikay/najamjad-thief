@@ -19,12 +19,20 @@ mini-game as a technical outcome, never the series.
 from typing import Any
 
 from najamjad_agent.constants import EndReason, Move, Role
+from najamjad_agent.domain.handshake_retry import BUSY_RETRIES
 from najamjad_agent.domain.match import MatchRunner
+from najamjad_agent.domain.match_resolution import HANDSHAKE_REOFFERS
 from najamjad_agent.domain.scoring import ScoreTable
 from najamjad_agent.domain.series import SeriesTracker
 from najamjad_agent.negotiation.handshake import HandshakeError
 from tests.fakes.orchestration import FakeClock, FixedSpeaker, ScriptedBrain, build_state
 from tests.integration.test_headless_game import SCORING
+
+#: Failures enough to bury one window outright: every attempt of every re-offer.
+#: Derived rather than typed, because both budgets are tuned against a live
+#: opponent's sequencing and a hardcoded 3 quietly became "recovers immediately"
+#: the first time one of them moved.
+DEAD = (BUSY_RETRIES + 1) * HANDSHAKE_REOFFERS
 
 
 class QuietPeer:
@@ -82,6 +90,9 @@ def _runner(handshake: Any, games: int = 2, events: list | None = None) -> Match
         max_retries=1,
         audit_timeout=0.01,
         handshake=handshake,
+        # The window budget is priced in minutes of real waiting, so a test that
+        # let it sleep for real would take a quarter of an hour to fail.
+        sleep=lambda _seconds: None,
     )
 
 
@@ -102,7 +113,7 @@ def test_the_retry_is_announced() -> None:
     events: list[dict] = []
     _runner(FlakyHandshake(failures=1), events=events).play_series()
 
-    assert any(event.get("event") == "handshake.retry" for event in events)
+    assert any(event.get("event") == "handshake.waiting_for_window" for event in events)
 
 
 def test_a_dead_handshake_costs_one_mini_game_never_the_series() -> None:
@@ -112,7 +123,7 @@ def test_a_dead_handshake_costs_one_mini_game_never_the_series() -> None:
     games lost to one dead agreement exchange.
     """
     events: list[dict] = []
-    runner = _runner(FlakyHandshake(failures=99), games=2, events=events)
+    runner = _runner(FlakyHandshake(failures=DEAD * 2), games=2, events=events)
 
     result = runner.play_series()  # must not raise
 
@@ -125,7 +136,7 @@ def test_a_dead_handshake_costs_one_mini_game_never_the_series() -> None:
 
 def test_recovery_after_exhaustion_is_still_possible() -> None:
     """Game 1 dies to a dead handshake; game 2 plays when the peer returns."""
-    handshake = FlakyHandshake(failures=3)  # 1 + retries(2) exhausts game 1 exactly
+    handshake = FlakyHandshake(failures=DEAD)  # exactly enough to bury game 1
     runner = _runner(handshake, games=2)
 
     runner.play_series()
@@ -175,7 +186,7 @@ def test_a_busy_peer_does_not_spend_the_ordinary_retry_budget() -> None:
     assert agreed, "gave up on a peer that was merely finishing a mini-game"
     assert calls["n"] == 5
     assert len(waited) == 4, "a busy retry must pause, or it becomes a spin"
-    assert all(event["event"] == "handshake.busy_retry" for event in events)
+    assert all(event["event"] == "handshake.waiting_for_window" for event in events)
     assert BUSY_RETRIES >= 4
 
 
@@ -194,3 +205,31 @@ def test_an_unreachable_peer_still_exhausts_on_schedule() -> None:
     assert [event["event"] for event in events] == [
         "handshake.retry", "handshake.retry", "handshake.exhausted",
     ]
+
+
+def test_a_terms_mismatch_is_not_waited_out_like_a_late_peer() -> None:
+    """Sixteen minutes is the right budget for a window that has not opened and
+    the wrong one for two peers holding different contracts.
+
+    That never resolves by waiting — it resolves by one of us editing a config —
+    so it falls to the ordinary budget and an operator hears about it in
+    seconds. Pinned because the classification is by exception *type name*, and
+    `TermsMismatchError` subclasses `HandshakeError`, which IS on the patient
+    list: a future refactor that collapses the two would re-introduce the wait
+    silently.
+    """
+    from najamjad_agent.domain.handshake_retry import agree_on_terms
+    from najamjad_agent.negotiation.handshake import TermsMismatchError
+
+    events: list[dict] = []
+    waited: list[float] = []
+
+    def disagrees() -> None:
+        raise TermsMismatchError("the opponent signed different terms — max_moves")
+
+    assert not agree_on_terms(disagrees, sub_game=1, retries=2,
+                              emit=events.append, sleep=waited.append)
+    assert [event["event"] for event in events] == [
+        "handshake.retry", "handshake.retry", "handshake.exhausted",
+    ]
+    assert waited == [], "a disagreement is not a peer we are waiting for"

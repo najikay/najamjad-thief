@@ -59,11 +59,17 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         if role and isinstance(session.get("peer"), dict):
             retarget(transport.client, session["peer"].get("identity") or {}, role,
                      bus.publish, ours=dict(manager.get("game.mcp_servers", {}) or {}))
+        # What we sent and whether it landed. The inbound-first path in
+        # `negotiation.inbound_first` lets a window start on THEIR agreement
+        # when our send raised, so ours may still be undelivered at this point
+        # — and the address that finally works is the one their identity
+        # declares, which we only learn from the message we just adopted.
+        sent: dict[str, Any] = {}
         peer = exchange_agreement(
             terms=terms,
             identity=session["identity"],
             declarations=negotiate_declarations(manager, terms, role, sub_game),
-            send=lambda payload: transport.send_negotiate(payload),
+            send=lambda payload: _record_send(transport, sent, payload),
             # The inbox hands back a validated pydantic model; the handshake and
             # the contract both work in plain dicts, and `verify_peer` indexes
             # the message directly.
@@ -100,10 +106,40 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
                 # we narrowed the declaration.
                 ours=dict(manager.get("game.mcp_servers", {}) or {}),
             )
+        # After the retarget, never before: the whole point is the corrected door.
+        _deliver_late(transport, sent, bus.publish)
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
 
     return run
+
+
+def _record_send(transport, sent: dict[str, Any], payload: dict[str, Any]) -> Any:
+    """Send our agreement, remembering the payload and whether it got through."""
+    sent["payload"] = payload
+    answer = transport.send_negotiate(payload)
+    sent["delivered"] = True
+    return answer
+
+
+def _deliver_late(transport, sent: dict[str, Any], emit) -> None:
+    """Hand them our agreement now, if the window started without it.
+
+    Never raises. The window is already agreed from their side and our turns
+    are what they are waiting for; turning a failure here into an exception
+    would throw away a mini-game we are able to play, which is the same trade
+    that lost g03 in the first place.
+    """
+    payload = sent.get("payload")
+    if payload is None or sent.get("delivered"):
+        return
+    try:
+        transport.send_negotiate(payload)
+    except Exception as error:  # noqa: BLE001 - reported, never fatal to the window
+        emit({"event": "handshake.delivery_failed",
+              "error": f"{type(error).__name__}: {error}"})
+        return
+    emit({"event": "handshake.delivered_late"})
 
 
 def _bind_expected_role(inboxes, manager, terms, identity, our_role: str, emit) -> None:

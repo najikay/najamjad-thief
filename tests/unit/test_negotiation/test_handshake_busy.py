@@ -43,16 +43,23 @@ def test_other_answers_are_not_mistaken_for_busy() -> None:
 def test_we_do_not_wait_out_a_peer_who_already_answered() -> None:
     """The defect: the refusal arrives at once, then we waited the full timeout.
 
-    `receive` is wired to fail the test outright, because reaching it at all is
-    the bug — there is nothing to wait for once they have told us why.
+    The inbox is now *peeked* on this path — a shut gate can mean they are
+    already playing the very window we are asking for, off a negotiate of
+    theirs we accepted. That peek is free and must stay free: any timeout above
+    zero here is the original bug returning.
     """
-    def receive(_timeout):
-        raise AssertionError("waited for a reply the peer had already given")
+    seen: list[float] = []
+
+    def receive(timeout):
+        seen.append(timeout)
+        return None
 
     with pytest.raises(HandshakeBusyError, match="mini-game is in progress"):
         exchange_agreement(
             terms=TERMS, identity={}, send=lambda _payload: BUSY, receive=receive
         )
+
+    assert seen == [0.0], "a refusal already told us why; there is nothing to wait for"
 
 
 def test_the_refusal_is_announced_with_their_own_words() -> None:

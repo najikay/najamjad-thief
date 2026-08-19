@@ -21,6 +21,7 @@ from typing import Any
 from ..net.match_gate import BUSY_REASON
 from ..shared.events import Emit
 from .contract import Contract, ContractError
+from .inbound_first import agreement_in_hand
 from .terms import describe_mismatch
 
 
@@ -35,6 +36,19 @@ class HandshakeBusyError(Exception):
 
 class HandshakeError(Exception):
     """The agreement could not be reached; naming why, for a human."""
+
+
+class TermsMismatchError(HandshakeError):
+    """The peer signed a different contract, and waiting will not change that.
+
+    The retry budget classifies by exception *type name*, and it now spends
+    sixteen minutes on anything that means "not listening yet" — which is right
+    for a peer whose window has not opened, and badly wrong for two peers
+    holding different terms. That never resolves by waiting; it resolves by one
+    of us editing a config. Named separately so it falls to the ordinary budget
+    and an operator hears about it in seconds rather than at the end of a
+    window.
+    """
 
 
 def refused_as_busy(answer: Any) -> bool:
@@ -76,7 +90,17 @@ def exchange_agreement(
     ours = contract.signed()
 
     announce({"event": "handshake.sending", "sha256": contract.sha256})
-    answer = send(ours)
+    try:
+        answer = send(ours)
+    except Exception as error:  # noqa: BLE001 - re-raised unless they already agreed
+        # Our announcement did not land. Theirs may already have: our server
+        # accepts and answers an inbound negotiate whether or not our own send
+        # works, and until now nothing ever started the window that acceptance
+        # promised. `inbound_first` holds the whole rule.
+        peer = agreement_in_hand(receive, declarations, announce, error)
+        if peer is None:
+            raise
+        return _lock(contract, terms, peer, announce)
     if refused_as_busy(answer):
         # Their gate is shut because a mini-game is in progress: our clocks
         # drifted and they started before us. Retriable by design, and the
@@ -88,7 +112,20 @@ def exchange_agreement(
         # nobody had answered, three attempts running, while they played
         # sub-game 1 and timed out waiting for turns we could not send.
         announce({"event": "handshake.busy", "detail": _busy_detail(answer)})
-        raise HandshakeBusyError(_busy_detail(answer))
+        busy = HandshakeBusyError(_busy_detail(answer))
+        # A shut gate means they are already playing a mini-game — and the one
+        # they are playing may be the one we are trying to start, begun off the
+        # negotiate of theirs that our server accepted. That is the same
+        # accept-without-start failure as a refused connection, wearing the
+        # politest possible coat: a healthy peer, a working link, a courteous
+        # answer, and a window we would otherwise spend sixteen minutes not
+        # joining while they time out waiting for our first turn. The window
+        # number in `inbound_first` is what keeps this honest — a gate shut over
+        # some *earlier* game has no agreement here that names ours.
+        peer = agreement_in_hand(receive, declarations, announce, busy)
+        if peer is None:
+            raise busy
+        return _lock(contract, terms, peer, announce)
 
     peer = receive(timeout)
     if peer is None:
@@ -96,13 +133,25 @@ def exchange_agreement(
             f"the opponent sent no agreement within {timeout:.0f}s — are they running, "
             "and does their config point at our URL?"
         )
+    return _lock(contract, terms, peer, announce)
 
+
+def _lock(
+    contract: Contract, terms: dict[str, Any], peer: dict[str, Any], announce: Emit
+) -> dict[str, Any]:
+    """Verify their signature over our terms, or refuse to play.
+
+    Extracted so the inbound-first path is held to exactly the same standard as
+    the ordinary one. Adopting an agreement we could not fully verify would be a
+    worse bug than the one that path fixes: a window that plays cleanly and then
+    disagrees at audit, with nothing to point at.
+    """
     try:
         contract.verify_peer(peer)
     except ContractError as error:
         mismatch = describe_mismatch(terms, dict(peer.get("terms") or {}))
         announce({"event": "handshake.refused", "reason": str(error), "mismatch": mismatch})
-        raise HandshakeError(
+        raise TermsMismatchError(
             f"the opponent signed different terms — {mismatch}. "
             "Both peers must hold a byte-identical agreement before play starts."
         ) from error
