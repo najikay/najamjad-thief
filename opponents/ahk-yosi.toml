@@ -3,10 +3,33 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://REPLACE-BEFORE-DIALLING.invalid/mcp"
+url      = "https://surprised-vpn-controlling-illustrations.trycloudflare.com/mcp"
 group_id = "ahk-yosi"
 name     = "ahk-yosi"
 notes    = """
+
+ONE PROCESS, ONE DOOR (corrected by them 2026-08-20, unprompted). Their earlier
+"two processes, two ports, two hostnames" was inferred from their runbook and
+submission split, not checked against their code. A series is played by a single
+process that alternates roles at each boundary, so BOTH cards carry the same URL
+and our per-window retarget is a no-op that always lands on the process holding
+the window. Do not put the old second hostname back: under one process it is an
+address with nothing behind it, and three of six windows would go there.
+
+This is the shape of 2026-08-02. One process, one inbox, a peer retrying into it
+— 58 inbound negotiates, two games at once over one game state, five mini-games
+at 0-0 technical. `net/match_gate.py` exists because of that day and has never
+been tested against the architecture that caused it. Expect our cop to be
+handshaking window N+1 at their single door while their process is mid-window N;
+they say their negotiate always answers ok and queues to the boundary, which is
+what should make it survivable. Watch `handshake.delivered_in_reply` and
+`inbox.absorbed`.
+
+WARM-UP ONLY, UNCOUNTED. Rule 1 (Appendix ה Table 7) binds a counted series and
+one process does not satisfy it; nothing is filed for a warm-up, so there is
+nothing for the rule to bind on. They offered to split before anything counted
+and to be declined outright — Naji chose the warm-up, on the condition that we
+change nothing on our side. We have not: only this card moved.
 their THIEF door — use this card when running najamjad-cop.
 
 Yosef Shanaa + partner (ids 213314859, 325811255). Replied 2026-08-20 with the
