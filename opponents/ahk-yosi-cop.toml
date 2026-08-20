@@ -3,7 +3,69 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://p2p-pursuit-police-1035205205472.me-west1.run.app/mcp"
+url      = "https://REPLACE-BEFORE-DIALLING.invalid/mcp"
 group_id = "ahk-yosi"
 name     = "ahk-yosi-cop"
-notes    = "THEIR COP — dial with OUR thief. Only for a role-swapped run; the default pairing is our cop vs their thief (card: ahk-yosi)."
+notes    = """
+their COP door — use this card when running najamjad-thief.
+
+Yosef Shanaa + partner (ids 213314859, 325811255). Replied 2026-08-20 with the
+most thorough conformance audit any opponent has sent us: both our vectors
+re-derived through their own code, five defects on THEIR side volunteered
+unprompted, and two real errors found in our own terms document (a counted count
+that disagreed with itself, and the stale scent table). Both of ours are fixed.
+
+AGENT EMAIL: apexmediamind@gmail.com — NOT the yosefshanaa@gmail.com in their
+reply block. Naji confirmed the former is the live one on 2026-08-20; the reply's
+own §6 is wrong about it. Practice reports go to apexmediamind@gmail.com.
+
+SCENT — THIS PAIRING IS A2, `subtractive_chebyshev_v1`. We are currently
+configured for `book` (anrbj666). **Set `pheromones.pheromone_model` back to
+"reference" in config/game.json before dialling them, in BOTH repos.** Their
+reason is worth recording: their book lock document hashes ea7225f5… where the
+kit's (and ours) is 934c220d… — same physics, different document — and their
+handshake treats a scent-hash difference as a refusal, not a warning. So A1
+would not start a game between us. Their subtractive digest is identical to
+ours because both sides adopted the kit's registered document verbatim.
+
+ENDPOINTS ROTATE. Quick tunnels, not named ones, so both URLs change on restart
+and they send them immediately before dialling. The url below is a deliberate
+placeholder that fails loudly — replace it with what they send, do not dial the
+2026-08-02 Cloud Run address that used to be here.
+
+THE PRIOR MEETING WENT BADLY, AND NOT THEIR FAULT ALONE. 2026-08-02 warm-up:
+we logged 58 inbound negotiates across a six-game series because their peer
+retried our endpoint on a loop while we dialled theirs, so two games ran at once
+over one inbox and one game state. All five completed mini-games scored 0-0
+technical. `net/match_gate.py` exists because of that day. They count us as a
+first meeting, which is right for counted purposes — that one was void.
+
+FOUR THINGS TO SETTLE BEFORE A COUNTED SERIES:
+  * **They advance past a failed window; we re-offer it.** They asked us to
+    pick and said ours is the safer build. Pick re-offer — advancing at
+    different rates is precisely what killed the anrbj666 series.
+  * **Their police files an enclosure on its own turn** rather than waiting for
+    the thief's concession. Rule 47 wants the thief to confirm; an unconfirmed
+    capture voids for both (rules 33-35). They offered to switch it off — take
+    that offer.
+  * **submit_audit envelope**: they send five fields, our §5 says exactly three,
+    our §3.1 says we tolerate extras. Both are true from different ends (we
+    tolerate on receive; a reference peer may not). Tell them the strict three —
+    they said they lose nothing, since each record's payload carries its own
+    sub_game.
+  * **Their patience is 180 s opening / 90 s re-handshake**, against our 16.7
+    minutes. They are the side that gives up first and asked us to name a
+    number. Name one at or above ours.
+
+Their repos are private and 404, same as ours; they said so unprompted and are
+willing to open both before a counted series if we are.
+"""
+
+# Sent 2026-08-20 in their reply. Both repos 404 (private), so these cannot be
+# inspected — but `audit_opponent.py` compares them against the `github_commit`
+# their step-0 declares, which works regardless of visibility. They also gave a
+# single workspace commit, 9ebdc2aa204909ea122be59caf7eea2182ddc303, that both
+# role repos are generated from by a sync script.
+[armed_commits]
+cop   = "4c04b225eaf64950f91f02be6e4018d5166e01f2"
+thief = "7c3924bfa78b8ae7410702ba14c125cc204b0c36"
