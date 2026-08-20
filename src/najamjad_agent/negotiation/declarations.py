@@ -32,6 +32,21 @@ from .contract import derive_game_ids
 #: model and the kit's CORE vector. Our `ScentModel.REFERENCE` reproduces its
 #: published example field and its after-one-decay snapshot exactly.
 SCENT_MODEL_SHA256 = "81ebee59640e80eae8ca9ee5f86abd26e7edf5cdbb27d15925cb6ee45ca6ddf4"
+#: `scent_model:multiplicative_book_v1` — the book's own model, registered by
+#: the kit at §5.1 and reproduced by our `ScentModel.BOOK` against their own
+#: vectors: the kernel, the decay, and the `(1-rho)*tau` ordering they pin
+#: against its float-differing twin.
+BOOK_MODEL_SHA256 = "934c220d5bf62acaa3297c6c9d723ea954c220260b02292ca17f6d5daef9f4d9"
+#: Which digest belongs to which configured emitter. The declaration is DERIVED
+#: from the model we run, never chosen beside it: a constant here and a config
+#: key over in `pheromones` are two places to say one thing, and the day they
+#: disagree we declare one physics and emit another. That is exactly the fault
+#: removed from the scent-off path — a claim about a field we were not sending —
+#: and it is cheaper to make impossible than to catch at an audit.
+MODEL_DIGESTS = {
+    "reference": SCENT_MODEL_SHA256,
+    "book": BOOK_MODEL_SHA256,
+}
 #: `info_mode:belief` — we read our own state, the rival's scent and hints, and
 #: never the rival's position. Structural rather than honour-based under the
 #: reference wire shape, since their position never crosses the wire at all.
@@ -90,7 +105,8 @@ def negotiate_declarations(
     # an honest peer. Silence is symmetric or it is nothing (see the terms
     # document, section 4), and this is the handshake half of that rule.
     if str(manager.get("emission.scent", "full")).strip().lower() != "none":
-        declarations["scent_model_sha256"] = SCENT_MODEL_SHA256
+        model = str(manager.get("pheromones.pheromone_model", "reference")).strip().lower()
+        declarations["scent_model_sha256"] = MODEL_DIGESTS.get(model, SCENT_MODEL_SHA256)
     # Without their group id the uid we would compute is keyed on a placeholder
     # and would refuse an honest peer. Better to send nothing than a wrong
     # value: their spec refuses on a declared *mismatch*, never on absence.
