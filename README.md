@@ -23,11 +23,19 @@ match. Remaining work is tracked in `docs/TODO.md`.
 | 1 | 2026-08-08 | `uoh-ay26` | **won** 6–0 | 90 | 30 |
 | 2 | 2026-08-13 | `imreeyal` | **won** 6–0 | 90 | 30 |
 | 3 | 2026-08-14 | `vibecode` | lost 0–6 | 30 | 90 |
+| 4 | 2026-08-17 | `MOAAMOHA` | **won** 4–2 | 60 | 40 |
+| 5 | 2026-08-18 | `nis-yar1` | lost 0–6 | 30 | 90 |
 
-Every mini-game of all three verified `Verified OK` at the audit, with zero technical losses
-attributable to us. The vibecode series reconciled **field for field** against their filed
-report — 66 fields, zero differences, identical `mutual_agreement.sha256`, `confirmed: true`
-on both sides.
+**Thirty of thirty mini-games verified `Verified OK` at the audit, across five counted
+series, with zero technical losses attributable to us.** That is the number we would point
+at first: every game we played was one both sides could re-hash and agree on, including the
+two we lost badly.
+
+Two series reconciled field for field against the opponent's own filed report — vibecode's
+at 66 fields with zero differences, and a later friendly against `anrbj666` matching on all
+six sub-games, both `mutual_agreement.sha256` values, and both per-window `github_commit`
+pairs. A report that agrees with the opponent's is the only kind that cannot be voided under
+rules 33-35, and it is worth more to us than a scoreline.
 
 ---
 
@@ -357,12 +365,17 @@ Two observation channels, with opposite trust properties:
   **Two models ship, and either can be selected per match.** The book (PAGE 43-44) is
   radial — 0.90 / 0.62 / 0.42 / 0.20 / 0.14 / 0.04 — with relative decay `τ ← (1-ρ)·τ`;
   the reference simulator is linear in Chebyshev distance — rings 0.90 / 0.60 / 0.30 —
-  with absolute decay `τ ← τ - ρ`. Appendix F binds, so `ScentModel.BOOK` is the default
-  and reproduces the book's printed PAGE 44 example exactly; `ScentModel.REFERENCE` exists
-  because most teams start from the simulator, and matching an opponent is a config term
-  rather than a code change (`domain/scent_models.py`). Emission is separately dialled from
-  hints — `--scent full|window|none` and `--hints/--no-hints` — so a fully silent series is
-  one flag, and mutual silence is a legitimate way to settle a model disagreement.
+  with absolute decay `τ ← τ - ρ`. We implement both, and both are registered in the
+  interop kit: `ScentModel.BOOK` is `multiplicative_book_v1` (`934c220d…`) and
+  `ScentModel.REFERENCE` is `subtractive_chebyshev_v1` (`81ebee59…`). Each reproduces the
+  kit's own published vectors, so matching an opponent is one key —
+  `pheromones.pheromone_model` in `config/game.json` — and **not** a change to the fourteen
+  signed terms, so the contract digest `a284082d…` survives the switch and nobody has to
+  re-sign. The digest we declare at negotiate is looked up *from* the configured model, so
+  there is no state in which we emit one physics and claim another. Emission is separately
+  dialled from hints — `--scent full|window|none` and `--hints/--no-hints` — so a fully
+  silent series is one flag; under silence we declare no model at all, because a claim about
+  a field nobody is sending is not a claim worth making.
 - **Hints** — free natural language, which the rules explicitly permit to be a lie
   (rules 26-27). Precise but untrustworthy.
 

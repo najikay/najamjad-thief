@@ -116,7 +116,13 @@ def test_an_ordinary_replay_is_still_refused():
 
     replayed = inboxes.accept("turn", turn(3))
 
-    assert replayed.errors and "stale or replayed" in replayed.errors[0]
+    # Absorbed, not refused: same step AND same commit is a redelivery, which
+    # the kit's SPEC 7.1 contract requires us to swallow silently. The guard
+    # this test protects is unchanged — the answer exemption still cannot be
+    # used to replay an ordinary turn — but the *evidence* of that is now that
+    # nothing was queued, rather than that an error came back.
+    assert replayed.errors == []
+    assert inboxes.pending("turn") == 3, "absorbed, so the game never sees it twice"
 
 
 def test_a_concession_is_absorbed_as_a_reply_not_a_duplicate_commit():

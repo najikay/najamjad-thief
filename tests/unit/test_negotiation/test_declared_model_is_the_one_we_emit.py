@@ -17,8 +17,6 @@ each reproduced from the registered document by `test_wire_shape_declaration`.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from najamjad_agent.domain.scent_models import ScentModel, decay_value, emission_field
@@ -29,7 +27,7 @@ from najamjad_agent.negotiation.declarations import (
     negotiate_declarations,
 )
 from najamjad_agent.negotiation.terms import terms_from_config
-from najamjad_agent.shared.config import ConfigManager
+from tests.role_config import load_role_config
 
 #: The digest four teams have already re-derived and agreed with us.
 AGREED_TERMS_SHA = "a284082dfb1572236f1b614d29295a99625539c7d33a096f7f8921bafbc3d08d"
@@ -74,12 +72,14 @@ def test_the_digest_follows_the_configured_model(configured, expected) -> None:
 def test_the_shipped_config_declares_what_it_emits() -> None:
     """The live wiring, through the real loader — not a hand-built manager.
 
-    An earlier check of this used `ConfigManager(path)`, which takes a merged
-    mapping rather than a path, so every lookup silently returned its default
-    and the terms hashed to something else entirely. Load it the way the agent
-    does or the check proves nothing.
+    Two ways to get this wrong, and this file has made both. `ConfigManager(path)`
+    takes an already-merged mapping, so every lookup silently returns its default
+    and the terms hash to something else entirely. And naming `config/police`
+    passes here while failing in the thief repo, which ships `config/thief` —
+    `tests/role_config` exists for precisely that, having been written the last
+    time somebody did it.
     """
-    manager = ConfigManager.load(Path("config/police"), Path("config/game.json"))
+    manager = load_role_config()
     model = ScentModel(str(manager.get("pheromones", {}).get("pheromone_model", "reference")))
     declared = negotiate_declarations(manager, terms_from_config(manager), "police", 1)
 
@@ -94,7 +94,7 @@ def test_choosing_a_model_never_moves_the_contract_hash() -> None:
     four teams have re-derived a284082d and agreed it, and none of them has to
     do it again because we changed which field we emit.
     """
-    manager = ConfigManager.load(Path("config/police"), Path("config/game.json"))
+    manager = load_role_config()
     terms = terms_from_config(manager)
 
     assert contract_hash(dict(terms)) == AGREED_TERMS_SHA

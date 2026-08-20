@@ -70,7 +70,11 @@ def test_the_inbox_rejects_a_replayed_step_within_a_game():
     assert inboxes.accept("turn", turn(5)).errors == []
     replayed = inboxes.accept("turn", turn(5))
 
-    assert replayed.errors and "stale or replayed" in replayed.errors[0]
+    # A redelivery of a step we applied, with the commit that sealed it: the
+    # kit's SPEC 7.1 contract says absorb. What must not be lost is that the
+    # game state never sees it twice, which is what `pending` proves.
+    assert replayed.errors == []
+    assert inboxes.pending("turn") == 2
 
 
 def test_step_one_opens_a_new_mini_game_rather_than_reading_as_a_replay():
@@ -99,7 +103,12 @@ def test_a_replay_inside_a_mini_game_is_still_refused():
 
     replayed = inboxes.accept("turn", turn(2))
 
-    assert replayed.errors and "stale or replayed" in replayed.errors[0]
+    # Same step, same commit — a redelivery, absorbed rather than refused.
+    # A step-only guard could not tell this from a forged replay; dedupe is on
+    # the commit precisely so the two stay separable, and the forged case is
+    # covered by `test_inbox.test_the_same_step_sealed_differently_is_still_refused`.
+    assert replayed.errors == []
+    assert inboxes.pending("turn") == 3
 
 
 def test_starting_a_sub_game_keeps_the_opening_turn_and_drops_the_leftovers():

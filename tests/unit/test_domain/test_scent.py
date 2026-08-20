@@ -160,7 +160,13 @@ def test_our_emission_matches_the_published_interop_field() -> None:
 
 
 def test_the_league_model_is_what_production_builds() -> None:
-    """The seam. Matching physics in a helper nobody calls is worth nothing."""
+    """The seam. Matching physics in a helper nobody calls is worth nothing.
+
+    Asserts that production builds *the model the config names*, not one
+    particular model. It used to pin `REFERENCE`, which made switching to the
+    book model for a pairing look like a regression — the seam is what matters
+    here, and hardcoding either name tests the constant instead of the wiring.
+    """
 
     from najamjad_agent.constants import Role
     from najamjad_agent.domain.params import GameParams
@@ -178,4 +184,5 @@ def test_the_league_model_is_what_production_builds() -> None:
     })
     state = state_factory(manager)(params, Role.THIEF, 1)
 
-    assert state.own_scent.model is ScentModel.REFERENCE
+    named = str(manager.get("pheromones", {}).get("pheromone_model", "reference"))
+    assert state.own_scent.model is ScentModel(named)
