@@ -9,8 +9,10 @@ be an answer.
 
 from __future__ import annotations
 
+import secrets
 import threading
 
+from .delivery import decide
 from .sub_game_boundary import FIRST_STEP
 
 
@@ -20,6 +22,12 @@ class TurnSequence:
     def __init__(self) -> None:
         """Start before any mini-game: nothing accepted, nothing answered."""
         self._last_step = -1
+        #: Every step already applied, keyed by the commit that sealed it. The
+        #: kit's §7.1 contract dedupes on the commit, because it is the only
+        #: field that separates a redelivery (absorb) from an equivocation
+        #: (evidence). A step-only guard calls both "stale" and refuses both,
+        #: which is the failure the contract exists to forbid.
+        self._played: dict[int, str] = {}
         #: Steps whose capture-claim answer we have already taken. An answer is
         #: exempt from the monotonic guard, so without this the exemption is a
         #: standing invitation to replay.
@@ -31,11 +39,27 @@ class TurnSequence:
         """The highest step accepted so far."""
         return self._last_step
 
-    def check(self, step: int, is_answer: bool) -> str | None:
-        """A refusal reason, or None when the message may proceed."""
-        return self._check_answer(step) if is_answer else self._check_turn(step)
+    def check(self, step: int, is_answer: bool, commit: str = "") -> str | None:
+        """A refusal reason, or None when the message may proceed.
 
-    def _check_turn(self, step: int) -> str | None:
+        `commit` is optional so older call sites keep working; without one the
+        delivery contract cannot be applied and the monotonic guard decides
+        alone, exactly as it did before.
+        """
+        return self._check_answer(step) if is_answer else self._check_turn(step, commit)
+
+    def verdict(self, step: int, commit: str) -> str:
+        """The §7.1 decision for an arriving turn, without changing any state.
+
+        Separate from `check` because two of the six decisions are not refusals
+        and not acceptances either: an `absorb` must leave the sender believing
+        it was delivered while adding nothing to the queue, and an
+        `equivocation` is evidence rather than a routine rejection.
+        """
+        with self._lock:
+            return decide(dict(self._played), self._last_step + 1, step, commit)
+
+    def _check_turn(self, step: int, commit: str = "") -> str | None:
         """Reject replayed or stale turns before they reach the game state.
 
         Step 1 is the exception, and it has to be: every mini-game restarts
@@ -58,6 +82,11 @@ class TurnSequence:
         duplicate the game's own state machine refuses anyway.
         """
         with self._lock:
+            if (commit and step in self._played
+                    and secrets.compare_digest(self._played[step], commit)):
+                # A redelivery of a step we applied. Not stale, not an error:
+                # the network doing exactly what at-least-once means.
+                return None
             if step == FIRST_STEP and self._last_step > FIRST_STEP:
                 # A game that has already run past its opening turn cannot
                 # receive another one; this is the next mini-game beginning.
@@ -66,8 +95,14 @@ class TurnSequence:
                 self._last_step = step
                 return None
             if step <= self._last_step:
+                if commit and step in self._played:
+                    return (f"step {step} was already sealed as "
+                            f"{self._played[step][:16]} and arrived again as "
+                            f"{commit[:16]} — equivocation, not a redelivery")
                 return f"step {step} is stale or replayed (last accepted was {self._last_step})"
             self._last_step = step
+            if commit:
+                self._played[step] = commit
         return None
 
     def _check_answer(self, step: int) -> str | None:
@@ -112,6 +147,7 @@ class TurnSequence:
         """Reset for the next mini-game, keeping an opening turn already in hand."""
         with self._lock:
             self._last_step = FIRST_STEP if held_opening else -1
+            self._played.clear()
             # Each mini-game restarts numbering, so last game's answers must not
             # make this game's legitimate ones look like duplicates.
             self._answered.clear()
@@ -120,4 +156,5 @@ class TurnSequence:
         """Forget everything: the between-games reset."""
         with self._lock:
             self._last_step = -1
+            self._played.clear()
             self._answered.clear()

@@ -54,13 +54,46 @@ def test_unknown_fields_are_accepted_but_announced(inboxes: Inboxes, events: lis
     assert "inbox.unknown_fields" in kinds
 
 
-def test_replayed_step_is_rejected(inboxes: Inboxes, events: list[dict]) -> None:
-    """A replayed turn must not reach the game state."""
-    inboxes.accept("turn", TURN)
+def test_a_redelivery_is_absorbed_not_rejected(inboxes: Inboxes, events: list[dict]) -> None:
+    """Re-pinned to the kit's §7.1 contract, and the reversal is deliberate.
+
+    This asserted `not result.ok` — a replayed turn is refused. That is the
+    behaviour the interop kit names as the failure: both registered wire shapes
+    ride HTTP, which is at-least-once, so a correct client retries a push whose
+    ack was lost and the same turn arrives twice **by design**. Refusing it
+    turns an ordinary retry race into a protocol violation, which App. E rule 35
+    zeroes for both teams. "Zero tolerance is not a tightening here."
+
+    Absorbed means all three of: the sender is told it landed, so it stops
+    retrying; nothing is queued, so the game state does not see it twice; and no
+    error is logged, because nothing went wrong.
+    """
+    assert inboxes.accept("turn", TURN).ok
+    queued = inboxes.pending("turn")
+
     result = inboxes.accept("turn", TURN)
+
+    assert result.ok, "a redelivery is the network working, not a fault"
+    assert inboxes.pending("turn") == queued, "absorbed, so state is unchanged"
+    assert events[-1]["event"] == "inbox.absorbed"
+
+
+def test_the_same_step_sealed_differently_is_still_refused(
+    inboxes: Inboxes, events: list[dict]
+) -> None:
+    """The half that must NOT relax: equivocation is tampering evidence.
+
+    Transport tolerance, no rules tolerance. Dedupe is on the commit precisely
+    so that this case stays separable from a redelivery — a step-only guard
+    calls both "stale" and cannot tell an opponent's retry from a forged step.
+    """
+    inboxes.accept("turn", TURN)
+
+    result = inboxes.accept("turn", {**TURN, "commit": "b" * 64})
+
     assert not result.ok
-    assert "stale or replayed" in result.errors[0]
-    assert events[-1]["event"] == "inbox.out_of_order"
+    assert "equivocation" in result.errors[0]
+    assert "inbox.equivocation" in [event["event"] for event in events]
 
 
 def test_out_of_order_step_is_rejected(inboxes: Inboxes) -> None:

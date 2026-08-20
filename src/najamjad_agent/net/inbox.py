@@ -22,6 +22,7 @@ from ..protocol.schemas_wire import (
     TurnMessage,
 )
 from ..shared.events import Emit
+from .delivery import ABSORB, APPLY, EQUIVOCATION
 from .match_gate import MatchGate
 from .session_guard import DEFAULT_MAX_PER_MINUTE, SessionGuard
 from .sub_game_boundary import clear_finished_game
@@ -96,6 +97,20 @@ class Inboxes:
             if busy:
                 return ParseResult(errors=[busy])
         if kind == "turn":
+            verdict = self._delivery_verdict(result.model)
+            if verdict == ABSORB:
+                # At-least-once means a correct client retries a push whose ack
+                # was lost, so the same turn arrives twice by design. The kit's
+                # §7.1 contract says absorb it: state unchanged, nothing queued,
+                # and the sender told it landed so it stops retrying. Refusing
+                # here is what turns an ordinary retry race into a protocol
+                # violation, which App. E rule 35 zeroes for BOTH teams.
+                self._emit({"event": "inbox.absorbed", "kind": kind,
+                            "step": getattr(result.model, "step", None)})
+                return result
+            if verdict == EQUIVOCATION:
+                self._emit({"event": "inbox.equivocation", "kind": kind,
+                            "step": getattr(result.model, "step", None)})
             problem = self._sequence_problem(result.model)
             if problem:
                 self._emit({"event": "inbox.out_of_order", "kind": kind, "reason": problem})
@@ -114,7 +129,15 @@ class Inboxes:
         if step is None:
             return None
         answers = getattr(message, "claim_response", None) is not None
-        return self.sequence.check(step, answers)
+        return self.sequence.check(step, answers, str(getattr(message, "commit", "") or ""))
+
+    def _delivery_verdict(self, message: Any) -> str:
+        """The §7.1 decision, before the monotonic guard sees the message."""
+        step = getattr(message, "step", None)
+        commit = str(getattr(message, "commit", "") or "")
+        if step is None or not commit:
+            return APPLY
+        return self.sequence.verdict(int(step), commit)
 
     def begin_sub_game(self) -> dict[str, int]:
         """Prepare for the next mini-game without discarding its opening turn.

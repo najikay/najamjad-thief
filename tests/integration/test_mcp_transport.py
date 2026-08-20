@@ -103,7 +103,8 @@ def test_malformed_payload_gets_a_structured_error_and_server_survives(peer) -> 
         client.close()
 
 
-def test_replayed_turn_is_rejected_over_the_wire(peer) -> None:
+def test_replayed_turn_is_absorbed_over_the_wire(peer) -> None:
+    """At-least-once transport: the second copy lands once, not twice."""
     server, inboxes, events = peer
     client = _client(server.url)
     try:
@@ -111,8 +112,8 @@ def test_replayed_turn_is_rejected_over_the_wire(peer) -> None:
         client.send("turn", TURN)
     finally:
         client.close()
-    assert inboxes.pending("turn") == 1
-    assert any(event["event"] == "inbox.out_of_order" for event in events)
+    assert inboxes.pending("turn") == 1, "absorbed, so the game sees it once"
+    assert any(event["event"] == "inbox.absorbed" for event in events)
 
 
 def test_the_client_reuses_one_event_loop_for_many_calls(peer) -> None:

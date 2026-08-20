@@ -36,6 +36,20 @@ SCENT_MODEL_SHA256 = "81ebee59640e80eae8ca9ee5f86abd26e7edf5cdbb27d15925cb6ee45c
 #: never the rival's position. Structural rather than honour-based under the
 #: reference wire shape, since their position never crosses the wire at all.
 INFO_MODE_SHA256 = "020947daeeb3f73494af9b04201326791742c7184085456e3517d21981ee1202"
+#: `wire_shape:reference-v3` — four tools, ONE message per half-turn, the smell
+#: grid on the wire, and the move revealed at audit. That is what we implement,
+#: and it is worth declaring because the kit registers a second shape that is
+#: incompatible with it in ways no handshake would otherwise catch:
+#: `bookletter-v3` sends TWO messages per half-turn, reveals per half-turn, and
+#: keeps the grid off the wire entirely. Two peers on different shapes agree on
+#: every term, lock cleanly, and then wait for messages the other will never
+#: send.
+#:
+#: We were the only side of a pairing not declaring it — anrbj666 sent
+#: `wire_shape_sha256` and we logged it as an unknown field. Omission never
+#: refuses, so nothing was breaking; we were simply declining a guard that was
+#: being offered to us.
+WIRE_SHAPE_SHA256 = "229ae6487a418c3fcb6da9be404de2f2533c288ebc228811bff6dedc4164d6f7"
 
 
 def negotiate_declarations(
@@ -65,6 +79,7 @@ def negotiate_declarations(
         "sub_game_number": int(sub_game),
         "role": _role_value(role),
         "info_mode_sha256": INFO_MODE_SHA256,
+        "wire_shape_sha256": WIRE_SHAPE_SHA256,
     }
     # Declare the emission model only when we are actually emitting. Under a
     # mutually-silent arrangement — both sides sending `{}`, which anrbj666
