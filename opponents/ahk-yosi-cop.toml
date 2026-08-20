@@ -90,5 +90,5 @@ willing to open both before a counted series if we are.
 # single workspace commit, 9ebdc2aa204909ea122be59caf7eea2182ddc303, that both
 # role repos are generated from by a sync script.
 [armed_commits]
-cop   = "4c04b225eaf64950f91f02be6e4018d5166e01f2"
-thief = "7c3924bfa78b8ae7410702ba14c125cc204b0c36"
+cop   = "492609070abf41a3ba73c3b1c61f85ae1f463ff0"
+thief = "23b345ccc2ebc9273d09ec286065823e45f7b2cf"
