@@ -87,7 +87,7 @@ def test_the_session_is_dropped_before_the_handshake_not_after() -> None:
     source = Path("src/najamjad_agent/domain/match.py").read_text(encoding="utf-8")
     new_session = source.index("self._transport.new_session()")
     handshake = source.index("if not agree_on_terms(")
-    reset = source.index("self._transport.reset()")
+    reset = source.index("self._transport.reset(sub_game)")
 
     assert new_session < handshake, "the session must be fresh before the handshake"
     assert handshake < reset, "reset stays after the handshake; it drops queued inbound"

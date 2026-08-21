@@ -47,7 +47,7 @@ class StormingLink:
         """Everything not overridden below passes straight through."""
         return getattr(self._inner, name)
 
-    def reset(self) -> None:
+    def reset(self, sub_game: int = 0) -> None:
         """`MatchRunner.play_sub_game` resets the transport first, every game.
 
         Counted here rather than hooked to a `begin_sub_game` the runner does

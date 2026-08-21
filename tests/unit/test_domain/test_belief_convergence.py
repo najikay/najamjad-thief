@@ -16,6 +16,7 @@ from najamjad_agent.domain.board import Board
 from najamjad_agent.domain.hint_evidence import HintClaim, claim_likelihood, scent_consistency
 from najamjad_agent.domain.params import GameParams
 from najamjad_agent.domain.scent import ScentField
+from najamjad_agent.domain.scent_models import centre_likelihood, fresh_deposit
 
 STATIONARY = [(5, 5)] * 6
 STRAIGHT = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5)]
@@ -23,16 +24,33 @@ L_SHAPED = [(6, 0), (5, 0), (4, 0), (4, 1), (4, 2), (4, 3)]
 
 
 def _track(board: Board, path: list, our_cell: tuple = (3, 3)) -> BeliefGrid:
-    """Replay an opponent path, updating belief from their scent alone."""
+    """Replay an opponent path, updating belief from their scent alone.
+
+    Mirrors `turn_ingress.advance` step for step, including the fresh-deposit
+    fusion. It used to stop at `update_scent`, which was fine while that was the
+    whole pipeline and quietly wrong once it was not: these scenarios then
+    measured a filter production no longer runs, and they failed for the right
+    reason at the wrong layer. A harness that models the pipeline differently
+    from the pipeline is testing itself.
+    """
     belief = BeliefGrid(board)
     theirs = ScentField(board_size=board.size)
     ours = ScentField(board_size=board.size)
+    previous: dict = {}
     for step in path:
         theirs.deposit(step)
-        ours.absorb(theirs.snapshot())
+        sent = theirs.snapshot()
+        ours.absorb(sent)
         belief.diffuse()
         belief.update_scent({cell: ours.intensity_at(cell) for cell in board.cells()})
+        fresh = fresh_deposit(sent, previous, ours.model, ours.decay) if previous else {}
+        if fresh:
+            weights = centre_likelihood(fresh, ours.model, board.size,
+                                        ours.grid_size, ours.ceiling)
+            if weights:
+                belief.apply_likelihood(weights)
         belief.exclude((our_cell,))
+        previous = dict(sent)
         theirs.decay_all()
         ours.decay_all()
     return belief

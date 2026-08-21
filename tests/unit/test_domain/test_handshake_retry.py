@@ -38,7 +38,7 @@ DEAD = (BUSY_RETRIES + 1) * HANDSHAKE_REOFFERS
 class QuietPeer:
     """Answers nothing, so each played mini-game resolves on the timeout path."""
 
-    def reset(self) -> None: ...
+    def reset(self, sub_game: int = 0) -> None: ...
 
     #: Real transports replace the outbound session before each sub-game's
     #: handshake, because the peer may have been a different process last game.

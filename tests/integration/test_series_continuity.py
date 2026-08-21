@@ -41,7 +41,7 @@ class RecordingTransport:
         socket pointing at a process that is gone."""
         self.new_sessions += 1
 
-    def reset(self) -> None:
+    def reset(self, sub_game: int = 0) -> None:
         self.resets += 1
 
     def finish_sub_game(self) -> None:

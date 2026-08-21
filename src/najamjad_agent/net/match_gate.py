@@ -29,6 +29,7 @@ the peer who dials second could never open a series at all.
 from __future__ import annotations
 
 import threading
+from typing import Any
 
 from ..shared.events import Emit
 
@@ -45,6 +46,9 @@ class MatchGate:
     def __init__(self, emit: Emit | None = None) -> None:
         """Start open — a listening agent must be able to be challenged."""
         self._in_play = False
+        #: Which window is in play, so a peer re-offering *that* window can be
+        #: told apart from one running ahead of us.
+        self._sub_game = 0
         self._lock = threading.Lock()
         self._emit = emit or (lambda _event: None)
 
@@ -54,10 +58,11 @@ class MatchGate:
         with self._lock:
             return not self._in_play
 
-    def begin_sub_game(self) -> None:
+    def begin_sub_game(self, sub_game: int = 0) -> None:
         """A mini-game is now in play; further handshakes are premature."""
         with self._lock:
             self._in_play = True
+            self._sub_game = int(sub_game)
 
     def end_sub_game(self) -> None:
         """The mini-game resolved; the next handshake is expected.
@@ -70,9 +75,42 @@ class MatchGate:
         with self._lock:
             self._in_play = False
 
-    def refuse(self) -> str | None:
-        """The reason to reject a handshake, or None to let it through."""
+    def refuse(self, message: Any = None, turns_seen: bool = False) -> str | None:
+        """The reason to reject a handshake, or None to let it through.
+
+        **A re-offer of the window we are already in is not premature.** We
+        start a window the moment *our* side agrees, which can be seconds before
+        the peer considers it agreed — and everything they send to close that
+        gap is a negotiate for the very window we are sitting in. Refusing those
+        is how both sides wait forever: anrbj666's thief re-offered g04
+        thirty-one times on 2026-08-21 while our police, having already started
+        g04, answered "busy" to every one and then timed out at step 0 waiting
+        for an opener they had no agreed window to send.
+
+        So a handshake naming the window in play is accepted while no turn has
+        been exchanged yet. It is idempotent by construction — the terms are
+        identical and our server answers with our own agreement attached, so the
+        peer gets what it was missing and the game we are already in continues
+        untouched. Once turns are flowing, `turns_seen` closes it again, because
+        then a fresh negotiate really would be restarting a live game.
+        """
         if self.open:
+            return None
+        if not turns_seen and _names_our_window(message, self._sub_game):
+            self._emit({"event": "handshake.reoffer_accepted", "sub_game": self._sub_game})
             return None
         self._emit({"event": "handshake.refused", "reason": BUSY_REASON})
         return BUSY_REASON
+
+
+def _names_our_window(message: Any, sub_game: int) -> bool:
+    """Whether this handshake is re-offering the window we are already in."""
+    if not sub_game or message is None:
+        return False
+    declared = getattr(message, "sub_game_number", None)
+    if declared is None:
+        declared = (getattr(message, "extras", None) or {}).get("sub_game_number")
+    try:
+        return int(declared) == int(sub_game)
+    except (TypeError, ValueError):
+        return False

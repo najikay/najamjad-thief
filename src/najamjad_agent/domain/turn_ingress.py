@@ -26,6 +26,7 @@ from .game_state import GameState
 from .hint_evidence import claim_likelihood, parse_locally, scent_consistency
 from .ledger import ProtocolOrderError
 from .scent_audit import peak_cell
+from .scent_models import centre_likelihood, fresh_deposit
 
 
 def absorb_turn(
@@ -153,11 +154,40 @@ def decay_after_full_turn(state: GameState) -> None:
     state.belief.diffuse()
     observed = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}
     state.belief.update_scent(observed)
+    _fuse_fresh_deposit(state)
     _fuse_sighting(state)
     _fuse_hint(state)
     state.belief.exclude((state.own_position,))
     # With no transmitted position, our estimate of them IS our belief peak.
     state.opponent_estimate = state.belief.peak()
+
+
+def _fuse_fresh_deposit(state: Any) -> None:
+    """Locate them from what they laid down this turn, not their whole trail.
+
+    A transmitted field is cumulative, and under `multiplicative_book_v1` it
+    saturates: the recent trail all clamps to `emit_intensity`, so the raw peak
+    is a blob several cells wide and the occupied square is not recoverable from
+    it. Differencing consecutive frames against the model's own decay recovers
+    the kernel they deposited this turn, and matching that against each candidate
+    centre puts the peak back on the true cell.
+
+    Applied on top of `update_scent` rather than instead of it: under the
+    subtractive model the cumulative field is already sharp, and there this is
+    corroboration. Needs two frames, so the opening turn of a mini-game skips it.
+    """
+    frames = getattr(getattr(state, "opponent_frames", None), "frames", None)
+    if not frames or len(frames) < 2:
+        return
+    steps = sorted(frames)
+    scent = state.opponent_scent
+    fresh = fresh_deposit(frames[steps[-1]], frames[steps[-2]], scent.model, scent.decay)
+    if not fresh:
+        return
+    likelihood = centre_likelihood(fresh, scent.model, state.board.size,
+                                   scent.grid_size, scent.ceiling)
+    if likelihood:
+        state.belief.apply_likelihood(likelihood)
 
 
 def _fuse_sighting(state: GameState) -> None:

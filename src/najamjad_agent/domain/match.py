@@ -186,7 +186,7 @@ class MatchRunner:
         high-water mark, or a message that arrived after it ended — makes the
         next one unplayable.
         """
-        self._transport.reset()
+        self._transport.reset(sub_game)
         started_at = now_iso()
         state = self._build_state(self.params, role, sub_game)
         # Held so an abandoned game can report the steps it actually played;

@@ -142,13 +142,32 @@ class SealCop(CopBrain):
         return None
 
     def _endgame(self, facts: Any) -> tuple[str, Position] | None:
+        """The exact win for this pocket, if one fits in the time left.
+
+        **The clock is the argument that was missing.** `winning_action` returns
+        the action that captures soonest, and soonest is not the same as *in
+        time*: it searched a fixed 26 plies with no idea how many steps the game
+        had left, so at step 26 of 35 it would happily commit to a line needing
+        more moves than existed. Against anrbj666 on 2026-08-20 the pocket was
+        complete on step 26 and the cop spent steps 29 and 34 laying two more
+        barriers for a win it could not reach, three windows running, each ending
+        `survival` on step 34 with the thief sealed in a seven-cell room.
+
+        Bounding the search by the steps remaining is the whole fix: a line that
+        cannot finish is no longer a line, so the shortest one that *can* wins,
+        and when none can the caller falls through to ordinary pursuit rather
+        than spending the last turns walling.
+        """
         board, thief, left, here = self._read(facts)
         if thief is None:
             return None
         region = frozenset(component(board, thief))
         if len(region) > MAX_CELLS or here not in region:
             return None
-        return winning_action(region, here, thief, frozenset(), left)
+        remaining = int(getattr(board.params, "max_moves", 35)) - int(getattr(facts, "step", 0))
+        if remaining <= 0:
+            return None
+        return winning_action(region, here, thief, frozenset(), left, plies=remaining)
 
     def _step_to(self, facts: Any, board: Board, here: Position,
                  target: Position) -> Move | None:

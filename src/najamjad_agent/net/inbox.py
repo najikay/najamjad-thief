@@ -25,7 +25,7 @@ from ..shared.events import Emit
 from .delivery import ABSORB, APPLY, EQUIVOCATION, is_settling
 from .match_gate import MatchGate
 from .session_guard import DEFAULT_MAX_PER_MINUTE, SessionGuard
-from .sub_game_boundary import clear_finished_game
+from .sub_game_boundary import FIRST_STEP, clear_finished_game
 from .turn_sequence import TurnSequence
 
 # One queue per message kind: a flood of control messages must not delay a turn.
@@ -93,7 +93,10 @@ class Inboxes:
             # A handshake mid-mini-game would restart the game we are playing.
             # Retriable by design: the peer asks again at the boundary, and
             # that retry is what resynchronises two clocks that drifted.
-            busy = self.gate.refuse()
+            # The live window's number and whether turns have started decide
+            # whether this is a premature handshake or a peer closing a
+            # start-skew gap on the window we are already in.
+            busy = self.gate.refuse(result.model, self.sequence.last_step >= FIRST_STEP)
             if busy:
                 return ParseResult(errors=[busy])
         if kind == "turn":
@@ -149,7 +152,7 @@ class Inboxes:
             return APPLY
         return self.sequence.verdict(int(step), commit)
 
-    def begin_sub_game(self) -> dict[str, int]:
+    def begin_sub_game(self, sub_game: int = 0) -> dict[str, int]:
         """Prepare for the next mini-game without discarding its opening turn.
 
         The rule for what survives the boundary lives in `sub_game_boundary`.
@@ -157,7 +160,7 @@ class Inboxes:
         dropped, held_opening = clear_finished_game(self._queues)
         # From here until the mini-game resolves, an inbound handshake is
         # premature and gets a retriable refusal rather than restarting us.
-        self.gate.begin_sub_game()
+        self.gate.begin_sub_game(sub_game)
         self.sequence.begin_sub_game(held_opening)
         if dropped:
             self._emit({"event": "inbox.sub_game_started", "dropped": dropped})

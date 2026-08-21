@@ -31,7 +31,7 @@ class Transport(Protocol):
         """Await the opponent's audit payload; None on timeout."""
         ...
 
-    def reset(self) -> None:
+    def reset(self, sub_game: int = 0) -> None:
         """Forget everything carried over from the previous mini-game.
 
         Part of the protocol rather than an implementation detail, because a

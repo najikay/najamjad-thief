@@ -83,7 +83,7 @@ class PeerTransport:
         """
         return self._client.send("negotiate", message)
 
-    def reset(self) -> None:
+    def reset(self, sub_game: int = 0) -> None:
         """Clear per-mini-game state between sub-games.
 
         Two things have to go, and both bit us in a real two-process series:
@@ -96,7 +96,7 @@ class PeerTransport:
           arrives after a capture belongs to a game that is over and must not
           be read as the opening move of the next one.
         """
-        dropped = self._inboxes.begin_sub_game()
+        dropped = self._inboxes.begin_sub_game(sub_game)
         self._emit({"event": "transport.reset", "dropped": dropped})
 
     def new_session(self) -> None:

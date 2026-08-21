@@ -96,7 +96,7 @@ class BlockingLink:
         except queue.Empty:
             return None
 
-    def reset(self) -> None:
+    def reset(self, sub_game: int = 0) -> None:
         """Forget the previous mini-game, as the real transport does.
 
         The new game's opening turn may already be queued — the peer who
