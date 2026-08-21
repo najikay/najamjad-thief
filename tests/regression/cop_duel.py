@@ -33,12 +33,14 @@ from typing import Any
 from najamjad_agent.constants import Move, Role
 from najamjad_agent.domain.belief import BeliefGrid
 from najamjad_agent.domain.board import Board
+from najamjad_agent.domain.capture import is_immobilised
 from najamjad_agent.domain.game_state import GameState
 from najamjad_agent.domain.ledger import CommitLedger
 from najamjad_agent.domain.movement import apply_move, legal_moves, place_barrier
 from najamjad_agent.domain.params import GameParams, Position
 from najamjad_agent.domain.scent import ScentField
 from najamjad_agent.domain.turn_ingress import absorb_turn, decay_after_full_turn
+from najamjad_agent.strategy.territory import distances_from
 
 
 @dataclass
@@ -104,36 +106,6 @@ def _their_frame(cell: Position, params: GameParams) -> dict[str, float]:
     field_.deposit(cell)
     field_.decay_all()
     return field_.snapshot()
-
-
-class Evader:
-    """A thief that always steps to the legal cell furthest from the cop.
-
-    The instrument that matters. A *recorded* thief line does not react: replay
-    vibecode's real 35 cells against our cop and it captures at step 13, while
-    the live series it came from stalled at distance 2 for 28 steps. The line is
-    identical; the difference is entirely that the real thief was responding to
-    where our cop actually went.
-
-    So a scripted replay measures "can we follow a path" and cannot measure "can
-    we close on something that runs". This is the greedy-evasion baseline for
-    the second question, and it is deliberately simple — a thief this dumb still
-    exposes the pursuit deadlock, which is the point.
-    """
-
-    def pick_move(self, facts: Any) -> Move:
-        board, here = facts.board, facts.own_position
-        cop = facts.cop_position
-        best, best_score = Move.STAY, -1
-        for move in sorted(facts.legal, key=lambda option: option.value):
-            row, col = board.delta_for(move)
-            landing = (here[0] + row, here[1] + col)
-            if not board.is_open(landing):
-                continue
-            score = Board.manhattan(landing, cop)
-            if score > best_score:
-                best, best_score = move, score
-        return best
 
 
 def run_cop_duel(
@@ -249,6 +221,26 @@ def run_cop_duel(
             # answers from their own sealed position. Barriers therefore *shrink
             # the board* and never take the thief; the taking is always the
             # claim below.
+            #
+            # **An immobilised thief is still scored, in two honest grades.**
+            # Not scoring it at all is how this bench spent 2026-08-20 calling
+            # `walls=12 smallest_room=1` a survival. A thief with zero exits
+            # beside a cop that can reach its cell is dead in every rulebook —
+            # the cop simply steps on and claims, so it counts as a capture
+            # (the walk costs the steps the distance says). Sealed *away* from
+            # us it is a rule-47 win only, which the filing layer refuses to
+            # claim against a reference peer — reported as `remote seal`,
+            # deliberately NOT `captured`, so a plan that manufactures those
+            # cannot green-light itself.
+            if is_immobilised(state.board, thief):
+                gap = distances_from(state.board, state.own_position).get(thief)
+                if gap is not None and step + gap <= horizon:
+                    return CopResult(True, step + gap, tuple(walls), tuple(distances),
+                                     tuple(masses), tuple(correct), tuple(path),
+                                     "captured (immobilised, walked onto)", events)
+                return CopResult(False, step, tuple(walls), tuple(distances),
+                                 tuple(masses), tuple(correct), tuple(path),
+                                 "remote seal (rule 47 only)", events)
         else:
             # The orchestrator hard-filters an illegal move rather than trusting
             # the brain, and so must this: a scoring regression must not be able

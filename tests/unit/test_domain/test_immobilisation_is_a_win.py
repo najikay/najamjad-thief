@@ -56,6 +56,24 @@ def test_a_one_step_capture_still_outranks_the_lock() -> None:
     assert action == ("move", (0, 0))
 
 
+def test_a_seal_the_cop_cannot_walk_into_is_not_a_win() -> None:
+    """Immobilised is not the terminal state; being claimed is.
+
+    The bench caught the solver doing the opposite on 2026-08-21: three
+    reacting thieves out of three were walled into a one-cell room the cop
+    could never enter — twelve walls for a `remote seal` that only a rule-47
+    implementer would concede and `endings.own_barrier_capture` refuses to
+    claim. A thief with no moves is a piece that can only STAY; the win is
+    the cop's body arriving, and where it cannot arrive there is no win.
+    """
+    square = frozenset((r, c) for r in range(2) for c in range(2))
+    sealed_off = frozenset({(0, 1), (1, 0)})
+
+    assert not forced_capture(square, (1, 1), (0, 0), sealed_off, 3, plies=19)
+    assert forced_capture(square, (1, 1), (0, 0), frozenset({(0, 1)}), 0, plies=4), \
+        "the same cage with our body as a bar converts by walking on"
+
+
 def test_standing_still_is_not_an_escape_but_is_still_a_choice() -> None:
     """Both halves matter.
 
@@ -100,5 +118,13 @@ def test_the_whole_pocket_is_won_from_the_centre() -> None:
                     "and needs no barrier at all"
             else:
                 assert action[0] == "wall", f"{thief} is cornered, not chased"
-                assert forced_capture(pocket, centre, thief, frozenset(), 1, plies=4), \
-                    "one barrier and four plies, worst case in the pocket"
+                # Five plies, not four, since 2026-08-21: a win is priced to
+                # co-location now, because the wire pays nothing else — the
+                # lock still pins them (wall, forced STAY) and the fifth ply
+                # is our body arriving on their cell to be claimed. The extra
+                # ply is the honest cost of a capture every opponent accepts,
+                # against one that only a rule-47 implementer would.
+                assert forced_capture(pocket, centre, thief, frozenset(), 1, plies=5), \
+                    "one barrier and five plies, worst case in the pocket"
+                assert not forced_capture(pocket, centre, thief, frozenset(), 1, plies=4), \
+                    "and four cannot finish the walk to the claim"

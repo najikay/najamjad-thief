@@ -24,8 +24,8 @@ from najamjad_agent.domain.params import GameParams
 from najamjad_agent.shared.strength import SANDBAGGED
 from najamjad_agent.strategy.cop_brain import CopBrain
 from najamjad_agent.strategy.thief_brain import ThiefBrain
-from tests.regression.cop_duel import Evader, run_cop_duel
-from tests.regression.reactive_thieves import RandomThief, RoomEvader
+from tests.regression.cop_duel import run_cop_duel
+from tests.regression.reactive_thieves import Evader, RandomThief, RoomEvader
 
 CONFIG = {
     "board_and_agents": {"grid_size": 7, "thief_start": [3, 3], "cop_start": [0, 0]},

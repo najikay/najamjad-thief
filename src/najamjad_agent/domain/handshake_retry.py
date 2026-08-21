@@ -122,6 +122,23 @@ def agree_on_terms(
             # a lost series, because the budget ran out long before their
             # sub-game ended. So the two are counted separately.
             if type(error).__name__ in ("HandshakeBusyError", *NOT_READY_YET):
+                # **A peer heard from on an earlier window is not "not ready
+                # yet" — it is elsewhere.** The handshake holds mismatched
+                # agreements keyed by the window they named, and one behind
+                # ours means the peer is alive, reachable, and re-offering a
+                # window we advanced past. Waiting the budget out cannot fix
+                # that — only the caller's rewind can — so this window's wait
+                # ends now instead of sixteen minutes from now. anrbj666's
+                # window-3 negotiates arrived all through our windows 4-6 on
+                # 2026-08-21 while both sides refused each other to death.
+                held = getattr(handshake, "held_agreements", None) or {}
+                if any(0 < window < sub_game for window in held):
+                    emit({
+                        "event": "handshake.peer_is_behind",
+                        "sub_game": sub_game,
+                        "theirs": sorted(w for w in held if 0 < w < sub_game),
+                    })
+                    return False
                 busy_seen += 1
                 spent = busy_seen > BUSY_RETRIES or clock() >= deadline
                 emit({

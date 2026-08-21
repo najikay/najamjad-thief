@@ -24,6 +24,14 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
     from ..negotiation.identity import identity_from_config
     from ..negotiation.terms import terms_from_config
 
+    # Agreements keyed by the window they name — the current window's while a
+    # failed delivery retries, and any window a *mismatched* negotiate named.
+    # The second kind is the series' resync signal: `MatchRunner.play_series`
+    # reads this mapping (as `run.held_agreements`) to notice the peer holding
+    # a window behind ours and rewind to it, and the held message then seeds
+    # the rewound handshake so the recovery costs zero extra round-trips.
+    held: dict[int, Any] = session.setdefault("held_agreements", {})
+
     def run(role: str = "", sub_game: int = 0):
         """Sign, swap and verify the terms, then dial where they say they are.
 
@@ -71,9 +79,9 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         # on 2026-08-19 ate ten of their greetings and started nothing. Their
         # agreement does not expire between our attempts — only our delivery
         # failed — so it is held and re-used, and the queue is left alone.
-        held: dict[int, Any] = session.setdefault("held_agreements", {})
         peer = exchange_agreement(
             in_hand=held.get(sub_game),
+            hold=held.__setitem__,
             terms=terms,
             identity=session["identity"],
             declarations=negotiate_declarations(manager, terms, role, sub_game),
@@ -123,6 +131,7 @@ def _handshake(manager: ConfigManager, bus, inboxes, transport, session: dict):
         _bind_session(inboxes, session, declared, bus.publish, role)
         return peer
 
+    run.held_agreements = held
     return run
 
 

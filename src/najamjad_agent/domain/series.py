@@ -172,6 +172,35 @@ class SeriesTracker:
         self.cursor += 1
         return outcome
 
+    def rewind_to(self, sub_game: int) -> bool:
+        """Reopen a window the peer is still holding — when nothing real is lost.
+
+        Input: the 1-based window to return to.
+        Output: True when the rewind happened; False when it must not.
+        Setup: none.
+
+        The one legitimate use is desync repair: the peer's negotiates name a
+        window behind our cursor, so every window we advanced past since then
+        was a step-0 technical on our side and unplayed on theirs. Those rows
+        say "nothing happened here", and replacing nothing with the game the
+        peer is still offering is strictly more truthful — both reports then
+        carry the same real game under the same number.
+
+        Refused outright if any outcome being unwound has a step played or a
+        non-technical ending: a real result is evidence, and evidence is never
+        popped. The caller is responsible for the matching cleanup of its own
+        per-window records.
+        """
+        if sub_game < 1 or sub_game > self.cursor:
+            return False
+        technical = {EndReason.TIMEOUT, EndReason.OPPONENT_QUIT}
+        tail = [o for o in self.outcomes if o.sub_game >= sub_game]
+        if any(o.steps > 0 or o.end_reason not in technical for o in tail):
+            return False
+        self.outcomes = [o for o in self.outcomes if o.sub_game < sub_game]
+        self.cursor = sub_game - 1
+        return True
+
     def result(self) -> SeriesResult:
         """Aggregate every recorded mini-game into the series result."""
         # `end_reason` travels with the scores because a technical ending

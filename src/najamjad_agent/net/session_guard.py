@@ -109,6 +109,16 @@ class SessionGuard:
             return None
         sender = str(getattr(message, "sender", "") or "")
         allowed = {self.expected_sender, self.expected_group} - {""}
+        # "cop" and "police" are one role wearing two names — our own config
+        # parser accepts both "because that is what everyone types"
+        # (`series.split_roles`), and bestteam's turns arrived as
+        # `sender: 'cop'` against our expected 'police' on 2026-08-18:
+        # `server.rejected: sender 'cop' is not the negotiated opponent
+        # ['bestteam', 'police']`. Refusing over that spelling is refusing an
+        # honest opponent over a convention nobody wrote down — the same
+        # lesson as `expected_group`, one synonym later.
+        if {"police", "cop"} & allowed:
+            allowed |= {"police", "cop"}
         if sender and sender not in allowed:
             self._event("session.rejected", reason="sender", sender=sender)
             return (f"sender {sender!r} is not the negotiated opponent "

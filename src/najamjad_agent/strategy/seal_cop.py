@@ -221,10 +221,23 @@ class SealCop(CopBrain):
         # and then had no way back. A cut is only ever taken with the thief on
         # OUR side of it; if this wall would separate us, the plan is stale
         # rather than the wall wrong — the thief has changed halves while we
-        # were building, so rebuild for the half it is actually in.
+        # were building, so rebuild **the same phase** for the side it is on.
+        #
+        # Rebuild, never abandon. This used to empty the script instead, and
+        # `_refill` then advanced past the phase as if it had finished — so a
+        # refused gate left (6,3) open for the rest of the game. The seal
+        # duel of 2026-08-21 shows the consequence: the cut "completed" with
+        # the whole left board reachable through the hole, and the win that
+        # followed was the thief's gift (it walked into the north pocket) and
+        # not the plan's. A thief that keeps to the far side of the row cut
+        # would have survived on a spent script. The gate script rebuilt from
+        # the thief's actual side is the crossing variant when it crossed, so
+        # the hole is walked through and walled behind us instead of shrugged
+        # off.
         if thief not in component(walled, here):
-            self.script = self._row_script(thief) if self.phase == "row" else []
-            self.phase = "row" if self.phase == "row" else self.phase
+            rebuild = {"gate": self._gate_script, "row": self._row_script}.get(self.phase)
+            self.script = rebuild(thief) if rebuild else []
+            self._advance(board, here)
             return None
         self.script.pop(0)
         return wall

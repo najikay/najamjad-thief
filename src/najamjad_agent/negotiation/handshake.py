@@ -16,12 +16,13 @@ regardless of who started first.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from ..net.match_gate import BUSY_REASON
 from ..shared.events import Emit
 from .contract import Contract, ContractError
-from .inbound_first import LISTEN_SECONDS, agreement_in_hand
+from .inbound_first import LISTEN_SECONDS, agreement_in_hand, window_of
 from .terms import describe_mismatch
 
 
@@ -78,6 +79,7 @@ def exchange_agreement(
     emit: Emit | None = None,
     declarations: dict[str, Any] | None = None,
     in_hand: dict[str, Any] | None = None,
+    hold: Any = None,
 ) -> dict[str, Any]:
     """Sign our terms, swap with the opponent, and verify they signed the same.
 
@@ -101,7 +103,7 @@ def exchange_agreement(
         # Listen rather than peek: our call failed, so the peer may simply not
         # be there yet, and their spawning announces itself here.
         peer = in_hand or agreement_in_hand(
-            receive, declarations, announce, error, wait=LISTEN_SECONDS
+            receive, declarations, announce, error, wait=LISTEN_SECONDS, hold=hold
         )
         if peer is None:
             raise
@@ -127,7 +129,8 @@ def exchange_agreement(
         # joining while they time out waiting for our first turn. The window
         # number in `inbound_first` is what keeps this honest — a gate shut over
         # some *earlier* game has no agreement here that names ours.
-        peer = in_hand or agreement_in_hand(receive, declarations, announce, busy)
+        peer = in_hand or agreement_in_hand(receive, declarations, announce, busy,
+                                            hold=hold)
         if peer is None:
             raise busy
         return _lock(contract, terms, peer, announce)
@@ -142,7 +145,29 @@ def exchange_agreement(
         announce({"event": "handshake.agreement_in_reply"})
         return _lock(contract, terms, riding, announce)
 
-    peer = receive(timeout)
+    # The ordinary wait, window-checked. This path used to lock whatever
+    # arrived: a stale window-3 negotiate surfacing while we waited for window
+    # 5's would be verified (the signature covers the terms, not the window)
+    # and adopted — one game filed under two `sub_game_number`s, the exact
+    # contradiction rules 33-35 void both teams for. A mismatch is held for
+    # the rewind machinery and the wait continues on the remaining clock.
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            peer = None
+            break
+        peer = receive(remaining)
+        if peer is None:
+            break
+        ours_w, theirs_w = window_of(declarations or {}), window_of(peer)
+        if ours_w and theirs_w and ours_w != theirs_w:
+            announce({"event": "handshake.window_mismatch", "ours": ours_w,
+                      "theirs": theirs_w, "held": hold is not None})
+            if hold is not None:
+                hold(theirs_w, peer)
+            continue
+        break
     if peer is None:
         raise HandshakeError(
             f"the opponent sent no agreement within {timeout:.0f}s — are they running, "

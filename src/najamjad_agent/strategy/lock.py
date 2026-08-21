@@ -40,6 +40,16 @@ def lock_cell(board: Board, thief: Position, here: Position,
     """
     if left <= 0:
         return None
+    if here not in board.neighbours(thief):
+        # **The cage is our body plus the wall, so the body must be a bar.**
+        # Without this line "one exit besides our body" degrades, whenever we
+        # stand further off, into plain "one exit" — and walling that seals a
+        # room we are not part of and can never enter. The bench named it on
+        # 2026-08-21: three reacting thieves out of three ended `remote seal
+        # (rule 47 only)`, twelve walls spent on a position the filing layer
+        # refuses to claim against a reference peer. Adjacent, the same wall
+        # is a true lock: they are forced to STAY and we step onto them.
+        return None
     exits = [cell for cell in board.neighbours(thief) if cell != here]
     if len(exits) != 1:
         return None

@@ -82,9 +82,21 @@ def _win(cells: frozenset[Cell], cop: Cell, thief: Cell, walls: frozenset[Cell],
     # barriers on nothing, and paced out the clock beside a thief it had already
     # cornered. ahk-yosi confirmed the same reading of 46/47 in writing on
     # 2026-08-21 and concede for themselves when it happens.
+    #
+    # **But the wire only pays for co-location**, so immobilised is not scored
+    # as the win itself. On 2026-08-21 the bench showed this solver walling a
+    # thief into a one-cell room it could never enter — `remote seal`, three
+    # reacting thieves out of three. Rule 47 makes that a win only if the
+    # opponent implements rule 47, the course reference does not, and
+    # `endings.own_barrier_capture` refuses to claim it for exactly that
+    # reason — so a plan that ends there has spent twelve walls buying a
+    # survival. Instead an escape-less thief is what it mechanically is, a
+    # piece that can only STAY, and the recursion goes on until the cop has
+    # walked onto it: the adjacent lock still converts in one extra step, and
+    # a seal the cop cannot walk into stops being called a win at all.
     escapes = _escapes(cells, walls, thief, cop)
     if not escapes:
-        return True
+        return _win(cells, cop, thief, walls, left, True, depth - 1)
     # Staying is legal while any move exists, so the thief may choose it and the
     # cop must beat that too — it is only *not* a rescue when nothing else is
     # left.

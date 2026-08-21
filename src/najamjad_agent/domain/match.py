@@ -14,8 +14,9 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..constants import EndReason, Phase, Role
+from ..constants import EndReason, Role
 from ..shared.events import Emit
+from .desync import ready_orchestrator, rewind_if_peer_is_behind
 from .freeze_guard import watching
 from .fsm import GameStateMachine
 from .game_state import GameState
@@ -23,7 +24,6 @@ from .handshake_retry import agree_on_terms
 from .match_audit import audit_or_skip
 from .match_record import now_iso, played_record
 from .match_resolution import reoffer_or_quit, retry_or_resolve, tokens_for
-from .orchestrator import Orchestrator
 from .params import GameParams
 from .scent_audit import verify_trail
 from .series import SeriesResult, SeriesTracker, role_for
@@ -142,6 +142,8 @@ class MatchRunner:
             self._transport.new_session()
             if not agree_on_terms(self._handshake, sub_game, self._handshake_retries,
                                   self._emit, role.value, self._sleep):
+                if rewind_if_peer_is_behind(self, sub_game):
+                    continue
                 unplayed = reoffer_or_quit(self.tracker, self._attempts, sub_game, role,
                                            self._emit)
                 if unplayed is not None:
@@ -200,11 +202,11 @@ class MatchRunner:
         # mini-games while the match played out behind it.
         if self._observer is not None:
             self._observer.attach_game(state, fsm)
-        orchestrator = self._new_orchestrator(state, fsm, role)
         self._emit({"event": "subgame.started", "sub_game": sub_game, "role": role.value})
 
         with watching(self._watchdog_seconds, state, sub_game, self._emit) as beat:
-            reason = run_turn_loop(orchestrator, self.params.max_moves, beat) or EndReason.SURVIVAL
+            reason = run_turn_loop(ready_orchestrator(self, state, fsm, role),
+                                   self.params.max_moves, beat) or EndReason.SURVIVAL
         report = audit_or_skip(state, reason, self._transport, self._audit_timeout, self._emit)
         # Their revealed positions arrive with the audit and nowhere else, so
         # this is the only moment their transmitted trail can be checked against
@@ -235,18 +237,3 @@ class MatchRunner:
             })
         self._emit({"event": "subgame.finished", **{k: v for k, v in record.items() if k != "records"}})
         return record
-
-    def _new_orchestrator(self, state: GameState, fsm: GameStateMachine, role: Role) -> Orchestrator:
-        """One conductor per mini-game, with a brain chosen for the role."""
-        fsm.to(Phase.WAITING_FOR_OPPONENT)
-        return Orchestrator(
-            state=state,
-            fsm=fsm,
-            transport=self._transport,
-            brain=self._build_brain(role, state),
-            speaker=self._speaker,
-            clock=self._clock,
-            emit=self._emit,
-            response_timeout=self._response_timeout,
-            max_retries=self._max_retries,
-        )

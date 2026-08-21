@@ -59,11 +59,14 @@ def agreement_in_hand(
     announce: Emit,
     error: Exception,
     wait: float = 0.0,
+    hold: Any = None,
 ) -> dict[str, Any] | None:
     """Their agreement for *this* window, if it is already waiting for us.
 
     Input: the inbox reader, the declarations we are sending this window, the
-        event sink, and the error our own send raised.
+        event sink, the error our own send raised, and optionally `hold`, a
+        callable handed `(window, message)` for every agreement that names a
+        *different* window than ours.
     Output: the peer's agreement message, or None when there is nothing usable
         — in which case the caller re-raises and the attempt is retried.
     Setup: none; `receive` is polled with a zero timeout, so this never adds a
@@ -81,12 +84,22 @@ def agreement_in_hand(
     ours = _window(declarations or {})
     theirs = _window(peer)
     if ours and theirs and ours != theirs:
-        # Dropped rather than put back: a queue we can only pop from would
-        # otherwise hand us the same stale message on every future peek. Both
-        # sides re-send per window, and that retry is what resynchronises us.
+        # Not put back: a queue we can only pop from would hand us the same
+        # stale message on every future peek. **Held, never merely dropped**:
+        # the mismatch is the one signal that says which window the peer is
+        # actually in, and discarding it is how the anrbj666 friendly of
+        # 2026-08-21 died — our thief at window 5 dropped their window-3
+        # negotiates on the floor, each side refused every offer of the
+        # other, and two windows clocked out at step 0. The holder
+        # (`sdk/handshake_setup` keys them by window) is what lets the series
+        # rewind to the window the peer is demonstrably still holding, and it
+        # seeds the rewound handshake with the very agreement that proved it.
         announce({
             "event": "handshake.window_mismatch", "ours": ours, "theirs": theirs,
+            "held": hold is not None,
         })
+        if hold is not None:
+            hold(theirs, peer)
         return None
     announce({
         "event": "handshake.inbound_first",
@@ -106,3 +119,8 @@ def _window(message: dict[str, Any]) -> int:
         return int(message.get("sub_game_number", 0) or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def window_of(message: dict[str, Any]) -> int:
+    """The mini-game a negotiate names, 0 for none — `_window`, made public."""
+    return _window(message)

@@ -34,6 +34,7 @@ from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
 from .base import apply, reachable_within
+from .line_sides import cop_side_of_the_line
 from .territory import (
     UNREACHABLE,
     component_size,
@@ -329,27 +330,6 @@ def choose(
     candidates = safe_moves(board, origin, cop, legal, reach)
     if not candidates:
         return (Move.STAY,)
-    # **Stand in the gap of a fence being built.** The Barrier Law forbids
-    # walling our own cell, so occupying the line the cop is walling stops
-    # the seal outright: it must abandon the fence or come and take us, and
-    # coming costs it exactly the turns the fence needed. Measured against
-    # the halving cop at the agreed start, which otherwise takes us on step
-    # 35 having spent thirteen walls.
-    #
-    # Only among moves that already passed every safety filter above, so
-    # blocking never costs distance or room — it is a tie-break with teeth.
-    # Line first, cut second, and the order was measured: a *union* of the two
-    # spreads the preference over every cell of every minimum cut and stops
-    # forcing us onto the gap that matters — we were taken on step 35 again.
-    # The straight line is the fence a cop is visibly building; the general cut
-    # is the fallback for the shapes a line cannot see, like the L of `(4,6)`,
-    # `(6,5)`, `(5,6)` that MOAAMOHA sealed a corner with.
-    gaps = set(fence_gaps(board, cop)) or sealing_cells(board, origin)
-    if gaps:
-        blocking = tuple(
-            move for move in candidates if apply(board, origin, move) in gaps
-        )
-        candidates = blocking or candidates
     # Prefer the moves that are still safe a turn later. Only a preference:
     # when nothing survives the reply we are already losing, and refusing to
     # move would forfeit the chance that the cop answers imperfectly.
@@ -359,6 +339,21 @@ def choose(
         if survives_the_reply(board, apply(board, origin, move), cop, legal)
     )
     candidates = lasting or candidates
+    # **Stay on the cop's side of a forming cut.** A sealing cop may not
+    # complete a line that separates it from us — the plan self-checks and
+    # rebuilds — so the side holding the cop can never be sealed shut, while
+    # the far side is precisely the room the cut is about to confiscate. Both
+    # 29-step losses to the halving cop have the same silhouette: the thief
+    # fled *away* from the cop, north through the gaps of a row being walled,
+    # and the walls closed behind it — with the whole left board reachable
+    # through an open gate the entire game. Fleeing across a forming line
+    # feels safe by every distance measure and is the one move the plan
+    # cannot punish us for refusing: on the cop's side the cut lands on an
+    # empty half and the walls are wasted. Standing on a gap itself is kept
+    # too — an occupied cell cannot be walled.
+    if remaining > 0:
+        sided = cop_side_of_the_line(board, origin, cop, candidates, remaining)
+        candidates = sided or candidates
     # **Refuse ground a fence could close around us, while one still can.**
     # A maximand here makes STAY win whenever standing still holds the most
     # room, and the thief parks — `test_amjad_g02` caught exactly that. As a
@@ -410,6 +405,36 @@ def choose(
             best = max((room[move] for move in movers), default=None)
             if best is not None:
                 candidates = tuple(m for m in candidates if room[m] == best) or candidates
+    # **Stand in the gap of a fence being built.** The Barrier Law forbids
+    # walling our own cell, so occupying the line the cop is walling stops
+    # the seal outright: it must abandon the fence or come and take us, and
+    # coming costs it exactly the turns the fence needed. Measured against
+    # the halving cop at the agreed start, which otherwise takes us on step
+    # 35 having spent thirteen walls. Line first, cut second: the straight
+    # line is the fence a cop is visibly building; the general cut is the
+    # fallback for the shapes a line cannot see, like the L of `(4,6)`,
+    # `(6,5)`, `(5,6)` that MOAAMOHA sealed a corner with.
+    #
+    # **Last among the filters, and gated on a wall actually existing — both
+    # learned from the same corner.** This preference used to run right after
+    # `safe_moves`, ahead of the seal-cost floor, and `sealing_cells` answers
+    # "what would a fence around me be made of" even when nobody is building
+    # one. Two deaths, one shape: in counted #6 (ahk-yosi, 2026-08-21,
+    # g01/g03/g05 byte-identical) their cop had placed zero walls when this
+    # marched us [5,6]->[6,6] into the corner it then walled; and with the
+    # column fence complete its gap list is empty, so the cut fallback pushed
+    # us into [0,6] inside the sealed half the same way. Running last, it can
+    # only choose among moves every floor above already accepted — a fence is
+    # blocked when blocking is safe, and never by standing in the one cell
+    # the plan wants walled anyway. The intact-board misfire is replayed
+    # move-for-move in `test_ahk_yosi_corner_hunt.py`.
+    if board.barrier_count:
+        gaps = set(fence_gaps(board, cop)) or sealing_cells(board, origin)
+        if gaps:
+            blocking = tuple(
+                move for move in candidates if apply(board, origin, move) in gaps
+            )
+            candidates = blocking or candidates
     cuts = frozenset(cut_cells(board, origin)) if remaining > 0 else frozenset()
     scored = [(rank(board, origin, move, reach, cuts), move) for move in candidates]
     best = max(score for score, _ in scored)

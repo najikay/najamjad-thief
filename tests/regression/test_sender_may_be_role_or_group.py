@@ -92,3 +92,16 @@ def test_binding_without_a_group_id_keeps_the_old_behaviour_exactly() -> None:
 
     assert one.check(message("thief")) is None
     assert one.check(message("nis-yar1")) is not None
+
+
+def test_cop_is_police_wearing_its_other_name() -> None:
+    """bestteam's turns arrived as `sender: 'cop'` on 2026-08-18 and were
+    refused against an expected 'police' — one role, two spellings, and our
+    own config parser accepts both. The guard now does too, both ways."""
+    assert guard().check(message("cop")) is None
+
+    flipped = SessionGuard()
+    flipped.bind("cop", CONFIG_SHA, GAME_UID, group_id="bestteam")
+    assert flipped.check(message("police")) is None
+    assert flipped.check(message("bestteam")) is None
+    assert flipped.check(message("thief")) is not None

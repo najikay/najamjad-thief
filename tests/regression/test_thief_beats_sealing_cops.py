@@ -1,29 +1,29 @@
-"""Our thief against sealing cops of several qualities (T-2718).
+"""Our thief against our own sealer stack, in every grade it comes in (T-2718).
 
-Written 2026-08-18 asserting the thief survives every grade of sealer, which was
-true of the sealer that existed that day. It is not true of the one Naji
-dictated on 2026-08-19: that cop halves the board, halves the half, and takes us
-on step 29 for ten barriers. The assertion has therefore been **inverted rather
-than deleted** — the fact it now records is a defeat, and a suite that quietly
-dropped it would be the second time this repo answered a failing benchmark by
-removing the assertion instead of the assumption.
+The history of this file is the history of the arms race, and the assertions
+have changed sides twice. Written 2026-08-18 asserting the thief survives every
+grade of sealer, which was true of the sealer that existed that day. Inverted
+on 2026-08-19 when the scripted sealer took us on 29 — recorded as a defeat
+rather than deleted. Rewritten 2026-08-21, because that day's cop work closed
+the holes the "survivable grades" were survivable through: the gate at (6,3)
+is re-taken instead of abandoned when its wall is refused, `lock_cell` demands
+adjacency, and the pocket solver prices wins to co-location. With those fixed,
+even the crippled mutants convert — `GivesUp` never builds the second cut and
+still wins at 32, because a properly sealed 3-wide half is a forced capture by
+the same table the seal is budgeted against, and the shared lock-and-solve
+core finishes it without a script.
 
-The measurement that matters is which grade is fatal, and it is not the one we
-guessed. A sealer that halves the board and stops is survivable (35 steps, six
-barriers spent); a sealer that leaves its gate unwalled still takes us on 29.
-**The second cut is the whole game.** Once the 3x3 closes, `domain/endgame.py`
-prices it a forced cop win on a single barrier — there is no thief play inside
-it, so no amount of thief work turns that column green. The thief's only counter
-is to be on the far side before the cut completes, which is a different fix from
-anything this file can assert.
+So the file now records the honest asymmetry:
 
-The old degradations are gone because they had stopped degrading anything:
-`NearGate`, `Rechooser` and `Impatient` overrode `_commit`, `_row_cells` and
-`_settled`, none of which survived the rewrite to an explicit script. All three
-were plain `SealCop` wearing a different name, and the suite had been grading one
-cop four times while reporting four grades. A dead override is worse than no
-override, because it claims a coverage it does not have. The two below are
-written against the members the current cop actually has.
+* **Every grade of the sealer stack takes our thief.** Not a thief failure to
+  fix: no opponent in this league runs this stack, our thief survives every
+  archived opponent line and 24 reacting corner-hunter variants
+  (`test_ahk_yosi_corner_hunt.py`), and the losing side of a solved position
+  is the wrong place to spend strategy work. The ratchet guards the *steps*:
+  falling below 29 is a real thief regression.
+* **A cop without the halving plan still takes nothing.** Pursuit-and-walls
+  and the random control must never capture — that is the theorem the safety
+  rule implements, and it is the pin that catches a thief blunder fastest.
 """
 
 import json
@@ -37,20 +37,22 @@ from najamjad_agent.strategy.seal_cop import SealCop
 from najamjad_agent.strategy.thief_brain import ThiefBrain
 from tests.regression.cop_duel import run_cop_duel
 
-#: Steps the thief reaches against a sealer that finishes its plan, measured
-#: 2026-08-19. A ratchet, not a target: lasting *fewer* steps is a real thief
-#: regression and fails here, while lasting more is an improvement the pin is
-#: raised to meet.
-HELD_AGAINST_A_FINISHED_SEAL = 29
-#: Barriers that cop had to spend to do it. If a future cop takes us for less,
-#: the seal got cheaper and this file should say so out loud.
-COST_OF_TAKING_US = 10
+#: Steps the thief reaches against the sealer stack. A ratchet, not a target:
+#: lasting *fewer* steps is a real thief regression and fails here, while
+#: lasting more is an improvement the pin is raised to meet. 29 is the
+#: 2026-08-21 floor across all three grades (GateLeftOpen is the fastest).
+HELD_AGAINST_THE_SEAL = 29
+#: Barriers the cheapest conversion spends. If a future cop takes us for
+#: less, the seal got cheaper and this file should say so out loud.
+COST_OF_TAKING_US = 9
 
 
 class GivesUp(SealCop):
     """Halves the board and stops: never builds the second cut.
 
-    The survivable grade, and the one that tells us where the danger is.
+    Survivable until 2026-08-21; converting now is the proof that the halves
+    it seals are themselves lost ground — 3 cells wide, which the forced-win
+    table prices as a capture for the lock-and-solve core it still carries.
     """
 
     def _refill(self, board, thief, here):  # type: ignore[no-untyped-def]
@@ -87,11 +89,9 @@ def params() -> GameParams:
 
 
 @pytest.mark.parametrize(
-    "make_cop",
-    [GivesUp, CopBrain, RandomCop],
-    ids=["seal-gives-up", "pursuit-and-walls", "random"],
+    "make_cop", [CopBrain, RandomCop], ids=["pursuit-and-walls", "random"]
 )
-def test_the_thief_survives_every_cop_that_does_not_finish_a_seal(
+def test_the_thief_survives_every_cop_without_the_halving_plan(
     make_cop, params: GameParams
 ) -> None:
     """Survival to the horizon is the thief's win condition; nothing less counts."""
@@ -105,27 +105,35 @@ def test_the_thief_survives_every_cop_that_does_not_finish_a_seal(
 
 
 @pytest.mark.parametrize(
-    "make_cop", [SealCop, GateLeftOpen], ids=["seal-full", "seal-gate-open"]
+    "make_cop",
+    [SealCop, GateLeftOpen, GivesUp],
+    ids=["seal-full", "seal-gate-open", "seal-gives-up"],
 )
-def test_a_finished_seal_takes_us_and_we_record_how_dearly(
+def test_every_grade_of_the_seal_takes_us_and_we_record_how_dearly(
     make_cop, params: GameParams
 ) -> None:
-    """The defeat, pinned in both directions.
+    """The defeat, pinned in all three directions.
 
-    Not `not captured`: that assertion is false and the honest form of a false
-    assertion is the true one beside it. Losing *sooner* is a thief regression;
-    being taken for *fewer* barriers means the seal got cheaper. Either is worth
-    a red build, and a thief that escapes outright fails the pin too — which is
-    the failure we would most like to be handed.
+    Losing *sooner* than the floor is a thief regression; being taken for
+    fewer barriers means the seal got cheaper; and a capture reported any
+    other way than co-location would be a wire the filing layer cannot cash
+    (`remote seal` is a bench verdict, not a win). A thief that escapes a
+    grade outright fails the pin too — which is the failure we would most
+    like to be handed, since it means the plan grew a hole.
     """
     result = run_cop_duel(make_cop(), [], params, thief_brain=ThiefBrain())
 
-    assert result.step >= HELD_AGAINST_A_FINISHED_SEAL, (
-        f"the thief now falls on step {result.step}, sooner than the "
-        f"{HELD_AGAINST_A_FINISHED_SEAL} it held on 2026-08-19"
+    assert result.captured, (
+        f"{make_cop.__name__} no longer converts: {result.reason} — "
+        "either the thief found a hole (raise these pins to celebrate) or "
+        "the plan lost one of its 2026-08-21 fixes"
     )
-    if result.captured:
-        assert len(result.barriers) >= COST_OF_TAKING_US, (
-            f"the seal got cheaper: {len(result.barriers)} barriers, "
-            f"not the {COST_OF_TAKING_US} it used to cost"
-        )
+    assert result.reason.startswith("captured"), result.reason
+    assert result.step >= HELD_AGAINST_THE_SEAL, (
+        f"the thief now falls on step {result.step}, sooner than the "
+        f"{HELD_AGAINST_THE_SEAL} it held on 2026-08-21"
+    )
+    assert len(result.barriers) >= COST_OF_TAKING_US, (
+        f"the seal got cheaper: {len(result.barriers)} barriers, "
+        f"not the {COST_OF_TAKING_US} it used to cost"
+    )
