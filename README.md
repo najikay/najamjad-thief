@@ -11,10 +11,10 @@ teams' agents, with SHA-256 commit-reveal integrity and Gmail-API result reporti
 [![ci](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml/badge.svg)](https://github.com/najikay/najamjad-thief/actions/workflows/ci.yml)
 
 **Team:** Naji Kayal · Amjad Abed — group `najamjad`
-**Status:** M6 — **three counted series played and filed**, rule 31's pass threshold met with
-one to spare. Plays a full audited series, interoperates with the course reference simulator
-and with three independent team implementations, and audits an opponent's play after the
-match. Remaining work is tracked in `docs/TODO.md`.
+**Status:** M6 — **six counted series played and filed** against six distinct opponents,
+rule 31's pass threshold met three times over. Plays a full audited series, interoperates
+with the course reference simulator and with six independent team implementations, and
+audits an opponent's play after the match. Remaining work is tracked in `docs/TODO.md`.
 
 ### League record
 
@@ -25,9 +25,10 @@ match. Remaining work is tracked in `docs/TODO.md`.
 | 3 | 2026-08-14 | `vibecode` | lost 0–6 | 30 | 90 |
 | 4 | 2026-08-17 | `MOAAMOHA` | **won** 4–2 | 60 | 40 |
 | 5 | 2026-08-18 | `nis-yar1` | lost 0–6 | 30 | 90 |
+| 6 | 2026-08-21 | `ahk-yosi` | **tied** 3–3 | 75 | 75 |
 
-**Thirty of thirty mini-games verified `Verified OK` at the audit, across five counted
-series, with zero technical losses attributable to us.** That is the number we would point
+**Thirty-six of thirty-six mini-games verified `Verified OK` at the audit, across six
+counted series, with zero technical losses attributable to us.** That is the number we would point
 at first: every game we played was one both sides could re-hash and agree on, including the
 two we lost badly.
 

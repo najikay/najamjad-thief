@@ -1,6 +1,6 @@
 # Opponent tracker
 
-**Updated:** 2026-08-17 · Update this after **every** contact, not in batches.
+**Updated:** 2026-08-21 · Update this after **every** contact, not in batches.
 
 Recruitment opens 2026-08-03. Target: ≥ 8 teams contacted by Aug 5, ≥ 4
 confirmed by Aug 6 (below that, the contingency in `docs/LEAGUE_OPS.md` §4
@@ -32,7 +32,7 @@ them. `docs/HOW_TO_PLAY_US.md` is the public one-pager for a first approach.
 | **imreeyal** | imreeyal.copthief@gmail.com | cop/thief.imreeyal.com/mcp | `counted-1` | 1 | Imree Cohen, Eyal Shtinmetz. No LLM, pure Python. Fresh process per sub-game. Maintain the interop kit. Two friendlies then the counted; their review found four real defects in ours |
 | **uoh-ay26** | — | — | `counted-1` | 1 | Aisha Dahesh et al. Hint every turn, no scent at all. Our first counted series. **Agreement digests differ — see the open item below** |
 | uoh-sqak | — | ngrok (rotates) | `warmed` | 0 | Beat us 15-60 on 2026-08-02, emitting nothing. The loss that motivated the emission dials |
-| ahk-yosi | — | — | `warmed` | 0 | Void warm-up 2026-08-02 |
+| **ahk-yosi** | apexmediamind@gmail.com | trycloudflare quick tunnel, one door for both roles (rotates) | `counted-1` | 1 | Yosef Shanaa + partner (213314859, 325811255). One process alternating roles at each boundary. Sent the most thorough conformance audit any opponent has: both our vectors re-derived through their own code, five of their own defects volunteered, two real errors found in our terms document. Counted 2026-08-21: **tied 75-75, 3-3** — every window went to the cop, both sides, six captures out of six. Void warm-up 2026-08-02; they and we both treat 2026-08-21 as the first meeting |
 | **vibecode** | — | — | `counted-1` | 1 | Counted 2026-08-14: **lost 30-90, 0-6**. Their cop converted every window; the loss that motivated the barrier work |
 | **MOAAMOHA** | moaawiyah.haj@gmail.com | calm-lantern-322 / bright-harbor-604 (Cloudflare) | `counted-1` | 1 | Moaawiyah Hajajrah, Mohamed Selawe. Two processes. Counted 2026-08-17: **won 60-40, 4-2**. Their thief lies on every record and emits scent; their cop runs a column-3 seal. Fixed their `roles` keying at our request and the digests then matched first try |
 | yanell11 | — | Cloudflare | `warmed` | 0 | Practice abandoned: their loop stopped at 25 moves against an agreed 35 and they did not want to check. Our logs were clean |
@@ -48,6 +48,9 @@ Newest first. One line per contact attempt **and** per reply.
 
 | Date | Team | What was said | Next action |
 |---|---|---|---|
+| 2026-08-21 | ahk-yosi | Counted series played and filed, **tied 75-75, 3-3**. Digest `5bb96826…` confirmed both sides; all six audits verified | Done. One counted per pairing |
+| 2026-08-21 | ahk-yosi | Two warm-ups (lost 30-90, then 30-90). Their scent model A2 adopted for the pairing; rule-47 confirmation and window re-offer both settled in writing | — |
+| 2026-08-20 | ahk-yosi | Full conformance audit from them; two errors found in our terms document (a counted count that disagreed with itself, the stale scent table) and both fixed | — |
 | 2026-08-17 | bestteam | Full green-light reply; we verified their commits resolve on GitHub and answered their two open items (nested `identity.group_id` binds fine; flat 3 s/120 s retry is fine) | Warm-up as soon as they are up |
 | 2026-08-17 | nis-yar1 | Four endpoint changes, then back to the broken one-host topology | Dropped |
 | 2026-08-17 | MOAAMOHA | Counted series played and filed, **won 60-40**. `sha256 23da6c3c…` matched theirs byte for byte; per-window commits correct both sides | Done. One counted per pairing |
@@ -72,8 +75,25 @@ diversity reward for distinct opponents. **A warm-up is never counted.**
 | 3 | vibecode | 2026-08-14 | **lost** 30-90, 0-6 | 30 | yes | `matches/vibecode-counted-20260814T190747Z` |
 | 4 | MOAAMOHA | 2026-08-17 | won 60-40, 4-2 | 60 | yes | `matches/moaamoha-COUNTED-20260817T132317Z` |
 | 5 | nis-yar1 | 2026-08-18 | **lost** 30-90, 0-6 | 30 | yes | `matches/nis-yar1-COUNTED-20260818T121645Z` |
+| 6 | ahk-yosi | 2026-08-21 | **tied** 75-75, 3-3 | 75 | yes | `matches/ahk-yosi-COUNTED-20260821T183302Z` |
 
-**Totals:** 5 counted · 5 distinct opponents · 300 points · **rule 31 pass threshold met**
+**Totals:** 6 counted · 6 distinct opponents · 375 points · **rule 31 pass threshold met**
+
+**Counted #6 — the cop converted, three windows out of three.** Every one of the
+six mini-games ended in a capture and every capture went to the side holding the
+cop, so the series is a clean 3-3 and the score a dead 75-75. That is the first
+counted series in which our cop took its own windows: counted #3 and #5 were
+0-6 with the cop empty-handed, and the barrier work between #5 and here is what
+changed. `mutual_agreement.sha256 5bb96826…` confirmed, all six audits
+`log_verified: true`, `tampered: false`, per-window commits correct on both
+sides. Nothing in this series is disputed.
+
+Worth keeping in view: they played it as **one process alternating roles**,
+which does not satisfy rule 1 (Appendix ה Table 7). We raised it, they offered
+to split before anything counted, and the series was played anyway on the
+understanding that we changed nothing on our side. If the rule is read strictly
+against them the tie is theirs to lose, not ours to claim; we filed what
+happened and claim nothing beyond it.
 
 **Counted #5 — the emission asymmetry, not the strategy.** We transmitted a scent
 grid with peak 0.9 on every turn of all six mini-games; they transmitted none. Peak
