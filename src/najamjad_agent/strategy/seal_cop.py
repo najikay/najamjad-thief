@@ -89,8 +89,42 @@ class SealCop(CopBrain):
     def _read(self, facts: Any) -> tuple[Board, Position | None, int, Position]:
         board = self._board(facts)
         belief = dict(getattr(facts, "belief", {}) or {})
-        return (board, confident_peak(belief), int(getattr(facts, "barriers_left", 0) or 0),
-                getattr(facts, "own_position", (0, 0)))
+        here = getattr(facts, "own_position", (0, 0))
+        return (board, self._locate(board, belief, here),
+                int(getattr(facts, "barriers_left", 0) or 0), here)
+
+    def _locate(self, board: Board, belief: dict[Position, float],
+                here: Position) -> Position | None:
+        """Where they are: the confident peak, or the best cell in a shut room.
+
+        `confident_peak` refuses a flat belief, and it is right to on an open
+        board — a cop that chases noise spends barriers on nothing, which is a
+        fault this class has had. But it returns None on *any* flat belief, and
+        the moment that matters most is the one where the reasoning does not
+        apply: once the seal is shut we are in a room of a handful of cells with
+        them, every one of which we can see, and "not confident enough" there
+        means refusing to act on the only answer available.
+
+        The cost of that refusal is total. `_read` hands None to everything —
+        `_capture_now`, `_endgame`, the script — so a cop standing next to a
+        cornered thief with barriers in hand does nothing at all. Against
+        ahk-yosi it paced beside a thief it had already trapped, three windows
+        running.
+
+        So inside a component small enough for the exact solver, we take the
+        peak. The gate keeps its whole meaning on the open board, where the
+        component is the board and this never fires.
+        """
+        peak = confident_peak(belief)
+        if peak is not None:
+            return peak
+        room = component(board, here)
+        if not room or len(room) > MAX_CELLS:
+            return None
+        inside = {cell: weight for cell, weight in belief.items() if cell in room}
+        if not inside or max(inside.values()) <= 0.0:
+            return None
+        return max(inside, key=lambda cell: inside[cell])
 
     def _refill(self, board: Board, thief: Position, here: Position) -> None:
         """Move to the next phase only once the current one is genuinely spent."""
@@ -232,11 +266,23 @@ class SealCop(CopBrain):
         if taking is not None:
             return taking
         exact = self._endgame(facts)
-        if exact is not None and exact[0] == "move":
-            for move in getattr(facts, "legal", ()):
-                dr, dc = board.delta_for(move)
-                if (here[0] + dr, here[1] + dc) == exact[1]:
-                    return move
+        if exact is not None:
+            if exact[0] == "move":
+                for move in getattr(facts, "legal", ()):
+                    dr, dc = board.delta_for(move)
+                    if (here[0] + dr, here[1] + dc) == exact[1]:
+                        return move
+            else:
+                # The solver chose a barrier, and placing costs the turn. Hold
+                # the square: the win it found is computed from where we stand,
+                # and stepping away undoes the geometry that makes it forced.
+                #
+                # This fell through to the script, so the cop laid the lock and
+                # walked out of its own pocket in the same turn — `pick_barrier`
+                # returning `wall (0,1)` while `pick_move` returned EAST, back
+                # toward a column cut it had finished long ago. A correct
+                # endgame is worth nothing if the body leaves before it lands.
+                return Move.STAY
         self._refill(board, thief, here)
         if not self.script:
             return super().pick_move(facts)
