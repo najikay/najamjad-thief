@@ -38,6 +38,22 @@ def _steps(cells: frozenset[Cell], walls: frozenset[Cell], spot: Cell) -> tuple[
     return tuple(c for c in around if c in cells and c not in walls)
 
 
+def _escapes(cells: frozenset[Cell], walls: frozenset[Cell], spot: Cell,
+             blocked: Cell) -> tuple[Cell, ...]:
+    """The thief's *movement* options: orthogonal only, and never onto the cop.
+
+    Deliberately excludes the thief's own cell, which `_steps` includes. That
+    inclusion is right for the cop — standing still is a real option for it —
+    and it is what made rule 47 unreachable for the thief: with STAY always
+    available the thief's option list is never empty, so `all(...)` is never
+    vacuous and the solver could not represent an immobilised thief at all.
+    """
+    row, col = spot
+    around = ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1))
+    return tuple(c for c in around
+                 if c in cells and c not in walls and c != blocked)
+
+
 @lru_cache(maxsize=1 << 18)
 def _win(cells: frozenset[Cell], cop: Cell, thief: Cell, walls: frozenset[Cell],
          left: int, cop_turn: bool, depth: int) -> bool:
@@ -57,9 +73,24 @@ def _win(cells: frozenset[Cell], cop: Cell, thief: Cell, walls: frozenset[Cell],
                 if _win(cells, cop, thief, walls | {cell}, left - 1, False, depth - 1):
                     return True
         return False
+    # Rule 47: a thief with no legal *move* is captured, and standing still is
+    # not an escape. This is the deterministic win the whole seal exists to set
+    # up — block the thief's remaining orthogonal exits, at most three of them
+    # because the cop's own body covers a fourth, and it is over. The solver
+    # could not see it before: it scored only `cop == thief`, so it hunted a
+    # step-on capture that a dodging thief prevents forever, spent its last
+    # barriers on nothing, and paced out the clock beside a thief it had already
+    # cornered. ahk-yosi confirmed the same reading of 46/47 in writing on
+    # 2026-08-21 and concede for themselves when it happens.
+    escapes = _escapes(cells, walls, thief, cop)
+    if not escapes:
+        return True
+    # Staying is legal while any move exists, so the thief may choose it and the
+    # cop must beat that too — it is only *not* a rescue when nothing else is
+    # left.
     return all(
         _win(cells, cop, landing, walls, left, True, depth - 1)
-        for landing in _steps(cells, walls, thief)
+        for landing in (*escapes, thief)
     )
 
 
