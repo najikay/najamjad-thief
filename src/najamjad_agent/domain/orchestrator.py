@@ -203,13 +203,33 @@ class Orchestrator:
         self.fsm.to(Phase.AWAITING_REVEAL)
         self.event("turn.sent", commit=commit[:16])
 
+    #: Extra rounds of patience for the FIRST turn of a mini-game only.
+    #:
+    #: The opener is not like other turns. Every later one answers something we
+    #: just sent, so silence means the peer went away; the opener answers a
+    #: handshake, and the two sides do not start a window at the same instant.
+    #: We begin the moment *our* side agrees, which can be seconds or minutes
+    #: before theirs — and until theirs agrees, there is no opener to send.
+    #:
+    #: We advertise minutes of patience for a peer whose window has not opened
+    #: and then gave the one message that starts a window thirty seconds.
+    #: anrbj666 named that conflation on 2026-08-21: their thief was still
+    #: holding g04 ten minutes after our police had given up on it. Nine rounds
+    #: at the agreed 30 s is 4.5 minutes, which is inside their 1800 s runner
+    #: gate and inside our own watchdog only because the watchdog measures
+    #: silence, and a peer re-offering the window is not silent.
+    OPENER_PATIENCE = 9
+
     def _await_turn(self) -> dict[str, Any] | None:
         """Wait for the opponent, retrying within the deadline budget."""
-        for attempt in range(self._max_retries):
+        opening = self.state.step == 0
+        rounds = self.OPENER_PATIENCE if opening else self._max_retries
+        for attempt in range(rounds):
             message = self._transport.receive_turn(self._timeout)
             if message is not None:
                 return message
-            self.event("turn.timeout", attempt=attempt + 1, waited=self._timeout)
+            self.event("turn.timeout", attempt=attempt + 1, waited=self._timeout,
+                       opening=opening)
         return None
 
     def _resolve(self, reason: EndReason | None) -> EndReason | None:

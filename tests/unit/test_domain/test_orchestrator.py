@@ -129,11 +129,28 @@ def test_declared_opponent_barrier_is_honoured() -> None:
 
 
 def test_timeout_resolves_to_a_clean_technical_loss() -> None:
-    """A missed deadline is a failure, never an indefinite wait (book rule 6)."""
+    """A missed deadline is a failure, never an indefinite wait (book rule 6).
+
+    Re-pinned from a flat 3: the OPENER now gets its own budget. Every other
+    turn answers something we just sent, so silence means the peer is gone;
+    the opener answers a handshake, and two sides do not start a window at the
+    same instant. What is being protected here is that the wait is *bounded*
+    and resolves cleanly, not the particular count.
+    """
     orchestrator, transport, _ = build_orchestrator(role=Role.COP, inbox=[])
+
     assert orchestrator.receive_turn() is EndReason.TIMEOUT
     assert orchestrator.fsm.phase is Phase.TECHNICAL_LOSS
-    assert transport.timeouts == 3, "retried up to the configured budget first"
+    assert transport.timeouts == orchestrator.OPENER_PATIENCE
+
+
+def test_an_ordinary_turn_keeps_the_short_budget() -> None:
+    """Only step 0 is patient. Mid-game silence still resolves in three."""
+    orchestrator, transport, _ = build_orchestrator(role=Role.COP, inbox=[])
+    orchestrator.state.step = 4
+
+    assert orchestrator.receive_turn() is EndReason.TIMEOUT
+    assert transport.timeouts == 3, "a mid-game peer that went quiet is gone"
 
 
 def test_scent_decays_once_per_full_turn_only() -> None:
