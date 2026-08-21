@@ -26,7 +26,7 @@ from .game_state import GameState
 from .hint_evidence import claim_likelihood, parse_locally, scent_consistency
 from .ledger import ProtocolOrderError
 from .scent_audit import peak_cell
-from .scent_models import centre_likelihood, fresh_deposit
+from .scent_models import ScentModel, centre_likelihood, fresh_deposit
 
 
 def absorb_turn(
@@ -176,11 +176,21 @@ def _fuse_fresh_deposit(state: Any) -> None:
     subtractive model the cumulative field is already sharp, and there this is
     corroboration. Needs two frames, so the opening turn of a mini-game skips it.
     """
+    scent = state.opponent_scent
+    # **Only where the raw field cannot answer.** Under the subtractive model the
+    # cumulative field already peaks on exactly one cell — the true one — and
+    # running the matched filter over it spreads that single peak across three,
+    # because the freshest deposit sits on a cell whose neighbours also gained.
+    # Measured on the same walk under both models: book goes 6 ambiguous cells ->
+    # 1 correct, reference goes 1 correct -> 3 ambiguous. Applying it everywhere
+    # rescued A2 and quietly damaged A1, on every turn, for both roles — and no
+    # bench could see it because `cop_duel` never runs the ingress path.
+    if scent.model is not ScentModel.BOOK:
+        return
     frames = getattr(getattr(state, "opponent_frames", None), "frames", None)
     if not frames or len(frames) < 2:
         return
     steps = sorted(frames)
-    scent = state.opponent_scent
     fresh = fresh_deposit(frames[steps[-1]], frames[steps[-2]], scent.model, scent.decay)
     if not fresh:
         return
