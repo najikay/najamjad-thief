@@ -28,6 +28,7 @@ rather than restating it in our words.
 from __future__ import annotations
 
 import secrets
+from typing import Any
 
 #: The next expected step is applied.
 APPLY = "apply"
@@ -72,3 +73,26 @@ def decide(played: dict[int, str], nxt: int, step: int, commit: str,
         # steps, so there is no window in which this was legitimate.
         return DISCARD
     return BUFFER if step <= nxt + window else VIOLATION
+
+
+#: Fields that mark a frame as settling rather than taking a turn. The first two
+#: are the reference's; `caught` and `verdict` are what a peer building on the
+#: book's own vocabulary sends instead, and we have played both shapes — their
+#: sealed records differ completely and both audited `Verified OK`, because we
+#: re-hash whatever a peer gives us rather than requiring a layout. The wire
+#: deserves the same tolerance: a game-ending frame is a game-ending frame under
+#: either vocabulary, and the cost of missing one is two teams filing different
+#: endings for the same game.
+SETTLING_FIELDS = ("claim_response", "win_claim", "caught", "verdict")
+
+
+def is_settling(message: Any) -> bool:
+    """Whether this frame settles a claim or the game rather than taking a turn.
+
+    Checks declared fields and the tolerated extras alike, since a peer whose
+    vocabulary our schema does not declare still arrives with the marker in
+    `__pydantic_extra__`.
+    """
+    extras = getattr(message, "extras", None) or {}
+    return any(getattr(message, field, None) is not None or extras.get(field) is not None
+               for field in SETTLING_FIELDS)

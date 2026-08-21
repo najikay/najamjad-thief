@@ -31,7 +31,7 @@
   },
   "practice": {
     "enabled": false,
-    "redirect_to": "apexmediamind@gmail.com",
+    "redirect_to": "alonisrael.engel@gmail.com",
     "_note": "Practice mode: the full pipeline runs and the report is really sent, but to redirect_to instead of the lecturer. The sender refuses to deliver anywhere else while this is on, so a broken redirect fails loudly rather than mailing a rehearsal to the grader. Off is the default and the only safe one."
   }
 }

@@ -22,7 +22,7 @@ from ..protocol.schemas_wire import (
     TurnMessage,
 )
 from ..shared.events import Emit
-from .delivery import ABSORB, APPLY, EQUIVOCATION
+from .delivery import ABSORB, APPLY, EQUIVOCATION, is_settling
 from .match_gate import MatchGate
 from .session_guard import DEFAULT_MAX_PER_MINUTE, SessionGuard
 from .sub_game_boundary import clear_finished_game
@@ -128,14 +128,24 @@ class Inboxes:
         step = getattr(message, "step", None)
         if step is None:
             return None
-        answers = getattr(message, "claim_response", None) is not None
-        return self.sequence.check(step, answers, str(getattr(message, "commit", "") or ""))
+        return self.sequence.check(step, is_settling(message),
+                                   str(getattr(message, "commit", "") or ""))
 
     def _delivery_verdict(self, message: Any) -> str:
-        """The §7.1 decision, before the monotonic guard sees the message."""
+        """The §7.1 decision, before the monotonic guard sees the message.
+
+        A settling frame is exempt. The delivery contract governs *turns* — one
+        action per step, deduped on the commit that sealed it — and a frame that
+        ends the game carries no action at all. anrbj666 warned us on 2026-08-21
+        that their `caught: true` final is mid-round and action-free and may
+        legitimately re-send the current step; a different payload means a
+        different commit, so the contract would have called it equivocation and
+        refused the one message that settles the game. Two sides then file
+        different endings, which rules 33-35 void for both.
+        """
         step = getattr(message, "step", None)
         commit = str(getattr(message, "commit", "") or "")
-        if step is None or not commit:
+        if step is None or not commit or is_settling(message):
             return APPLY
         return self.sequence.verdict(int(step), commit)
 
