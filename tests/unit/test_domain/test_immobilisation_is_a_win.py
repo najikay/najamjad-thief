@@ -67,3 +67,38 @@ def test_standing_still_is_not_an_escape_but_is_still_a_choice() -> None:
     open_room = frozenset((r, c) for r in range(4) for c in range(4))
 
     assert not forced_capture(open_room, (3, 3), (0, 0), frozenset(), 0, plies=12)
+
+
+def test_the_whole_pocket_is_won_from_the_centre() -> None:
+    """The complete truth table, because the plan depends on it being total.
+
+    Naji's reading, confirmed cell by cell: from the middle of a 3x3 the cop is
+    orthogonally adjacent to all four edge cells, so those are a one-move
+    capture; the four corners are not adjacent, and each costs exactly one
+    barrier and four plies. Worst case over the entire pocket is one barrier.
+
+    That is the number the seal is budgeted against. In the ahk-yosi g02 window
+    the cop stood in such a pocket on step 26 holding two barriers with nine
+    steps left — three times the worst case — and still finished at step 34
+    without a capture, because immobilisation was not a state the solver could
+    reach.
+    """
+    pocket = frozenset((r, c) for r in range(3) for c in range(3))
+    centre = (1, 1)
+    edges = {(0, 1), (1, 0), (1, 2), (2, 1)}
+
+    for row in range(3):
+        for col in range(3):
+            thief = (row, col)
+            if thief == centre:
+                continue
+            action = winning_action(pocket, centre, thief, frozenset(), 1, plies=20)
+            assert action is not None, f"{thief} must be winnable"
+            if thief in edges:
+                assert action == ("move", thief), "an adjacent thief is taken now"
+                assert forced_capture(pocket, centre, thief, frozenset(), 0, plies=2), \
+                    "and needs no barrier at all"
+            else:
+                assert action[0] == "wall", f"{thief} is cornered, not chased"
+                assert forced_capture(pocket, centre, thief, frozenset(), 1, plies=4), \
+                    "one barrier and four plies, worst case in the pocket"
