@@ -1,24 +1,27 @@
-"""The outbound session must be replaced before each sub-game's handshake.
+"""Session lifetime across sub-games: keep it healthy, cycle it dead.
 
-A peer may run every sub-game as its own process — the league's pinned wire
-shape asks for it, and imreeyal implement it. The socket we hold through game N
-is attached to a process that no longer exists when game N+1 opens, so reusing
-it dials a corpse: nothing refuses, the call simply hangs until our per-call cap
-fires.
+Two peers, two opposite demands, and the history of this file is the swing
+between them. imreeyal run one process per sub-game: the socket held through
+game N dials a corpse in game N+1, and a tunnel that still accepts TCP hangs
+every call to the per-call cap (49 straight read timeouts on 2026-08-12) —
+so this file once pinned "drop the session before every window". yamanagh
+bind ONE session per client for the whole series and refuse a second
+initialize mid-session: that unconditional drop then fed a 400 storm at
+every boundary (401 rejected against 176 served, their count) and killed the
+windows after the first one, twice.
 
-The failure is invisible from outside, which is what made it expensive. A bare
-`curl` opens a new connection and reads a healthy 406 off the peer's *new*
-process while our client times out against the old one — so the tunnel looks
-fine and the peer looks fine. It cost a whole friendly on 2026-08-12: every one
-of 49 failures was a read timeout at exactly the 10 s cap, not one
-`client.session_opened` was emitted after the first sub-game settled, and three
-attempts landed inside a window the peer's new process was provably bound and
-answering.
+The resolution: `new_session()` keeps a healthy session; renewal belongs to
+the failure paths that can actually see a failure — `PeerSession.call`
+reconnects once in-band on a transport error, and a call that burns its full
+timeout drops the session on cancellation so the next attempt opens fresh.
+Both peers' cases, one mechanism each, no unconditional churn.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+from najamjad_agent.net.mcp_client import PeerClient
 
 
 class _Session:
@@ -29,65 +32,90 @@ class _Session:
         self.connected = True
         self.dropped = False
 
+    async def drop(self) -> None:
+        self.dropped = True
+        self.connected = False
 
-def test_dropping_replaces_the_session_object(monkeypatch) -> None:
-    """The next call must open a new session, not reuse the released one."""
-    from najamjad_agent.net import mcp_client
 
-    monkeypatch.setattr(mcp_client, "PeerSession", _Session)
-    client = mcp_client.PeerClient(opponent_url="https://peer.example/mcp", gatekeeper=None)
+def _client() -> PeerClient:
+    client = PeerClient.__new__(PeerClient)
+    client.opponent_url = "http://peer.invalid/mcp"
+    client._session = _Session(client.opponent_url)
+    client._emit = lambda _event: None
+    client._loop = None                       # no loop thread in a unit test
+    client._thread = None
+    return client
+
+
+def test_dropping_replaces_the_session_object() -> None:
+    client = _client()
     first = client._session
-    monkeypatch.setattr(client, "_release_session", lambda: None)
 
     client.drop_session()
 
     assert client._session is not first, "a dropped session must be replaced"
-    assert client._session.url == "https://peer.example/mcp"
 
 
-def test_dropping_twice_is_harmless(monkeypatch) -> None:
+def test_dropping_twice_is_harmless() -> None:
     """Idempotent: the second drop has nothing to drop and must not raise."""
-    from najamjad_agent.net import mcp_client
-
-    monkeypatch.setattr(mcp_client, "PeerSession", _Session)
-    client = mcp_client.PeerClient(opponent_url="https://peer.example/mcp", gatekeeper=None)
-    monkeypatch.setattr(client, "_release_session", lambda: None)
-
+    client = _client()
     client.drop_session()
-    client._session.connected = False
+    # The replacement is a real, never-opened PeerSession: connected is
+    # already False, which is exactly the second drop's no-op case.
     client.drop_session()
 
 
-def test_the_transport_drops_the_client_session() -> None:
-    """`new_session` is the transport-level name for the same thing."""
+def test_the_transport_keeps_a_healthy_session_across_windows() -> None:
+    """The boundary must not cycle a live session — the yamanagh storm."""
     from najamjad_agent.net.peer_transport import PeerTransport
 
-    calls: list[str] = []
+    events: list[dict] = []
 
     class _Client:
-        def drop_session(self) -> None:
-            calls.append("dropped")
+        session_alive = True
 
-    transport = PeerTransport(inboxes=object(), client=_Client(), deadlines=object())
+        def drop_session(self) -> None:
+            raise AssertionError("a healthy session must not be dropped at a boundary")
+
+    transport = PeerTransport.__new__(PeerTransport)
+    transport._client = _Client()
+    transport._emit = events.append
+
     transport.new_session()
 
-    assert calls == ["dropped"]
+    assert events and events[0]["event"] == "session.kept"
 
 
-def test_the_session_is_dropped_before_the_handshake_not_after() -> None:
-    """Ordering is the whole fix.
+def test_a_timed_out_call_drops_the_session_for_the_next_attempt() -> None:
+    """The imreeyal corpse case, owned by the timeout path now."""
+    import time
 
-    The handshake is the first call of a sub-game, so a session replaced *after*
-    it is replaced one call too late — which is exactly what the old code did:
-    `reset()` ran inside the sub-game, well past the point the handshake had
-    already burned its attempts against a dead socket.
-    """
-    from pathlib import Path
+    client = PeerClient.__new__(PeerClient)
+    client.opponent_url = "http://peer.invalid/mcp"
+    session = _Session(client.opponent_url)
+    client._session = session
+    client._emit = lambda _event: None
+    client._timeout = 0.05
+    client._loop = None
+    client._thread = None
+    import threading
 
-    source = Path("src/najamjad_agent/domain/match.py").read_text(encoding="utf-8")
-    new_session = source.index("self._transport.new_session()")
-    handshake = source.index("if not agree_on_terms(")
-    reset = source.index("self._transport.reset(sub_game)")
+    client._lock = threading.Lock()
 
-    assert new_session < handshake, "the session must be fresh before the handshake"
-    assert handshake < reset, "reset stays after the handshake; it drops queued inbound"
+    async def _hang(tool: str, payload: dict) -> None:
+        import asyncio
+
+        await asyncio.sleep(10)
+
+    client._call_tool = _hang  # type: ignore[method-assign]
+
+    import contextlib
+
+    with contextlib.suppress(TimeoutError):
+        client._invoke("negotiate", {})
+    for _ in range(50):                      # the drop is scheduled, not awaited
+        if session.dropped:
+            break
+        time.sleep(0.05)
+
+    assert session.dropped, "a call that burned its cap must cycle the session"

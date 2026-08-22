@@ -102,7 +102,22 @@ def exchange_audit(
     forge — and rule 18 only protects a nonce until the audit, not through it.
     """
     send_reveal(ledger, transport, sender, result_claim)
-    report = receive_reveal(transport, timeout)
+    # **Sent more than once, on purpose.** yamanagh's relay answered 200 to
+    # our submit_audit at 10:07:45 and 10:09:06 UTC on 2026-08-22 — our
+    # client logged `client.sent` both times — and their inner process never
+    # saw either: an accepted reveal is not a delivered one behind a
+    # dispatching relay. Their own audit reached us because they RESEND it
+    # every ~2 s until answered (we logged ~28 copies per window). A reveal
+    # is idempotent — same records, same nonces — so duplicates cost a peer
+    # nothing, and a resend cadence is the one delivery guarantee available
+    # to the sender of a fire-and-forget protocol. Ours re-fires while we
+    # wait out their reveal, thirds of the window apart.
+    report = receive_reveal(transport, timeout / 3)
+    for _ in range(2):
+        if report.their_records:
+            break
+        send_reveal(ledger, transport, sender, result_claim)
+        report = receive_reveal(transport, timeout / 3)
     # The agreement the protocol actually affords: each side states how it
     # thinks the mini-game ended, inside the audit envelope. A contradiction
     # here is what rules 33-35 void both teams for, and it is far better known

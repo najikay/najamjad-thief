@@ -70,18 +70,12 @@ class PeerClient:
     async def _call_tool(self, tool: str, payload: dict[str, Any]) -> Any:
         """Invoke `tool` on the opponent over a session we keep open.
 
-        One session, not one per message. Opening a fresh MCP session per call
-        costs a connect, an initialize handshake and a teardown every time —
-        measured at 391 ms against 15 ms on a held session, a 25x difference,
-        and time spent there is time taken out of the opponent's 30-second
-        deadline for no benefit.
-
-        A dropped session is retried exactly once: peers restart, and the
-        cheapest correct answer to a stale socket is a new one. A second
-        failure is a real problem and belongs to the gatekeeper's retry policy.
-
-        Conservative in what we send: exactly the argument name the reference
-        declares for this tool. Our own server accepts either.
+        One session, not one per message: a fresh MCP session per call costs
+        connect + initialize + teardown — 391 ms measured against 15 ms held,
+        time taken out of the opponent's 30-second deadline for no benefit.
+        A dropped session is retried exactly once (`PeerSession.call`); more
+        belongs to the gatekeeper. Conservative in what we send: exactly the
+        argument name the reference declares. Our own server accepts either.
         """
         argument = ARGUMENT_FOR_TOOL.get(tool, "payload")
         return await self._session.call(tool, {argument: payload})
@@ -102,6 +96,14 @@ class PeerClient:
             return future.result(timeout=self._timeout)
         except TimeoutError:
             future.cancel()
+            # The session that just ate a full cap is presumed dead — the
+            # silent-edge case: a tunnel that accepts TCP for a process that
+            # no longer exists hangs every call to the cap (49 straight read
+            # timeouts on 2026-08-12). Dropping here is what lets the next
+            # attempt open fresh, now that window boundaries keep healthy
+            # sessions instead of cycling them. Scheduled on the loop and not
+            # awaited: this path is already 25 s late.
+            asyncio.run_coroutine_threadsafe(self._session.drop(), loop)
             self._emit({"event": "client.call_cancelled", "tool": tool, "url": self.opponent_url})
             raise
 
@@ -150,6 +152,11 @@ class PeerClient:
     # healthy 406 off their *new* process meanwhile — so the tunnel and the peer
     # both look fine and only the session is dead. It cost a whole friendly on
     # 2026-08-12. Full story in tests/unit/test_net/test_fresh_session_per_sub_game.py
+    @property
+    def session_alive(self) -> bool:
+        """Whether a session is currently held open to the peer."""
+        return self._session.connected
+
     def drop_session(self) -> None:
         """Release the held session so the next call opens a fresh one."""
         if not self._session.connected:

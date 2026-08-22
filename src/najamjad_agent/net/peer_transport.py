@@ -100,17 +100,20 @@ class PeerTransport:
         self._emit({"event": "transport.reset", "dropped": dropped})
 
     def new_session(self) -> None:
-        """Drop the outbound MCP session so the next sub-game opens its own.
+        """A healthy session is KEPT across the boundary since 2026-08-22.
 
-        Deliberately separate from `reset`, and deliberately called *earlier*.
-        `reset` throws away queued inbound messages, which must not happen
-        before a handshake — the peer re-pushes its agreement every second or
-        so, and discarding those is discarding the thing we are waiting for.
-        The session, by contrast, has to be replaced *before* the first
-        negotiate of the sub-game, because the handshake is the first call that
-        would otherwise ride a socket attached to the peer's previous process.
+        This used to drop unconditionally, for the peer whose previous
+        window's process no longer exists. That case is now owned by the
+        client itself — `PeerSession.call` reconnects once, in-band, on a
+        transport failure — so the unconditional drop bought nothing there
+        and cost a full re-initialize against every peer that binds one
+        session per client. yamanagh's server refuses a second initialize
+        mid-session: each of our window boundaries fed exactly the 400 storm
+        they counted for us (401 rejected against 176 served), and the games
+        that died — g3 onward, twice — died at this seam. The event stays,
+        so a boundary is still visible in the log.
         """
-        self._client.drop_session()
+        self._emit({"event": "session.kept", "connected": self._client.session_alive})
 
     def finish_sub_game(self) -> None:
         """Reopen the handshake gate now the mini-game has resolved.
