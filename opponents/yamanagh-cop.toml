@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://splotchy-bronco-nature.ngrok-free.dev/mcp"
+url      = "https://scholars-wav-bulk-operated.trycloudflare.com/mcp"
 group_id = "yamanagh"
 name     = "yamanagh-cop"
 notes    = """
@@ -69,7 +69,7 @@ shape; if they add 2 into totals the consensus digests split on exactly the
 tied series.
 
 agent email  yamandahle@gmail.com  — practice.redirect_to in BOTH repos
-before any friendly. Named tunnel, permanent, does not rotate. counted so
+before any friendly. QUICK Cloudflare tunnel since 2026-08-22 (trycloudflare) — it MINTS A NEW URL every restart; get a fresh URL from them before every session. counted so
 far: 3, distinct; first meeting -> diversity path. step 1 = after the first
 move. Warm-up first, as always.
 
@@ -108,10 +108,26 @@ GAME IDS CROSS-DERIVED BEFORE PLAY, 2026-08-22: they sent their independent
 derivation (game_id najamjad-vs-yamanagh, game_uid 3bc536d1-e7bd-cd4f-ccfb-
 a2feee6bebb5) and ours matches byte-for-byte — both loaders agree about the
 terms all the way through the uid construction.
+
+CONSENSUS_SHA EXPECTATION (learned friendly #1, 2026-08-22): their
+series-end audit messages carry a `consensus_sha` field (11 copies ACCEPTED
+with 200s by our cop door, 18:22:47-18:23:20 UTC — their "all ~150 attempts
+rejected with a session 400" claim is disproven by our inbox log; the long
+tail of their 400 s loop was dialling our already-offline origin,
+agent.offline 18:23:20/21, which a live Cloudflare edge answers 502/530)
+and they expect the peer's digest back in a live round-trip; without it their report sets
+peer_sha256:null / sha_match:false / confirmed:false EVEN WHEN both
+documents hold the identical digest (6fc49383... matched digit-for-digit,
+results_agreed true). UNIQUE TO THEM: every other pairing
+(3 counted + friendlies) confirmed mutual agreement via the mailed result
+documents with no in-band echo — our pipeline is not the defect. BEFORE ANY
+COUNTED WITH THEM: default is they read peer_sha256 from our mailed result
+document like everyone else; the additive consensus_sha echo in our final
+audit send is a fallback courtesy, blocked until the commit freeze lifts.
 """
 
-# Their declared pair (2026-08-22). The thief hash does NOT yet resolve in
-# the repo they named — see notes; require a push + resend before playing.
+# Their pair as PLAYED in friendly #1 (2026-08-22, stamped in both reports).
+# Both verified live HEADs 18:35 UTC: cop == HEAD, thief == HEAD/master.
 [armed_commits]
 cop   = "b10dd23a734169b3c54cbe4349ae5d1050e82131"
-thief = "9599a71d625c8bd6c7b36337969f02cab8f20b69"
+thief = "fc267d67fd6086a9f9402dd49bc600213bb2f9ab"
