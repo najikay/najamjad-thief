@@ -80,6 +80,19 @@ inside identity.group_id. Fixed 2026-08-22 — our offer now carries top-level
 greeting (which our inbox logged as tolerated extras). Additive, signature
 and terms hash untouched.
 
+THEIR SESSION REPORT (344 rejected / 54 served, 4 DELETEs, missing g1 audit)
+WAS OUR CLIENT, TWO BUGS DEEP — fixed 2026-08-22, pinned in
+tests/unit/test_net/test_session_reconnect.py. PeerSession.call held the
+class lock and then called drop(), which takes the same non-reentrant lock:
+every failed call deadlocked itself until the 25 s cancel, and the abandoned
+half-torn sessions produced the re-initialize storm their one-session server
+rejected. And call() cycled the session on ANY exception — including a tool
+that ran and answered with an error — so one application-level rejection fed
+the loop. Now: teardown is lock-safe, and a ToolError keeps the healthy
+session. Their g1 stayed unsettled on their side (our submit_audit never
+landed in their 60 s window) while ours filed — restart the friendly from a
+fresh series rather than resuming.
+
 GAME IDS CROSS-DERIVED BEFORE PLAY, 2026-08-22: they sent their independent
 derivation (game_id najamjad-vs-yamanagh, game_uid 3bc536d1-e7bd-cd4f-ccfb-
 a2feee6bebb5) and ours matches byte-for-byte — both loaders agree about the

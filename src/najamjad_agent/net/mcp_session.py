@@ -15,6 +15,7 @@ import asyncio
 from typing import Any
 
 from fastmcp import Client
+from fastmcp.exceptions import ToolError
 
 from ..shared.error_detail import describe
 from ..shared.events import Emit
@@ -108,7 +109,21 @@ class PeerSession:
         experiment again.
         """
         async with self._lock:
-            session, self._session = self._session, None
+            await self._drop_locked()
+
+    async def _drop_locked(self) -> None:
+        """The teardown itself, for callers already holding the lock.
+
+        `call` is such a caller, and until 2026-08-22 it invoked `drop()`
+        instead — which re-acquires the non-reentrant lock this class
+        serialises on, so **the reconnect path deadlocked itself on every
+        failure**. Each failed call then hung until `_invoke`'s timeout
+        cancelled it (`client.call_cancelled`, 25 s burned per attempt), the
+        abandoned session was torn down by the *next* attempt's re-initialize,
+        and against yamanagh's one-persistent-session server the storm read as
+        344 rejected requests against 54 served — their count, our bug.
+        """
+        session, self._session = self._session, None
         if session is None:
             return
         try:
@@ -132,8 +147,17 @@ class PeerSession:
             try:
                 session = await self.open()
                 return await session.call_tool(tool, arguments)
+            except ToolError:
+                # The tool RAN — the peer received us, executed, and answered
+                # with an error body. The session that carried all of that is
+                # demonstrably healthy, and cycling it anyway is how one
+                # application-level rejection became a re-initialize storm
+                # against a server that binds one session for the series
+                # (yamanagh's "reject a second initialize mid-session"). The
+                # rejection is the caller's problem; the socket is fine.
+                raise
             except Exception as error:  # noqa: BLE001 - one reconnect, then propagate
-                await self.drop()
+                await self._drop_locked()
                 self.reconnects += 1
                 self._emit({
                     "event": "client.reconnecting",
