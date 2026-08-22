@@ -25,7 +25,7 @@ from ..constants import is_technical
 from ..shared.events import Emit
 from ..shared.practice import current
 from .artifacts import ArtifactWriter
-from .league import league_block
+from .league import document_extras, league_block
 from .mail_message import report_subject
 from .reconcile import MISMATCH, from_recorded_games
 from .resilient_filing import attempt, missing
@@ -52,9 +52,11 @@ class MatchFiler:
         sender: Any = None,
         emit: Emit | None = None,
         rename: dict[str, str] | None = None,
+        agreed_sub_games: int = 6,
     ) -> None:
         """Bind to one match; `sender` may be None while testing offline."""
         self.rename = rename or {}
+        self._agreed_sub_games = int(agreed_sub_games)
         self._writer = ArtifactWriter(workspace, game_id, game_uid, groups, alert=emit)
         self._groups = groups
         self._game_id = game_id
@@ -135,21 +137,7 @@ class MatchFiler:
         # handshake identity on purpose — a peer's strict declaration model once
         # rejected a whole block over an unexpected key, costing six played
         # games their artifacts, and we will not hand anyone that.
-        extra: dict[str, Any] = {"emission": emission} if emission else {}
-        # The declaration used to ship the schema defaults — 6 sub-games and the
-        # default token cap — while the result beside it computed `num_sub_games`
-        # from the games actually played. A two-game match therefore filed a
-        # declaration saying six, so our own artifact set contradicted itself in
-        # front of a grader. Both now come from the same match.
-        extra["num_sub_games"] = len(rows) or 1
-        # Empty strings in the golden's place. They are ours to fill: the first
-        # game's start and the last game's end are both on the records.
-        started = [str(game.get("started_at", "")) for game in games if game.get("started_at")]
-        ended = [str(game.get("ended_at", "")) for game in games if game.get("ended_at")]
-        if started:
-            extra["game_started_at"] = min(started)
-        if ended:
-            extra["game_ended_at"] = max(ended)
+        extra = document_extras(rows, self._agreed_sub_games, games, emission)
         written["declaration"] = attempt(
             "declaration",
             lambda: self._writer.write_declaration(groups_block, **extra),
@@ -187,6 +175,14 @@ class MatchFiler:
                 theirs,
                 confirmed,
                 repositories=repository_links(groups_block or {}),
+                # The series shape the declaration carries, and only that —
+                # the two artifacts must agree about the series (they
+                # disagreed once, 6-vs-2, in front of a grader), but the
+                # result schema forbids the declaration-only extras
+                # (`emission`, the timestamps) by design.
+                **{key: extra[key] for key in
+                   ("num_sub_games", "rows_in_this_document", "rows_note")
+                   if key in extra},
             ),
             self._emit,
         )

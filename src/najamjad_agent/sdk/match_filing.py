@@ -97,6 +97,9 @@ def build_filer(manager: Any, bus: Any, session: dict, actions: Any,
             sender=_mail_sender(manager, bus, setup or {}),
             emit=bus.publish,
             rename={str(manager.get("network.opponent_group_id", "them")): theirs},
+            # The signed term, not the rows filed: a half-series document still
+            # describes a six-game series (anrbj666's template audit, item 1).
+            agreed_sub_games=int(manager.get("network_and_league.num_games", 6)),
         )
         # Two different shapes of the same agreement, deliberately. The
         # *signature* is over the flat terms both peers exchanged; the *config

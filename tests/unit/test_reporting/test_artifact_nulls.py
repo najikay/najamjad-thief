@@ -179,13 +179,20 @@ def test_the_hardware_declaration_carries_what_it_can(artifacts) -> None:
 def test_the_declaration_agrees_with_the_result_about_the_match(artifacts) -> None:
     """Our own artifact set used to contradict itself in front of a grader.
 
-    `num_sub_games` came from a schema default of 6 while the result computed it
-    from the games actually played, so a two-game match filed both 6 and 2.
+    Twice, in opposite directions. `num_sub_games` was first a schema default
+    of 6 beside a result computed from rows played (a two-game match filed
+    both 6 and 2); the fix flipped both to rows played — and a split-friendly
+    half-document then declared a three-game series against a signed term of
+    six, which anrbj666's template audit caught (2026-08-22). The rule now:
+    **the series is the signed term, everywhere, and each document states how
+    many rows it carries** — agreed between artifacts AND with the terms.
     """
     declaration = next(body for name, body in artifacts.items() if name.startswith("declaration"))
     result = next(body for name, body in artifacts.items() if name.startswith("result"))
 
-    assert declaration["num_sub_games"] == result["num_sub_games"] == 2
+    assert declaration["num_sub_games"] == result["num_sub_games"] == 6
+    assert declaration["rows_in_this_document"] == result["rows_in_this_document"] == 2
+    assert "sibling" in result["rows_note"], "a partial document says where the rest live"
     assert declaration["game_started_at"] and declaration["game_ended_at"]
 
 

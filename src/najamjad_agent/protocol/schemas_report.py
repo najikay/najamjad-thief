@@ -81,6 +81,14 @@ class ResultArtifact(BaseModel):
     game_uid: str = Field(min_length=1)
     groups: list[str] = Field(min_length=2, max_length=2)
     num_sub_games: int = Field(ge=1)
+    #: Self-description for a split-friendly half-document (anrbj666's
+    #: template audit, 2026-08-22): `num_sub_games` is the SIGNED series
+    #: length, these two say how many rows this document actually carries and
+    #: where the rest live. Optional so a merged counted filing — where the
+    #: note would be noise — may omit the note, and older artifacts re-read
+    #: through this schema still parse.
+    rows_in_this_document: int | None = Field(default=None, ge=0)
+    rows_note: str | None = None
     sub_games: list[SubGameRow] = Field(min_length=1)
     final_result: FinalResult
     mutual_agreement: MutualAgreement

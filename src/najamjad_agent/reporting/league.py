@@ -72,3 +72,41 @@ def league_block(
     }
 
 
+
+
+def document_extras(
+    rows: list[dict[str, Any]],
+    agreed_sub_games: int,
+    games: list[dict[str, Any]],
+    emission: dict[str, str] | None,
+) -> dict[str, Any]:
+    """The self-describing extras every artifact carries beside its rows.
+
+    **The series is the signed term; the rows are this document's.**
+    `num_sub_games` was once the schema default (6) beside a result computed
+    from rows played — a two-game match filing "six" — and the fix
+    over-corrected to `len(rows)`, so a split-friendly half-document declared
+    a three-game series against a signed term of six. anrbj666 audited
+    exactly that (2026-08-22) and supplied the shape adopted here: declare
+    the agreed series length, state how many rows this document carries, and
+    say where the rest live. A counted filing merges all six rows, so there
+    the numbers coincide and the note is not emitted.
+
+    The timestamps fill the golden's empty strings: the first game's start
+    and the last game's end are both on the records.
+    """
+    extra: dict[str, Any] = {"emission": emission} if emission else {}
+    extra["num_sub_games"] = int(agreed_sub_games)
+    extra["rows_in_this_document"] = len(rows)
+    if len(rows) < agreed_sub_games:
+        extra["rows_note"] = (
+            f"per-repo report: {len(rows)} of {agreed_sub_games} windows; "
+            "the sibling repository's document carries the other role's rows"
+        )
+    started = [str(game.get("started_at", "")) for game in games if game.get("started_at")]
+    ended = [str(game.get("ended_at", "")) for game in games if game.get("ended_at")]
+    if started:
+        extra["game_started_at"] = min(started)
+    if ended:
+        extra["game_ended_at"] = max(ended)
+    return extra
