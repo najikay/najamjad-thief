@@ -173,3 +173,28 @@ def test_waiting_continues_when_nothing_is_held() -> None:
     names = [e.get("event") for e in events]
     assert "handshake.peer_is_behind" not in names
     assert "handshake.waiting_for_window" in names or "handshake.exhausted" in names
+
+
+def test_a_replayed_window_is_born_with_an_empty_field() -> None:
+    """anrbj666's gate named the law: `initial_field: "empty"` is per agreed
+    window, not per process lifetime — a replayed window's step-1 frame must
+    be exactly one kernel. Structurally true because every attempt builds a
+    fresh state; pinned here so it cannot become an accident of structure."""
+    from najamjad_agent.constants import Role
+    from najamjad_agent.domain.params import GameParams
+    from najamjad_agent.sdk.state_setup import build_state
+
+    params = GameParams(grid_size=7, thief_start=(3, 3), cop_start=(0, 0),
+                        max_barriers=14, max_moves=35, survival_threshold=35)
+    first = build_state(params, Role.THIEF, 3)
+    for cell in ((3, 3), (3, 4), (2, 4)):
+        first.own_scent.age_and_deposit(cell)   # the lone-opener's private history
+
+    replay = build_state(params, Role.THIEF, 3)
+
+    assert replay.own_scent.snapshot() == {}, "the replay inherited a trail"
+    replay.own_scent.age_and_deposit((3, 4))
+    frame = replay.own_scent.snapshot()
+    assert max(frame.values()) == 0.9 and len(frame) == 25, (
+        "step 1 of the bound window must be exactly one kernel"
+    )
