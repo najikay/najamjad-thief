@@ -136,6 +136,26 @@ def test_a_technical_with_steps_played_blocks_the_rewind() -> None:
     )
 
 
+def test_a_lone_opener_into_silence_is_still_rewindable() -> None:
+    """anrbj666 g3, 2026-08-22: our step-1 turn went out, nothing ever came
+    back, the window timed out with the audit skipped — and their re-offers
+    of that very number were refused for the rest of the series by the old
+    zero-step guard. One step on a TIMEOUT is no mutual evidence: the peer
+    never bound the window and has nothing a replay could contradict."""
+    tracker = SeriesTracker("us", "them", ScoreTable.from_config(SCORING), Role.COP, 6)
+    tracker.record(end_reason=EndReason.TIMEOUT, role=Role.THIEF, steps=1)
+
+    assert tracker.rewind_to(1) is True
+    assert tracker.cursor == 0 and not tracker.outcomes
+
+
+def test_two_full_turns_are_evidence_even_on_a_timeout() -> None:
+    tracker = SeriesTracker("us", "them", ScoreTable.from_config(SCORING), Role.COP, 6)
+    tracker.record(end_reason=EndReason.TIMEOUT, role=Role.THIEF, steps=2)
+
+    assert tracker.rewind_to(1) is False, "both sides sealed real play"
+
+
 def test_waiting_continues_when_nothing_is_held() -> None:
     """The early abort must not fire on an empty holder — the sixteen-minute
     patience for a slow-spawning peer is itself a fix that cost a series."""

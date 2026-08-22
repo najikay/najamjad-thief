@@ -50,7 +50,11 @@ from ..shared.events import Emit
 #: 2026-08-19 our cop spent a whole mini-game dialling a thief process that had
 #: not been spawned yet — 8-9 greetings a minute arriving here while every call
 #: of ours timed out. The signal was in our inbox the entire time.
-LISTEN_SECONDS = 10.0
+#: Raised 10 -> 30 on 2026-08-22 (Naji's ask: stop hammering a door the
+#: sibling's window is still behind). The poll returns the instant their
+#: knock arrives, so a longer listen costs nothing when they show up and
+#: cuts our dial rate threefold when they have not spawned yet.
+LISTEN_SECONDS = 30.0
 
 
 def agreement_in_hand(

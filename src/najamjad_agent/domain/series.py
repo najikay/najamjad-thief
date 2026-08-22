@@ -17,6 +17,25 @@ from .scoring import ScoreTable, SeriesResult, aggregate_series
 MINI_GAMES_PER_SERIES = 6
 
 
+def _no_mutual_evidence(outcome: "SubGameOutcome") -> bool:
+    """Whether a technical outcome left nothing two reports could contradict.
+
+    Zero steps always qualifies. One step qualifies when the ending was a
+    TIMEOUT: the thief opens every mini-game, so `steps == 1` on a timeout
+    means our opener went out and nothing ever came back — the peer never
+    bound the window, sealed nothing, and has no record a replay under the
+    same number could disagree with. anrbj666 g3 (2026-08-22) is the case:
+    our step-1 turn was accepted by a server whose runner was still
+    re-offering the handshake, we timed the window out with the audit
+    skipped, and their re-offers of that very number were then refused by
+    the old zero-step guard for the rest of the series. Two or more steps
+    means both sides sealed real play, and that is evidence — never popped.
+    """
+    if outcome.steps == 0:
+        return True
+    return outcome.end_reason is EndReason.TIMEOUT and outcome.steps <= 1
+
+
 def role_for(sub_game: int, first_role: Role) -> Role:
     """Alternate roles each mini-game, starting from `first_role`."""
     if sub_game < 1:
@@ -195,7 +214,7 @@ class SeriesTracker:
             return False
         technical = {EndReason.TIMEOUT, EndReason.OPPONENT_QUIT}
         tail = [o for o in self.outcomes if o.sub_game >= sub_game]
-        if any(o.steps > 0 or o.end_reason not in technical for o in tail):
+        if any(o.end_reason not in technical or not _no_mutual_evidence(o) for o in tail):
             return False
         self.outcomes = [o for o in self.outcomes if o.sub_game < sub_game]
         self.cursor = sub_game - 1

@@ -42,7 +42,10 @@ from ..shared.events import Emit
 #: minutes, which outlasts their longest observed window with room to spare and
 #: is still bounded, so a genuinely dead peer is resolved rather than waited on.
 BUSY_RETRIES = 100
-BUSY_BACKOFF_SECONDS = 10.0
+#: 10 -> 15 on 2026-08-22, paired with the longer inbox listen: together one
+#: not-ready cycle is ~45 s of mostly listening instead of ~20 s of mostly
+#: dialling. The binding bound is still WINDOW_BUDGET_SECONDS of wall clock.
+BUSY_BACKOFF_SECONDS = 15.0
 #: The bound that actually binds, in seconds of wall clock.
 #:
 #: `BUSY_RETRIES x BUSY_BACKOFF_SECONDS` was quoted to anrbj666 in writing as

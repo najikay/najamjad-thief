@@ -177,27 +177,40 @@ def _deliver_late(transport, sent: dict[str, Any], emit, inboxes: Any = None) ->
     payload = sent.get("payload")
     if payload is None or sent.get("delivered"):
         return
-    # Their call already carried ours home. A peer running one process per
-    # window only exists while its window is open, so the moment it dials us is
-    # the only moment we are certain a door is there at all — and our reply went
-    # back down that same connection. Dialling again here is asking a door that
-    # may not exist yet, which is the flooding that cost three windows: our cop
-    # hammered their thief throughout a mini-game their thief peer had not been
-    # spawned for.
+    # **The direct send comes first, and their knock is why it is safe.** The
+    # in-reply channel used to satisfy delivery on its own — our agreement
+    # rode back inside our server's answer to their negotiate, and we started
+    # the window on that. anrbj666 g3, live, 2026-08-22, showed the hole: a
+    # peer that does not read reply bodies re-offered the same window every
+    # seven seconds for four and a half minutes while we played a game they
+    # never started — and their door was demonstrably up the whole time (our
+    # step-1 turn POSTed through it seconds after the lock). The negotiate we
+    # just adopted is proof a live process is dialling us, which is exactly
+    # the moment the old flooding concern does not apply: one adoption, one
+    # direct attempt, not a loop. A peer who reads the reply loses nothing;
+    # a peer who does not finally receives the agreement the old path only
+    # waved at them.
+    try:
+        transport.send_negotiate(payload)
+        sent["delivered"] = True
+        emit({"event": "handshake.delivered_late"})
+        return
+    except Exception as error:  # noqa: BLE001 - fall back, then maybe refuse
+        emit({"event": "handshake.delivery_failed",
+              "error": f"{type(error).__name__}: {error}"})
+    # The fallback the direct attempt used to defer to: their call carried
+    # ours home in the reply body. Kept, because against a genuinely
+    # door-less peer (one process per window, not spawned yet) the reply is
+    # still the only channel that exists — and a peer that reads it plays.
     if getattr(inboxes, "agreement_sent", 0) > int(sent.get("sent_at", 0)):
         emit({"event": "handshake.delivered_in_reply"})
         return
-    try:
-        transport.send_negotiate(payload)
-    except Exception as error:  # noqa: BLE001 - re-raised as a refused handshake
-        emit({"event": "handshake.delivery_failed",
-              "error": f"{type(error).__name__}: {error}"})
-        from ..negotiation.handshake import HandshakeError
+    from ..negotiation.handshake import HandshakeError
 
-        raise HandshakeError(
-            "we adopted their agreement but could not deliver ours, so only one "
-            "side holds this window — retrying rather than starting it alone"
-        ) from error
+    raise HandshakeError(
+        "we adopted their agreement but could not deliver ours, so only one "
+        "side holds this window — retrying rather than starting it alone"
+    )
     emit({"event": "handshake.delivered_late"})
 
 

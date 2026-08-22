@@ -71,14 +71,16 @@ def test_an_undelivered_agreement_is_pushed_once_the_door_is_known() -> None:
     assert [event["event"] for event in events] == ["handshake.delivered_late"]
 
 
-def test_a_reply_that_carried_ours_counts_as_delivery() -> None:
-    """The elegant half: their call already took our agreement home.
+def test_the_direct_send_is_tried_first_and_their_knock_makes_it_safe() -> None:
+    """Reversed on 2026-08-22, with anrbj666 g3 as the evidence.
 
-    A peer running one process per window only exists while that window is
-    open, so the moment it dials us is the only moment we know a door is there
-    — and our reply rode back down that same connection. Dialling again would
-    be asking a door that may not exist yet, which is exactly the flooding that
-    cost three windows on 2026-08-19.
+    The reply-ride used to satisfy delivery on its own, on the flooding
+    argument from 2026-08-19. But a peer that does not read reply bodies then
+    re-offers the same window forever while we play a game they never
+    started — g3 live: re-offers every seven seconds for 4.5 minutes, their
+    door provably up (our step-1 turn POSTed through it). The negotiate we
+    just adopted IS the proof a live process is dialling, so one direct
+    attempt is safe and mandatory; the ride stays as the fallback only.
     """
     class _Boxes:
         agreement_sent = 0
@@ -88,11 +90,32 @@ def test_a_reply_that_carried_ours_counts_as_delivery() -> None:
     with suppress(ConnectionError):
         _record_send(transport, sent, PAYLOAD, boxes)
     boxes.agreement_sent += 1          # their negotiate arrived; we answered it
+    transport.working = True           # and their door, proven live, now serves
 
     _deliver_late(transport, sent, events.append, boxes)
 
-    assert [e["event"] for e in events] == ["handshake.delivered_in_reply"]
-    assert transport.sent == [], "must not dial a door that may not be there"
+    assert [e["event"] for e in events] == ["handshake.delivered_late"]
+    assert transport.sent == [PAYLOAD], "the agreement must actually travel"
+    assert sent["delivered"] is True
+
+
+def test_the_reply_ride_still_saves_a_door_that_stays_dark() -> None:
+    """The fallback keeps the 2026-08-19 case: no door, but their call
+    carried ours home — a peer that reads the reply body plays."""
+    class _Boxes:
+        agreement_sent = 0
+
+    boxes, transport, sent, events = _Boxes(), _Transport(working=False), {}, []
+
+    with suppress(ConnectionError):
+        _record_send(transport, sent, PAYLOAD, boxes)
+    boxes.agreement_sent += 1
+
+    _deliver_late(transport, sent, events.append, boxes)
+
+    assert [e["event"] for e in events] == [
+        "handshake.delivery_failed", "handshake.delivered_in_reply"
+    ]
 
 
 def test_a_second_failure_refuses_the_window_rather_than_starting_it_alone() -> None:
