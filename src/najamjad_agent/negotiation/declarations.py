@@ -93,6 +93,19 @@ def negotiate_declarations(
     declarations: dict[str, Any] = {
         "sub_game_number": int(sub_game),
         "role": _role_value(role),
+        # **Top level, not only nested — our own §9.8 said so and our offer
+        # did not do it.** The group id always travelled inside
+        # `identity.group_id`, and every opponent until yamanagh tolerated
+        # the nesting; their validator refuses a greeting without a
+        # top-level `group_id` (their rule-5 reading), which is the exact
+        # failure mode our opening message warns *other* teams about.
+        # Their own negotiate carries `group_id` and `sender` at the top —
+        # our inbox logged them as tolerated extras on 2026-08-22 — so
+        # this makes the two offers symmetric. Additive: the signature
+        # covers terms+nonce only, and a peer that ignores both keys loses
+        # nothing.
+        "group_id": our_group,
+        "sender": _role_value(role),
         "info_mode_sha256": INFO_MODE_SHA256,
         "wire_shape_sha256": WIRE_SHAPE_SHA256,
     }

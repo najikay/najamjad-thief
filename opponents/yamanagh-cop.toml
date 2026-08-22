@@ -73,6 +73,13 @@ before any friendly. Named tunnel, permanent, does not rotate. counted so
 far: 3, distinct; first meeting -> diversity path. step 1 = after the first
 move. Warm-up first, as always.
 
+THEIR VALIDATOR IS STRICT ON A TOP-LEVEL group_id (their rule-5 reading) and
+it caught us failing our own 9.8: our negotiate carried the group id only
+inside identity.group_id. Fixed 2026-08-22 — our offer now carries top-level
+`group_id` and `sender` beside the nested identity, symmetric with their own
+greeting (which our inbox logged as tolerated extras). Additive, signature
+and terms hash untouched.
+
 GAME IDS CROSS-DERIVED BEFORE PLAY, 2026-08-22: they sent their independent
 derivation (game_id najamjad-vs-yamanagh, game_uid 3bc536d1-e7bd-cd4f-ccfb-
 a2feee6bebb5) and ours matches byte-for-byte — both loaders agree about the
