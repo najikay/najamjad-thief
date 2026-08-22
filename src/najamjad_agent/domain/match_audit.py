@@ -112,12 +112,18 @@ def exchange_audit(
     # nothing, and a resend cadence is the one delivery guarantee available
     # to the sender of a fire-and-forget protocol. Ours re-fires while we
     # wait out their reveal, thirds of the window apart.
+    # All three copies go out UNCONDITIONALLY. The first version stopped
+    # resending once THEIR reveal reached us — and theirs always arrives in
+    # seconds, because they resend on a 2 s cadence — so against the one
+    # relay that loses accepted messages, our single 200'd copy was all they
+    # ever got (measured at 11:39:09 UTC on 2026-08-22: one client.sent, no
+    # resends, their handler empty-handed again). Their reveal arriving says
+    # nothing about whether ours did; only the *waiting* is conditional.
     report = receive_reveal(transport, timeout / 3)
     for _ in range(2):
-        if report.their_records:
-            break
         send_reveal(ledger, transport, sender, result_claim)
-        report = receive_reveal(transport, timeout / 3)
+        if not report.their_records:
+            report = receive_reveal(transport, timeout / 3)
     # The agreement the protocol actually affords: each side states how it
     # thinks the mini-game ended, inside the audit envelope. A contradiction
     # here is what rules 33-35 void both teams for, and it is far better known
