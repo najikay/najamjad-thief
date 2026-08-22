@@ -93,6 +93,17 @@ session. Their g1 stayed unsettled on their side (our submit_audit never
 landed in their 60 s window) while ours filed — restart the friendly from a
 fresh series rather than resuming.
 
+THE 400 STORM DECODED (request census, 2026-08-22 afternoon): their server
+400s the MCP handshake's own companion requests — notifications/initialized,
+the SSE GET, and tools/list — which is exactly 3 rejects per productive call
+(their 221:67). Measured by pointing our stock client at an instrumented
+local server; our transport is the unmodified mcp library, no custom code.
+Their fix: 202 for notifications, 405 (not 400) for GET, 200 for tools/list.
+CAUTION ON THEIR CLAIMS: they admitted a prior reply (audit bug "found and
+fixed", the 10:59 "self-restart") was written by their AI — trust only what
+our own logs and probes measured; every number we sent them has a timestamp
+they can grep.
+
 GAME IDS CROSS-DERIVED BEFORE PLAY, 2026-08-22: they sent their independent
 derivation (game_id najamjad-vs-yamanagh, game_uid 3bc536d1-e7bd-cd4f-ccfb-
 a2feee6bebb5) and ours matches byte-for-byte — both loaders agree about the
