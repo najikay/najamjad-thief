@@ -1,0 +1,82 @@
+# yamanagh
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://REPLACE-WITH-THEIR-ONE-ENDPOINT.invalid/mcp"
+group_id = "yamanagh"
+name     = "yamanagh-cop"
+notes    = """
+their COP direction — used when running najamjad-thief.
+
+Nagham Manasra, Yaman Dahle. Replied 2026-08-22 to the opening message with
+everything falsifiable re-verified through their own running code.
+
+VERIFIED BY US FROM THEIR PUBLIC SOURCE (2026-08-22), not taken on trust:
+  * terms hash a284082d... re-derived by them through their own loader; their
+    repo carries the same 14-key extraction (std_v1/terms.py) — matches
+  * commit-reveal vector 4047830b... reproduced through their commit_of
+  * SCENT, cell-by-cell from cop/src/cop/memory/scent.py: the exact Figure-4
+    5x5 kernel (0.04/0.14/0.20 // 0.14/0.42/0.62 // 0.20/0.62/0.90), update
+    tau' = min(cap, max(0, (1-rho)*tau + delta)), and their advance() decays
+    the held field FIRST then merges the fresh kernel undecayed — the kit's
+    field_walk serve order, identical to our ScentField.age_and_deposit.
+    Wire shape: "row,col" string keys, positive cells only, absence = zero.
+  * rule 47 implemented (is_captured_by_stuck); their thief self-concedes on
+    its next turn when immobilised, independent of a claim
+  * report shape: roles keyed by group id, mutual_agreement.sha256 over
+    {game_id, aggregate, sub_games} spaced separators, per-sub-game commits
+    per role — proven by them in a real counted series this week
+
+SCENT MODEL — A2, multiplicative_book_v1, THEIR NATIVE MODEL. Our config is
+already on "book" (set 2026-08-22 for the anrbj666 pairing). Their internal
+lock digest is 638de848... where the kit document (and our declaration) is
+934c220d... — different fingerprint payload shape, identical physics, which
+we verified from their kernel table rather than their word. Our handshake
+never compares a peer's scent digest (verify_peer checks terms+nonce+
+signature only) and they verify numbers-not-hash per our own 4.0.2, so
+neither side refuses. Waived deliberately; the step-1 peak check still runs.
+
+ONE PUBLIC ENDPOINT, BOTH ROLES — BOTH OUR CARDS CARRY THE SAME URL. They run
+two processes (two repos, zero shared state — rule 1 satisfied), but their
+cop relays internally over loopback and only one MCP endpoint is public;
+their dispatcher routes by live role. Same card topology as ahk-yosi: our
+per-window retarget is then a no-op that always lands on their door. Their
+dispatcher under our two processes dialling one door is THEIR risk; our
+match_gate + held-agreement + rewind machinery survives the 2026-08-02 shape
+if it appears. Told them NO per-sub-game retargeting is needed on their side:
+our doors are permanent and role-bound, so their thief always dials our cop
+endpoint and their cop always dials our thief endpoint, fixed all series.
+
+THEIR DECLARED THIEF COMMIT DOES NOT RESOLVE. Their cop repo head matches
+b10dd23a... exactly, but yamandahle/thief-peer's only branch tops out at
+78c862a9 (2026-08-15) and 03c801e0... is not in the history — almost
+certainly an honest unpushed commit (our own clause 9.10 case). They must
+push and resend the pair before we play; audit_opponent.py cross-checks
+step-0's declared commit either way.
+
+TIMINGS: their negotiate ceiling was 300 s against our 1000 s window
+patience — asked to raise to >=1000 s (they offered). 60 s per-sub-game
+audit / 400 s final consensus / 2 s resend interval are fine (our inbound
+ceiling is 3000/min).
+
+TIE PATH: they flagged 7.2 as unverified on their side, and the flag caught a
+real defect in OUR document — an earlier revision said tie_score is added
+into both totals; the measured truth (our filed tied series, 2026-08-21,
+consensus sha 5bb96826... matched byte-for-byte) is that total_score stays
+the plain sum (75-75 = 3x20 + 3x5), winner_group null, series_tie true, and
+tie_award: 2 is its own field BESIDE the totals. Sent them the corrected
+shape; if they add 2 into totals the consensus digests split on exactly the
+tied series.
+
+agent email  yamandahle@gmail.com  — practice.redirect_to in BOTH repos
+before any friendly. Named tunnel, permanent, does not rotate. counted so
+far: 3, distinct; first meeting -> diversity path. step 1 = after the first
+move. Warm-up first, as always.
+"""
+
+# Their declared pair (2026-08-22). The thief hash does NOT yet resolve in
+# the repo they named — see notes; require a push + resend before playing.
+[armed_commits]
+cop   = "b10dd23a734169b3c54cbe4349ae5d1050e82131"
+thief = "03c801e0fe55b13a32759791af5351098d13c78e"

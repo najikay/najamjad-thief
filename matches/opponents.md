@@ -1,6 +1,6 @@
 # Opponent tracker
 
-**Updated:** 2026-08-21 · Update this after **every** contact, not in batches.
+**Updated:** 2026-08-22 · Update this after **every** contact, not in batches.
 
 Recruitment opens 2026-08-03. Target: ≥ 8 teams contacted by Aug 5, ≥ 4
 confirmed by Aug 6 (below that, the contingency in `docs/LEAGUE_OPS.md` §4
@@ -39,6 +39,7 @@ them. `docs/HOW_TO_PLAY_US.md` is the public one-pager for a first approach.
 | rstabcde | — | — | `talking` | 0 | Owed a reply on receiver-side scent decay |
 | **bestteam** | itay.malich2@gmail.com | reserved ngrok, one per role | `talking` | 0 | Itay Malich, Diana Koroblov. Answered the whole green-light block by re-deriving, not eyeballing: terms digest, commit-reveal vector and scent SHA all confirmed independently. **Both commits resolve publicly** — the first opponent where our rule-53 check does real work. Two repos, two processes. 0 counted so far. Their doors only answer while armed |
 | **nis-yar1** | yardentziar@gmail.com | trycloudflare, churned 6x | `counted-1` | 1 | Nissim Deri, Yarden Tziar. Terms and both digests verified, but four endpoint changes in one evening and a regression back to the one-host/two-path setup that produced 21 `Session terminated` per side and never locked a handshake. Repos never resolved (404). Dropped 2026-08-17 after too much time spent; re-open only if they bring two named hostnames and public repos |
+| **yamanagh** | yamandahle@gmail.com | ONE public endpoint, named tunnel (pending their wiring) | `talking` | 0 | Nagham Manasra, Yaman Dahle. The most rigorous reply yet: terms + commit-reveal re-derived through their own code; scent = our A2/book natively, kernel+decay+serve-order verified BY US from their public source; rule 47 implemented with thief self-concession. Their flag on §7.2 caught a real defect in our own terms document (tie_award is beside the totals, not inside them — fixed). Owed by them: push+resend of the thief commit (03c801e0 does not resolve), negotiate ceiling raised to ≥1000 s, and their one endpoint once wired. 3 counted, distinct |
 | _amjad / najamjad-b_ | teammate | quick tunnel (rotates) | — | 0 | **Never countable** (rule 31, same team). Our only full-strength rehearsal partner |
 | _(kit sparring peer)_ | — | local :8931 | `warmed` | 0 | `copthief-league-protocol`. Never counted |
 
@@ -48,6 +49,7 @@ Newest first. One line per contact attempt **and** per reply.
 
 | Date | Team | What was said | Next action |
 |---|---|---|---|
+| 2026-08-22 | yamanagh | Full green-light reply; we verified their scent physics from their public repos, answered the one-endpoint question (yes — same URL on both our cards, no per-sub-game retargeting needed on their side), corrected our §7.2 tie wording their flag exposed, and asked for a thief-repo push | Warm-up once their endpoint is wired |
 | 2026-08-21 | ahk-yosi | Counted series played and filed, **tied 75-75, 3-3**. Digest `5bb96826…` confirmed both sides; all six audits verified | Done. One counted per pairing |
 | 2026-08-21 | ahk-yosi | Two warm-ups (lost 30-90, then 30-90). Their scent model A2 adopted for the pairing; rule-47 confirmation and window re-offer both settled in writing | — |
 | 2026-08-20 | ahk-yosi | Full conformance audit from them; two errors found in our terms document (a counted count that disagreed with itself, the stale scent table) and both fixed | — |
