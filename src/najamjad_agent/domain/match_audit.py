@@ -32,7 +32,8 @@ def audit_or_skip(
     if reason in SKIP_AUDIT_REASONS:
         emit({"event": "audit.skipped", "reason": reason.value})
         return AuditReport(passed=False, skipped=True)
-    return exchange_audit(state.ledger, transport, timeout, state.role.value, reason.value)
+    return exchange_audit(state.ledger, transport, timeout, state.role.value,
+                          reason.value, sub_game=state.sub_game)
 
 
 def send_reveal(
@@ -66,9 +67,44 @@ def send_reveal(
     return payload
 
 
-def receive_reveal(transport: Any, timeout: float) -> AuditReport:
-    """Re-hash whatever the peer revealed; silence is a failed audit, not a crash."""
+def _names_other_window(reply: Any, sub_game: int | None) -> bool:
+    """Whether a reveal's own records say it belongs to a different window.
+
+    Resends made this necessary: both sides now send several copies of each
+    reveal, and copies nobody consumed sit in the audit queue — so window
+    N+1's blind pop could hand back window N's reveal, and `verify_trail`
+    then compared fresh frames against stale positions
+    (`scent.trail_mismatch` on our own honest emission, caught by CI on
+    2026-08-22). A reveal that declares no window is accepted as before;
+    omission has never been a refusal.
+    """
+    if sub_game is None or not isinstance(reply, dict):
+        return False
+    records = reply.get("records")
+    if not isinstance(records, list):
+        return False
+    for record in records:
+        payload = record.get("payload", record) if isinstance(record, dict) else {}
+        declared = payload.get("sub_game") if isinstance(payload, dict) else None
+        if declared is None:
+            continue
+        try:
+            return int(declared) != int(sub_game)
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
+def receive_reveal(transport: Any, timeout: float,
+                   sub_game: int | None = None) -> AuditReport:
+    """Re-hash whatever the peer revealed; silence is a failed audit, not a crash.
+
+    Stale copies from an earlier window are discarded, not audited — see
+    `_names_other_window`.
+    """
     reply = transport.receive_audit(timeout)
+    while reply is not None and _names_other_window(reply, sub_game):
+        reply = transport.receive_audit(timeout)
     if reply is None:
         # Silence is not forgery. `TAMPERED` is an accusation that voids the
         # game for the accused (rule 19), and an opponent who never answered
@@ -94,6 +130,7 @@ def exchange_audit(
     timeout: float = 30.0,
     sender: str = "",
     result_claim: str = "",
+    sub_game: int | None = None,
 ) -> AuditReport:
     """Reveal ours, verify theirs, and report on theirs.
 
@@ -119,11 +156,11 @@ def exchange_audit(
     # ever got (measured at 11:39:09 UTC on 2026-08-22: one client.sent, no
     # resends, their handler empty-handed again). Their reveal arriving says
     # nothing about whether ours did; only the *waiting* is conditional.
-    report = receive_reveal(transport, timeout / 3)
+    report = receive_reveal(transport, timeout / 3, sub_game)
     for _ in range(2):
         send_reveal(ledger, transport, sender, result_claim)
         if not report.their_records:
-            report = receive_reveal(transport, timeout / 3)
+            report = receive_reveal(transport, timeout / 3, sub_game)
     # The agreement the protocol actually affords: each side states how it
     # thinks the mini-game ended, inside the audit envelope. A contradiction
     # here is what rules 33-35 void both teams for, and it is far better known
