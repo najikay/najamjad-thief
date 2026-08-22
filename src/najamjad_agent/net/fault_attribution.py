@@ -87,6 +87,12 @@ def accepts_tcp(url: str, timeout: float = PROBE_TIMEOUT) -> bool:
         return False
 
 
+def _tls_cut(answer: Any) -> bool:
+    """Whether the HTTP probe died inside TLS with the socket still accepting."""
+    text = str(getattr(answer, "error", "") or "")
+    return (not getattr(answer, "reached", False)) and "UNEXPECTED_EOF" in text
+
+
 def attribute(
     our_url: str,
     their_url: str,
@@ -142,6 +148,20 @@ def attribute(
                 OURS,
                 "their server answered our probe while our own client could not "
                 "connect; the fault is on our side",
+                evidence,
+            )
+        if _tls_cut(answer):
+            # TCP completes and the TLS stream is severed before a byte of
+            # HTTP — the signature of a hosted tunnel whose local agent or
+            # origin died while the cloud edge stays up. Measured live
+            # against yamanagh on 2026-08-22: twelve clean turns, then nine
+            # probes over 44 s all `SSL: UNEXPECTED_EOF_WHILE_READING` while
+            # their TCP kept accepting. No client-side state can produce
+            # that; the verdict belongs to their side.
+            return Attribution(
+                OPPONENT,
+                "their edge accepts TCP but cuts TLS before HTTP; "
+                "their tunnel agent or origin is down",
                 evidence,
             )
         return Attribution(

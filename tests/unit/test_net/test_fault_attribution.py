@@ -126,3 +126,28 @@ def test_a_healthy_origin_makes_the_fault_ours_and_we_say_so() -> None:
 
     assert verdict.verdict == OURS
     assert "the fault is on our side" in verdict.detail
+
+
+def test_tls_cut_at_their_edge_is_their_verdict() -> None:
+    """TCP accepts, TLS is severed before HTTP: a tunnel whose agent died.
+
+    Measured live against yamanagh on 2026-08-22 — twelve clean turns, then
+    nine probes over 44 s all `SSL: UNEXPECTED_EOF_WHILE_READING` while their
+    edge kept accepting TCP. No client-side state produces that, so it must
+    not be filed `indeterminate`: the counted-evidence trail is exactly where
+    this verdict earns its keep.
+    """
+    from najamjad_agent.net.fault_attribution import OPPONENT, attribute
+    from najamjad_agent.net.http_probe import ProbeResult
+
+    verdict = attribute(
+        "https://us.example/mcp", "https://them.example/mcp",
+        error="ConnectError",
+        probe=lambda _url: True,
+        http=lambda _url: ProbeResult(
+            False, error="ConnectError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF"
+        ),
+    )
+
+    assert verdict.verdict == OPPONENT
+    assert "TLS" in verdict.detail
