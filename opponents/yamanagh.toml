@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://REPLACE-WITH-THEIR-ONE-ENDPOINT.invalid/mcp"
+url      = "https://splotchy-bronco-nature.ngrok-free.dev/mcp"
 group_id = "yamanagh"
 name     = "yamanagh"
 notes    = """
@@ -48,15 +48,14 @@ if it appears. Told them NO per-sub-game retargeting is needed on their side:
 our doors are permanent and role-bound, so their thief always dials our cop
 endpoint and their cop always dials our thief endpoint, fixed all series.
 
-THEIR DECLARED THIEF COMMIT DOES NOT RESOLVE. Their cop repo head matches
-b10dd23a... exactly, but yamandahle/thief-peer's only branch tops out at
-78c862a9 (2026-08-15) and 03c801e0... is not in the history — almost
-certainly an honest unpushed commit (our own clause 9.10 case). They must
-push and resend the pair before we play; audit_opponent.py cross-checks
-step-0's declared commit either way.
+COMMITS RESOLVED AND RE-VERIFIED 2026-08-22 (second reply). Their stale
+declared thief commit was exactly what it looked like: their GitHub default
+branch lagged their real HEAD; they fixed it unprompted and re-declared.
+Verified by us against the live remotes: cop b10dd23a... == HEAD, thief
+9599a71d... == HEAD/master. Rule-53 check fully green.
 
-TIMINGS: their negotiate ceiling was 300 s against our 1000 s window
-patience — asked to raise to >=1000 s (they offered). 60 s per-sub-game
+TIMINGS: negotiate ceiling RAISED TO 1000 s at our request (second reply,
+2026-08-22), matching our window patience. 60 s per-sub-game
 audit / 400 s final consensus / 2 s resend interval are fine (our inbound
 ceiling is 3000/min).
 
@@ -73,10 +72,15 @@ agent email  yamandahle@gmail.com  — practice.redirect_to in BOTH repos
 before any friendly. Named tunnel, permanent, does not rotate. counted so
 far: 3, distinct; first meeting -> diversity path. step 1 = after the first
 move. Warm-up first, as always.
+
+GAME IDS CROSS-DERIVED BEFORE PLAY, 2026-08-22: they sent their independent
+derivation (game_id najamjad-vs-yamanagh, game_uid 3bc536d1-e7bd-cd4f-ccfb-
+a2feee6bebb5) and ours matches byte-for-byte — both loaders agree about the
+terms all the way through the uid construction.
 """
 
 # Their declared pair (2026-08-22). The thief hash does NOT yet resolve in
 # the repo they named — see notes; require a push + resend before playing.
 [armed_commits]
 cop   = "b10dd23a734169b3c54cbe4349ae5d1050e82131"
-thief = "03c801e0fe55b13a32759791af5351098d13c78e"
+thief = "9599a71d625c8bd6c7b36337969f02cab8f20b69"
