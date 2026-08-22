@@ -7,6 +7,27 @@ url      = "https://thief-mcp.alon.website/mcp"
 group_id = "anrbj666"
 name     = "anrbj666"
 notes    = """
+2026-08-22, AFTER THE g04/g06 POST-MORTEM. Yesterday's friendly-2 died of a
+window desync: our side timed dead windows out and advanced (ours reached 5),
+they kept re-offering window 3, and each side's gate refused the other's every
+offer — 63 busy-refusals at our door, their greetings dropped as
+window_mismatch at ours, g04 and g06 clocked out at step 0. Fixed on our side
+the same night, pinned in tests/regression/test_series_rewind.py: their
+earlier-window negotiates are now HELD, our busy-wait aborts the moment they
+prove the peer is behind us, and the series REWINDS to their window seeded by
+their own message. They need to change nothing — keep re-offering and we meet
+them there. Nothing with real sealed turns can be rewound (rules 33-35 safe).
+
+AND THEIR SCENT COMPLAINT WAS RIGHT. Their per-frame gate refused 34 of 35 of
+our thief's frames: our thief transmitted its trail one decay step too fresh
+(deposit-transmit-decay), while their build — and the kit's own field_walk,
+which they co-author — ages the prior trail BEFORE merging the fresh deposit.
+Our cop happened to match the kit by accident of turn order, which is why only
+thief windows drew the refusals. Fixed 2026-08-22 (`ScentField.age_and_deposit`),
+pinned frame-for-frame against the kit walk in
+tests/unit/test_domain/test_wire_scent_serve_order.py. `pheromone_model` is
+set to "book" in both repos for this pairing; flip back to "reference" after.
+
 Alon Engel, Renat Karimov. Approached 2026-08-18 with the most rigorous reply
 we have had: they re-derived our terms digest and our commit-reveal vector
 through their own serializer and sealer rather than quoting ours, and they

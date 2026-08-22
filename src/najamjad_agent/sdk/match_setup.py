@@ -27,7 +27,6 @@ from ..shared.gatekeeper import ApiGatekeeper
 from ..shared.rate_limits import for_service, load_rate_limits
 from ..strategy.cop_brain import CopBrain
 from ..strategy.thief_brain import ThiefBrain
-from ..strategy.variants import candidate
 from .plugins import resolve
 from .state_setup import state_factory
 
@@ -54,38 +53,21 @@ def brain_factory(manager: Any = None) -> Any:
         Role.COP: _tuning(manager, "cop", cop),
         Role.THIEF: _tuning(manager, "thief", thief),
     }
-    # `strength.level` lives in its own config section, and `_tuning` only ever
-    # read `[strategy.<side>]` — so `ThiefBrain.strength` kept its dataclass
-    # default `"full"` no matter what `match_day.py warmup` wrote. Every
-    # "sandbagged" warm-up this project has played was played at full strength,
-    # and the switch that exists to *stop* us showing our real policy to a team
-    # we may meet again did nothing at all.
-    #
-    # Passed only to brains that declare the field, so a replacement brain
-    # loaded through `strategy.thief_class` is not handed an argument it never
-    # asked for — the same rule `_tuning` applies to every other dial.
-    level = str(manager.get("strength.level", "full")) if manager else "full"
-    for role, brain in ((Role.COP, cop), (Role.THIEF, thief)):
-        if _accepts(brain, "strength"):
-            tuning[role]["strength"] = level
-
     shipped = {Role.COP: cop, Role.THIEF: thief}
-    opponent = str(manager.get("network.opponent_group_id", "") if manager else "")
 
     def build(role: Role, state: GameState) -> Any:
-        """Instantiate the brain for one mini-game, honouring the probe.
+        """Instantiate the brain for one mini-game.
 
-        A warm-up plays a different candidate per window; a counted run plays the
-        one that won this opponent's warm-up. Both resolve to the shipped brain on
-        any doubt — `candidate` swallows its own failures, because rule 35 scores
-        a match we could not start as a loss and a preference file is not allowed
-        to cost one.
+        The shipped pair, every window, every mode. The probe machinery that
+        used to swap candidates in during sandbagged warm-ups is retired with
+        the strength split itself (2026-08-22): one mode means the brain that
+        plays a friendly is the brain that plays the counted series, and the
+        cop that carries the deterministic win cannot be swapped out by a
+        stale preference file on match day.
         """
         supplier = lambda: state.board  # noqa: E731 - a one-line accessor is clearer inline
-        window = getattr(state, "sub_game", 1)
-        brain, dials = candidate(role, window, level, opponent, shipped[role])
-        merged = {**tuning[role], **{k: v for k, v in dials.items() if _accepts(brain, k)}}
-        return brain(board_supplier=supplier, **merged)
+        brain = shipped[role]
+        return brain(board_supplier=supplier, **tuning[role])
 
     return build
 

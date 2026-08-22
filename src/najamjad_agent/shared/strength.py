@@ -1,83 +1,57 @@
-"""How hard we play, as one named setting.
+"""How hard we play: one mode, full, always.
 
-Three levels, and the naming is deliberate rather than coy:
+There used to be three levels — `full`, `practice`, and a documented
+`sandbagged` for warm-ups — and the split cost more than it bought. The
+sandbag switch spent most of its life broken in one direction or another: for
+weeks `_tuning` never delivered the level to the brains at all, so every
+"sandbagged" warm-up played at full strength while we believed otherwise; and
+when it *did* work, a warm-up measured a policy we would never play in a
+counted series, which is a number about nothing (the probe machinery built on
+top of it was retired the same day as the levels). Naji closed the question
+on 2026-08-22: the modes are supposed to be the same now, so there is one.
 
-* **`full`** — everything we have. The only level a counted match may use.
-* **`practice`** — full strength, but in a practice run. For rehearsing the
-  machinery against a real peer without the result counting.
-* **`sandbagged`** — deliberately weakened, for uncounted warm-ups.
-
-**On `sandbagged`, plainly.** Warm-up games are uncounted by the book's own
-design, and holding back in a friendly is ordinary competitive practice — a
-team that sees an unbeatable agent in a warm-up may decline the counted series,
-and rule 31 makes a declined series more expensive than a lost one. Deception
-inside this game is also an intended mechanic; `llm/hint_policy.py` exists to
-decide when to lie.
-
-What it must never be is hidden. These repositories are shared with the
-lecturer under rule 49, so this file *will* be read. A clearly named, documented
-setting reads as the tactical choice it is; the same behaviour behind a vague
-name reads as something we were concealing, which is worse than not doing it.
-Counted matches are played at `full`, and the guard below makes that mechanical
-rather than a thing to remember at 20:00.
-
-`sandbagged` reuses our own previous policy rather than inventing a weak one:
-the thief falls back to the weighted-sum objective that actually lost three
-games to uoh-sqak. That is credible precisely because it *was* us, and it needs
-no separate brain to maintain.
+The vocabulary survives for compatibility — configs, scripts and opponent
+correspondence say `strength.level = "full"` — and the old level names are
+still *accepted* so a stale config cannot crash an agent on match day; they
+all mean full. What is still refused is an unknown value: a typo must not
+quietly mean anything (the same reasoning `EmissionPolicy.from_config`
+gives). Practice-vs-counted is not a strength question and never was — it is
+`email.mode` and the practice banner, owned by `shared/practice.py`.
 """
 
 from __future__ import annotations
 
 FULL = "full"
-PRACTICE = "practice"
-SANDBAGGED = "sandbagged"
+#: Retired levels, still readable so a stale config or an old script cannot
+#: stop a match. Every one of them now plays exactly the same game.
+LEGACY = ("practice", "sandbagged")
 
-LEVELS = (FULL, PRACTICE, SANDBAGGED)
-
-#: Levels at which the brains play everything they have — which is now ALL of
-#: them. Sandbagging is retired: it hid defects instead of hiding strategy,
-#: and a warm-up played at reduced strength measures nothing we can act on.
-#: `sandbagged` survives only as a label on the email routing, so a friendly
-#: still goes to the operator instead of the lecturer.
-AT_FULL_STRENGTH = frozenset({FULL, PRACTICE, SANDBAGGED})
+LEVELS = (FULL, *LEGACY)
 
 
 class StrengthError(ValueError):
-    """Raised when a counted match is armed at anything but full strength."""
+    """Raised when a strength setting is not a recognised spelling."""
 
 
 def normalise(value: object) -> str:
-    """Read a configured level, refusing anything not on the list.
-
-    An unknown level must not quietly mean `full`: a typo would then be
-    invisible in the one direction that matters, and a typo in the *other*
-    direction would hand a counted match away.
-    """
+    """Read a configured level; every recognised spelling resolves to full."""
     level = str(value or FULL).strip().lower()
     if level not in LEVELS:
         raise StrengthError(f"strength {level!r} is not one of {list(LEVELS)}")
-    return level
+    return FULL
 
 
 def plays_full_strength(level: object) -> bool:
-    """Whether the brains should use everything at this level."""
-    return normalise(level) in AT_FULL_STRENGTH
+    """Always true for any recognised level — kept for its callers' clarity."""
+    return normalise(level) == FULL
 
 
 def guard_counted(level: object, counted: bool) -> str:
-    """Refuse to start a counted match at less than full strength.
+    """Validate the configured level; with one mode there is nothing to refuse.
 
-    Modelled on the `email.mode` draft trap, and for the same reason: the
-    expensive mistake is not choosing wrongly, it is *forgetting* — arming a
-    warm-up and then playing the counted series without re-arming. A counted
-    match played sandbagged throws away real league points and cannot be
-    replayed, so this raises rather than warns.
+    Kept because the call sites (`sdk/config_overrides.guard_counted_strength`
+    and the bootstrap) are the places a *typo* still surfaces before a counted
+    match instead of during one.
     """
-    resolved = normalise(level)
-    if counted and resolved != FULL:
-        raise StrengthError(
-            f"a counted match must be played at {FULL!r}, not {resolved!r}; "
-            f"set strength.level = \"{FULL}\" (or pass --strength {FULL})"
-        )
-    return resolved
+    del counted
+    return normalise(level)

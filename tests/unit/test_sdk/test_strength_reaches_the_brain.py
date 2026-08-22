@@ -1,26 +1,21 @@
-"""`match_day.py warmup` wrote a key the brain never read (T-2538).
+"""The factory ships one brain set, and no dial can swap it (2026-08-22).
 
-`strength.level` lives in its own `[strength]` config section; `_tuning` only
-ever read `[strategy.<side>]`. So `ThiefBrain.strength` kept its dataclass
-default of `"full"` whatever the config said, and **every sandbagged warm-up
-this project has played was played at full strength** — including the ones whose
-whole purpose was to avoid showing our real policy to a team we would meet again.
-
-Seventh finished-but-unwired component here, and the one with the worst shape:
-the guard that refuses a *counted* match at less than full strength worked
-perfectly, so the safe direction was enforced while the protective direction did
-nothing, and the operator saw `level = "sandbagged"` written to disk each time.
-
-Noticed by Naji from the *moves* — "they move in the exact same way" — which is
-the only place it was visible.
+This file used to pin the opposite end of a dead rope: that `strength.level`
+reached `ThiefBrain.strength` (T-2538 — for weeks it never did, and every
+"sandbagged" warm-up played at full strength while the operator watched the
+level being written to disk). The levels are collapsed now and the probe
+machinery that keyed off them is retired, so what deserves pinning is the
+new invariant: **the brains that play a friendly are byte-for-byte the
+brains that play the counted series**, chosen by `strategy.cop_class` /
+`strategy.thief_class` and by nothing else — no strength wiring, no
+preference file, nothing a stale workspace can swap in on match day.
 """
 
 from najamjad_agent.constants import Role
 from najamjad_agent.domain.board import Board
-from najamjad_agent.domain.movement import legal_moves
 from najamjad_agent.domain.params import GameParams
 from najamjad_agent.sdk.match_setup import brain_factory
-from najamjad_agent.shared.strength import plays_full_strength
+from najamjad_agent.strategy.seal_cop import SealCop
 from najamjad_agent.strategy.thief_brain import ThiefBrain
 
 PARAMS = GameParams.from_config({
@@ -31,99 +26,40 @@ PARAMS = GameParams.from_config({
 
 
 class _Manager:
-    """Only what `brain_factory` reads, so the shipped config cannot mask a bug."""
-
-    def __init__(self, level: str) -> None:
-        self._values = {"strength.level": level}
+    def __init__(self, values: dict | None = None) -> None:
+        self._values = values or {}
 
     def get(self, key: str, default=None):
         return self._values.get(key, default)
 
 
 class _State:
-    def __init__(self, board): self.board = board
+    def __init__(self, board):
+        self.board = board
+        self.sub_game = 1
 
 
-class _Facts:
-    def __init__(self, **kw): self.__dict__.update(kw)
+def _built(role: Role, values: dict | None = None):
+    return brain_factory(_Manager(values))(role, _State(Board(PARAMS)))
 
 
-def _brain(level: str):
-    board = Board(PARAMS)
-    return brain_factory(_Manager(level))(Role.THIEF, _State(board))
+def test_the_shipped_brains_carry_no_strength_dial() -> None:
+    """The dial is gone, not defaulted — a field nobody reads is the unwired
+    shape this project keeps finding, so its absence is the assertion."""
+    assert not hasattr(_built(Role.THIEF), "strength")
+    assert not hasattr(_built(Role.COP), "strength")
 
 
-def test_a_sandbagged_config_produces_a_sandbagged_brain() -> None:
-    """The defect, stated at the seam where it happened."""
-    assert _brain("sandbagged").strength == "sandbagged"
+def test_a_stale_strength_setting_changes_nothing_about_the_brain() -> None:
+    """A config still carrying `strength.level` builds the same agent."""
+    plain = _built(Role.THIEF)
+    stale = _built(Role.THIEF, {"strength.level": "sandbagged"})
+
+    assert type(stale) is type(plain) is ThiefBrain
 
 
-def test_full_is_still_full() -> None:
-    """The fix must not silently weaken a counted match — the costly direction."""
-    brain = _brain("full")
+def test_the_configured_cop_class_is_what_every_window_gets() -> None:
+    """The seal that carries the deterministic win cannot be swapped out."""
+    cop = _built(Role.COP, {"strategy.cop_class": "najamjad_agent.strategy.seal_cop:SealCop"})
 
-    assert brain.strength == "full"
-    assert plays_full_strength(brain.strength)
-
-
-def test_an_absent_setting_means_full() -> None:
-    """No `[strength]` section is a normal config, not a reason to play weak."""
-    assert _brain_default().strength == "full"
-
-
-def _brain_default():
-    board = Board(PARAMS)
-    return brain_factory(_Manager(None) if False else _Empty())(Role.THIEF, _State(board))
-
-
-class _Empty:
-    def get(self, key: str, default=None):
-        return default
-
-
-def test_the_two_levels_now_choose_the_identical_move() -> None:
-    """The observation that found it: they moved identically.
-
-    Asserted where the difference is *supposed* to live — a sharp belief, which
-    is the only case `plays_full_strength` gates. A test on a flat belief would
-    pass in both worlds, since neither policy can localise a cop it cannot see.
-    """
-    board = Board(PARAMS)
-    belief = dict.fromkeys(board.cells(), 0.0)
-    belief[(2, 3)] = 1.0
-
-    differences = 0
-    for position in ((4, 4), (1, 1), (5, 2), (6, 6), (0, 3)):
-        facts = _Facts(legal=legal_moves(board, position), belief=belief,
-                       own_position=position, step=5, sub_game=1,
-                       own_scent={}, scent={}, barriers_left=0)
-        full = ThiefBrain(board_supplier=lambda: board, strength="full").pick_move(facts)
-        weak = ThiefBrain(board_supplier=lambda: board, strength="sandbagged").pick_move(facts)
-        differences += full == weak
-
-    assert differences >= 3, "sandbagged still plays the full-strength line"
-
-
-def test_the_levels_agree_even_when_the_opponent_emits_no_scent() -> None:
-    """The case the first fix missed, and the one that actually occurs.
-
-    Gating on `cop = located if full else None` only skipped the safety
-    invariant. Against a peer emitting no scent the belief is flat, `_cop_cell`
-    returns None regardless, and both levels fell through to the identical blind
-    move — so a warm-up against exactly the opponents we most wanted to hide
-    from was played at full strength, indistinguishably. uoh-ay26 sent zero
-    scent cells across 135 sealed records; this is their regime, not a corner.
-    """
-    board = Board(PARAMS)
-    flat = dict.fromkeys([cell for cell in board.cells() if board.is_open(cell)], 1 / 49)
-
-    differences = 0
-    for position in ((4, 4), (1, 1), (5, 2), (6, 6), (0, 3)):
-        facts = _Facts(legal=legal_moves(board, position), belief=flat,
-                       own_position=position, step=5, sub_game=1,
-                       own_scent={}, scent={}, barriers_left=0)
-        full = ThiefBrain(board_supplier=lambda: board, strength="full").pick_move(facts)
-        weak = ThiefBrain(board_supplier=lambda: board, strength="sandbagged").pick_move(facts)
-        differences += full == weak
-
-    assert differences >= 3, "flat belief still collapses both levels onto one policy"
+    assert type(cop) is SealCop

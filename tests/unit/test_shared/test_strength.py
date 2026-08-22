@@ -1,19 +1,20 @@
-"""Tests for the play-strength setting and its counted-match guard.
+"""One mode, full, always — and the history of how it got that way.
 
-The expensive mistake this exists to prevent is not choosing wrongly, it is
-*forgetting* — arming a sandbagged warm-up and then playing the counted series
-without re-arming. A counted match played weak throws away real league points
-and cannot be replayed, which is the same shape as the `email.mode` draft trap
-that nearly shipped.
+Three levels existed, then the *play* difference was retired on 2026-08-18
+(a held-back warm-up cost real games and measured nothing), and the levels
+themselves were retired on 2026-08-22 when Naji closed the question: the
+modes are supposed to be the same, so there is one. What survives is the
+spelling tolerance — a stale config or script saying `sandbagged` must not
+stop a match-day agent — and the refusal of unknown values, because a typo
+must not quietly mean anything.
 """
 
 import pytest
 
 from najamjad_agent.shared.strength import (
     FULL,
+    LEGACY,
     LEVELS,
-    PRACTICE,
-    SANDBAGGED,
     StrengthError,
     guard_counted,
     normalise,
@@ -21,34 +22,14 @@ from najamjad_agent.shared.strength import (
 )
 
 
-def test_a_counted_match_refuses_to_start_sandbagged() -> None:
-    """The whole point: this raises rather than warns."""
-    with pytest.raises(StrengthError, match="counted match"):
-        guard_counted(SANDBAGGED, counted=True)
-
-
-def test_a_counted_match_refuses_practice_strength_too() -> None:
-    """`practice` is full strength but the wrong mode; a counted run is neither."""
-    with pytest.raises(StrengthError):
-        guard_counted(PRACTICE, counted=True)
-
-
-def test_a_counted_match_at_full_strength_is_allowed() -> None:
-    assert guard_counted(FULL, counted=True) == FULL
-
-
-def test_an_uncounted_match_may_be_played_at_any_level(level=None) -> None:
+def test_every_recognised_spelling_resolves_to_full() -> None:
+    """The collapse itself: the legacy names are readable and mean full."""
     for level in LEVELS:
-        assert guard_counted(level, counted=False) == level
+        assert normalise(level) == FULL
 
 
 def test_an_unknown_level_is_refused_rather_than_defaulting() -> None:
-    """A typo must not quietly mean `full`, in either direction.
-
-    Silently defaulting would hide the mistake exactly where it costs most: a
-    misspelt level either hands a counted match away or plays a warm-up at full
-    strength after we told an opponent otherwise.
-    """
+    """A typo must not quietly mean anything, in either direction."""
     with pytest.raises(StrengthError, match="not one of"):
         normalise("strong")
     with pytest.raises(StrengthError):
@@ -58,31 +39,25 @@ def test_an_unknown_level_is_refused_rather_than_defaulting() -> None:
 def test_the_level_is_read_case_and_whitespace_insensitively() -> None:
     """Config is hand-edited on match day; be forgiving about shape, not spelling."""
     assert normalise("  Full  ") == FULL
-    assert normalise("SANDBAGGED") == SANDBAGGED
+    assert normalise("SANDBAGGED") == FULL
 
 
 def test_an_unset_level_means_full_strength() -> None:
-    """The safe default is the strong one; weakness must be asked for."""
     assert normalise(None) == FULL
     assert normalise("") == FULL
 
 
-def test_no_level_holds_back_any_more() -> None:
-    """Every level plays the shipped strategy; only the report differs.
-
-    This asserted `not plays_full_strength(SANDBAGGED)` until 2026-08-18. The
-    weak warm-up policy was retired because it cost real games and because
-    maintaining two strategies is two ways to lose; what a warm-up still changes
-    is where the report is sent, which is the only thing it was ever needed for.
-
-    Kept as a positive assertion over the whole set rather than deleted, so
-    reintroducing a held-back level is a failing test rather than a surprise in
-    a match.
-    """
-    for level in (FULL, PRACTICE, SANDBAGGED):
+def test_no_level_holds_back() -> None:
+    """Reintroducing a held-back level must be a failing test, not a surprise."""
+    for level in LEVELS:
         assert plays_full_strength(level), f"{level} must play the shipped policy"
 
 
-def test_the_guard_returns_the_normalised_level_for_the_caller() -> None:
-    """Callers store what the guard returned, so it must be the canonical form."""
+def test_the_guard_validates_and_returns_the_canonical_form() -> None:
+    """With one mode the guard has nothing to refuse but a typo — and it still
+    refuses that, before a counted match instead of during one."""
     assert guard_counted("  Full ", counted=True) == FULL
+    for legacy in LEGACY:
+        assert guard_counted(legacy, counted=True) == FULL
+    with pytest.raises(StrengthError):
+        guard_counted("stronk", counted=True)

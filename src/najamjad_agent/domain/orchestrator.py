@@ -146,7 +146,18 @@ class Orchestrator:
             self.event("barrier.placed", cell=list(barrier))
         else:
             self.state.own_position = apply_move(self.state.board, self.state.own_position, move)
-        self.state.own_scent.deposit(self.state.own_position)
+        # **Age the trail before this turn's deposit, not after the exchange.**
+        # The kit's `field_walk` (co-authored by anrbj666) fixes the wire
+        # convention: the transmitted field is the prior trail decayed once,
+        # then the fresh deposit merged — turn 2 of the walk reads 0.036 at a
+        # cell the undecayed trail would give as 0.04. Decaying in
+        # `decay_after_full_turn` instead put the two roles on different
+        # conventions: the cop (receive→decay→deposit→send) happened to match
+        # the kit, while the thief (deposit→send→…→decay) transmitted every
+        # trail cell one decay step too fresh — which is exactly the frame
+        # mismatch anrbj666 reported against our thief. One decay per full
+        # turn either way; only the sampling point moved.
+        self.state.own_scent.age_and_deposit(self.state.own_position)
 
     def _legal_move(self, facts: TurnFacts, legal: tuple[Move, ...]) -> Move:
         """Ask the brain, then hard-filter: an illegal move can never be sent."""

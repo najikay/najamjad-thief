@@ -154,13 +154,30 @@ def test_an_ordinary_turn_keeps_the_short_budget() -> None:
 
 
 def test_scent_decays_once_per_full_turn_only() -> None:
+    """One decay per full turn — applied at the next deposit, not at receive.
+
+    The decay moved from `decay_after_full_turn` to `_apply_own_action` on
+    2026-08-22 so the wire always carries decayed-prior-plus-fresh-deposit
+    (the kit's `field_walk` convention; `test_wire_scent_serve_order` pins
+    the frames themselves). The field therefore holds its value through the
+    opponent's half-turn and ages exactly once as our next turn begins.
+    """
     orchestrator, _, _ = build_orchestrator(
-        role=Role.COP, moves=[Move.SOUTH], inbox=[_turn()]
+        role=Role.COP, moves=[Move.SOUTH, Move.SOUTH], inbox=[_turn(), _turn(step=2)]
     )
     orchestrator.take_turn()
     assert orchestrator.state.own_scent.intensity_at((1, 0)) == 0.9, "no decay mid-turn"
+    assert orchestrator.state.own_scent.intensity_at((0, 2)) == pytest.approx(0.14)
     orchestrator.receive_turn()
-    assert orchestrator.state.own_scent.intensity_at((1, 0)) == pytest.approx(0.81)
+    assert orchestrator.state.own_scent.intensity_at((0, 2)) == pytest.approx(0.14), (
+        "the trail holds until our next deposit ages it"
+    )
+    orchestrator.take_turn()
+    # (0,2) held the (1,0) kernel's 0.14; aged once (x0.9 = 0.126) and gains
+    # the new (2,0) kernel's corner 0.04 -> 0.166. Read away from the fresh
+    # centre deliberately: nearer cells clamp back to 0.9 under the book's
+    # additive rule and cannot show whether the decay ran.
+    assert orchestrator.state.own_scent.intensity_at((0, 2)) == pytest.approx(0.166)
     assert orchestrator.state.full_turns == 1
 
 

@@ -24,7 +24,6 @@ from najamjad_agent.domain.belief import BeliefGrid
 from najamjad_agent.domain.board import Board
 from najamjad_agent.domain.movement import legal_moves
 from najamjad_agent.domain.params import GameParams
-from najamjad_agent.shared.strength import SANDBAGGED
 from najamjad_agent.strategy import thief_safety
 from najamjad_agent.strategy.territory import distances_from
 from najamjad_agent.strategy.thief_brain import ThiefBrain
@@ -110,7 +109,6 @@ def test_the_sandbagged_thief_no_longer_walks_into_it_either(board: Board, belie
     the report is sent. So the loss this file is named for must not be
     reproducible at *any* level.
     """
-    move = ThiefBrain(strength=SANDBAGGED).pick_move(Facts(board, belief))
+    move = ThiefBrain().pick_move(Facts(board, belief))
 
     assert move is Move.EAST, f"stepped {move.value} into the cop's reach"
-    assert move is ThiefBrain().pick_move(Facts(board, belief)), "levels must agree"

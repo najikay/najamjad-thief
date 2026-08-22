@@ -143,13 +143,19 @@ def _has_position(message: dict[str, Any]) -> bool:
 
 
 def decay_after_full_turn(state: GameState) -> None:
-    """Advance the world once both agents have moved (FR-ENG-7).
+    """Advance the opponent's world once both agents have moved (FR-ENG-7).
 
     Decay and the Bayes step belong together: applying them per half-turn would
     age the trail twice as fast as the agreed physics and desynchronise our
     belief from the opponent's own model of the same field.
+
+    **Our own field is deliberately not here any more.** It ages at the moment
+    of deposit (`orchestrator._apply_own_action`) so the transmitted frame is
+    always decayed-prior-plus-fresh-deposit — the kit's `field_walk`
+    convention. Decaying it here gave the two roles different wire
+    conventions, and anrbj666's cop measured the difference on our thief's
+    frames. Still exactly one decay per full turn.
     """
-    state.own_scent.decay_all()
     state.opponent_scent.decay_all()
     state.belief.diffuse()
     observed = {cell: state.opponent_scent.intensity_at(cell) for cell in state.board.cells()}

@@ -32,7 +32,6 @@ from typing import Any
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
-from ..shared.strength import plays_full_strength
 from . import blind, solver, thief_safety, wall_safety
 from .base import apply, confident_peak, expected_distance
 from .thief_escape import corridor_risk, escape_routes, trap_penalty
@@ -55,12 +54,6 @@ class ThiefBrain:
     """Deterministic evasion policy for the thief role."""
 
     board_supplier: Any = None
-    #: How hard to play. At anything but full strength the safety invariant and
-    #: the exact solve are both skipped, leaving the weighted-sum policy that
-    #: actually lost three games to uoh-sqak — credible weakness, because it was
-    #: genuinely ours. See `shared/strength.py` for why this exists and why it
-    #: is named rather than hidden.
-    strength: str = "full"
     horizon: int = 3
     #: How many steps from the survival horizon the policy switches to stalling.
     #: Surviving to step 35 and surviving to step 100 score the same, so the last
@@ -101,27 +94,6 @@ class ThiefBrain:
             return Move.STAY
         belief = dict(getattr(facts, "belief", {}) or {})
         origin: Position = getattr(facts, "own_position", (0, 0))
-        # Located once, used twice. Playing at reduced strength withholds the
-        # *safety rule*, not our senses: a practice thief that also forgot how
-        # to read a belief it can plainly see would be a different agent, not a
-        # weaker one, and the fallback below still needs to know whether the
-        # distribution means anything.
-        if not plays_full_strength(self.strength):
-            # Reduced strength has to be a *different policy*, not a withheld
-            # input. It used to be `cop = None`, which only skipped the safety
-            # invariant — and against a peer who emits no scent the belief is
-            # flat, `_cop_cell` returns None anyway, and both levels fell
-            # through to the identical blind move. So a "warm-up" against
-            # exactly the opponents we most wanted to hide from was played at
-            # full strength, indistinguishably. Naji caught it twice from the
-            # moves before this was believed.
-            #
-            # The weighted sum is the honest weak policy: it is the objective
-            # this brain replaced, it lost three games out of three to uoh-sqak
-            # as a policy (T-2457), and it is still real play rather than a
-            # handicap we invented. Chosen unconditionally here, so the level
-            # holds whatever the opponent does or does not transmit.
-            return self._weighted_move(board, origin, legal, belief, facts)
         cop = self._cop_cell(belief)
         if cop is not None:
             # No `barriers_left` argument: `facts.barriers_left` is *our* quota,

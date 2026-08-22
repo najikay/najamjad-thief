@@ -20,7 +20,6 @@ from typing import Any
 from ..constants import Move
 from ..domain.board import Board
 from ..domain.params import Position
-from ..shared.strength import plays_full_strength
 from .base import apply, escape_routes, expected_distance
 from .cop_barriers import plan_barrier, stalled_bar
 
@@ -112,11 +111,6 @@ class CopBrain:
     # capture is the *only* capture available, and every game of a six-game
     # rehearsal ended in survival before this existed.
     claim_threshold: float = 0.12
-    #: How hard to play, mirroring `ThiefBrain`. The cop had no such dial at
-    #: all, so every sandbagged warm-up played our real cop policy — half a
-    #: series handed to a team we may meet again, while the switch that exists
-    #: to prevent exactly that covered only the thief.
-    strength: str = "full"
 
     def pick_move(self, facts: Any) -> Move:
         """Choose the move that best closes on the believed thief.
@@ -134,52 +128,11 @@ class CopBrain:
         if not belief:
             return legal[0]
         origin: Position = getattr(facts, "own_position", (0, 0))
-        strike = self._capture_move(board, origin, legal, belief, self._claim_bar())
+        strike = self._capture_move(board, origin, legal, belief)
         if strike is not None:
             return strike
-        if not plays_full_strength(self.strength):
-            return self._naive_pursuit(board, origin, legal, belief)
         spread = _diffuse(board, belief, self.lookahead)
         return min(legal, key=lambda move: (self._cost(board, origin, move, spread), move.value))
-
-    def _naive_pursuit(
-        self, board: Board, origin: Position, legal: tuple, belief: dict
-    ) -> Move:
-        """Walk at the belief peak. Our reduced-strength policy, and a real one.
-
-        This is the policy this brain replaced, and the module docstring opens by
-        naming why: naive pursuit "loses to any thief that simply runs", because
-        chasing the peak trails the thief by a step forever instead of cutting
-        the angle. So it is honest weak play rather than an invented handicap —
-        the same standard `ThiefBrain` holds, where reduced strength selects the
-        weighted-sum objective rather than withholding an input.
-
-        The capture step is deliberately still available above: a cop that
-        cannot claim cannot capture at all against any opponent that does not
-        concede enclosure, and a policy that can never win is a forfeit dressed
-        as a handicap, not a weaker way of playing.
-        """
-        target = max(belief.items(), key=lambda item: (item[1], item[0]))[0]
-        return min(
-            legal,
-            key=lambda move: (_chebyshev(apply(board, origin, move), target), move.value),
-        )
-
-    #: How much more belief a reduced-strength cop demands before it commits to
-    #: a claim. Movement is where sandbagging *cannot* hide much — measured, a
-    #: naive-pursuit cop picks a different move in only 3 of 49 positions,
-    #: because on a 7x7 board every sane pursuit walks at the peak. So the
-    #: honest weakening is in the two places that decide outcomes: barriers,
-    #: which the reduced cop does not lay at all, and the willingness to claim.
-    #: A cop that waits for near-certainty captures less, which is what "weaker"
-    #: has to mean if it is to mean anything.
-    RELUCTANCE = 3.0
-
-    def _claim_bar(self) -> float:
-        """The belief mass required before we step on and claim."""
-        if plays_full_strength(self.strength):
-            return self.claim_threshold
-        return min(1.0, self.claim_threshold * self.RELUCTANCE)
 
     def _capture_move(
         self, board: Board, origin: Position, legal: tuple, belief: dict,
@@ -202,10 +155,7 @@ class CopBrain:
         if not legal or not belief:
             return False
         origin: Position = getattr(facts, "own_position", (0, 0))
-        # The same bar `pick_move` uses, or the two disagree about whether a
-        # capture is available and `pick_barrier` withholds a wall for a claim
-        # this strength level would never make.
-        return self._capture_move(board, origin, legal, belief, self._claim_bar()) is not None
+        return self._capture_move(board, origin, legal, belief) is not None
 
     def pick_barrier(self, facts: Any) -> Position | None:
         """Place a barrier when it buys more than a step of pursuit would.
@@ -229,14 +179,6 @@ class CopBrain:
             origin, belief, self._stalled, self.stall_close, self.stall_patience,
             self.barrier_threshold, self.stalled_threshold,
         )
-        if not plays_full_strength(self.strength):
-            # Barriers are the dial that decides matches — 0.05 captured 4% of
-            # games and 0.40 captured 100% — so a reduced-strength cop that
-            # still laid optimal traps would be sandbagged in name only. Naive
-            # pursuit without walls is a coherent weaker cop, not a crippled
-            # one: it is how the role plays before anyone thinks about cutting
-            # off escape routes.
-            return None
         if self.capture_step_available(facts):
             return None
         plan = plan_barrier(

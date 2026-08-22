@@ -109,6 +109,18 @@ class ScentField:
                 self._values[cell] = max(self._values.get(cell, 0.0), value)
         return problems
 
+    def age_and_deposit(self, centre: "tuple[int, int]") -> None:
+        """One full turn of our own trail, in the kit's serve order.
+
+        Decay the prior field, then merge the fresh deposit undecayed — the
+        convention `field_walk` publishes and the single call the orchestrator
+        makes per turn, so the snapshot taken right after this IS the frame
+        the wire carries. Two separate calls at the call site is how the
+        thief's trail crossed the wire one decay step too fresh for a week.
+        """
+        self.decay_all()
+        self.deposit(centre)
+
     def decay_all(self) -> None:
         """Apply one full-turn decay (called once both agents have moved)."""
         for cell in list(self._values):

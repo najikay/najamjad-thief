@@ -89,23 +89,19 @@ rotate, so re-ask before every match.
 ## 3. Arm the run
 
 ```bash
-uv run python scripts/match_day.py practice   # draft email + FULL strength
-uv run python scripts/match_day.py warmup     # draft email + SANDBAGGED
-uv run python scripts/match_day.py counted    # send email + FULL strength
+uv run python scripts/match_day.py practice   # draft email (friendlies)
+uv run python scripts/match_day.py warmup     # alias of practice — one mode now
+uv run python scripts/match_day.py counted    # send email  (the real thing)
 ```
 
-These write `strength.level` and `email.mode` into **both** repos' private
-config, and the level now reaches **both brains**. The cop had no strength dial
-at all until 2026-08-13, so a sandbagged warm-up played our real cop policy in
-three of six sub-games; at reduced strength the cop now walks the belief peak
-instead of intercepting, lays no barriers and demands 3x the belief before it
-claims. Note what sandbagging still cannot hide: on a 7x7 board every sane
-pursuit walks toward the peak, so the reduced cop picks a different *move* in
-only about 3 of 49 positions. The weakening is in barriers and claims, which is
-where a cop's strength actually lives.
-
-After a `warmup` you are sandbagged until you say otherwise — that has
-already cost one series, played at the deliberately weak brain without noticing.
+These write `email.mode` into **both** repos' private config. **There is one
+strength (2026-08-22): the brains that play a friendly are the brains that
+play the counted series.** The sandbagged level and the probe machinery keyed
+off it are retired — the switch spent most of its life doing something other
+than what the operator believed (for weeks it never reached the brains at
+all), and a warm-up at reduced strength measured nothing we could act on. The
+only thing the subcommands still decide is where the report goes, which is
+the one thing that was ever safe to vary.
 
 ## 4. Preflight — do not play on a red line
 

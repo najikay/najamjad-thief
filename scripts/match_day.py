@@ -133,7 +133,7 @@ def main() -> int:
 
     sub.add_parser("counted", help="arm a counted match (send + full strength)")
     sub.add_parser("practice", help="safe default (draft + full strength)")
-    sub.add_parser("warmup", help="an uncounted warm-up, played sandbagged")
+    sub.add_parser("warmup", help="an uncounted warm-up (same as practice: one mode now)")
 
     args = parser.parse_args()
     if args.command == "card":

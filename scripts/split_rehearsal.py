@@ -96,7 +96,8 @@ def launch(cwd: Path, config: Path, opens: str, log: Path, extra: list[str]) -> 
                             text=True, env=env)
 
 
-def plan(work: Path, games: int, voice: list[str]) -> list[tuple[str, Path, Path, str, list[str]]]:
+def plan(work: Path, games: int, voice: list[str],
+         opens: str = "thief") -> list[tuple[str, Path, Path, str, list[str]]]:
     """Four processes: our two repos, and an opponent split across two roles."""
     us = {"cop": free_port(), "thief": free_port()}
     them = {"cop": free_port(), "thief": free_port()}
@@ -109,30 +110,37 @@ def plan(work: Path, games: int, voice: list[str]) -> list[tuple[str, Path, Path
     roots = {"us": both_roles(work / "us"), "them": both_roles(theirs / "config")}
     for root in roots.values():
         terms(root, games)
+    # `opens` names OUR group's role in mini-game 1; the opponent's view of
+    # the same series is the mirror. Every rehearsal until 2026-08-22 ran
+    # opens=thief only — the exact blind spot Naji asked about after the g4
+    # failures: the counted format lets the pairing agree either opener, and
+    # a path nobody has ever run is a path that fails at 20:00.
+    ours, theirs_open = opens, ("police" if opens == "thief" else "thief")
     rows = []
-    for name, side, cwd, role, opens, mine, door, doors, extra in (
-        ("us-thief", "us", THIEF, "thief", "thief", us["thief"], them["cop"], us, []),
-        ("us-cop", "us", COP, "police", "thief", us["cop"], them["thief"], us, []),
-        ("them-cop", "them", theirs, "police", "police", them["cop"], us["thief"], them,
+    for name, side, cwd, role, opening, mine, door, doors, extra in (
+        ("us-thief", "us", THIEF, "thief", ours, us["thief"], them["cop"], us, []),
+        ("us-cop", "us", COP, "police", ours, us["cop"], them["thief"], us, []),
+        ("them-cop", "them", theirs, "police", theirs_open, them["cop"], us["thief"], them,
          ["--group-id", "sparring"]),
-        ("them-thief", "them", theirs, "thief", "police", them["thief"], us["cop"], them,
+        ("them-thief", "them", theirs, "thief", theirs_open, them["thief"], us["cop"], them,
          ["--group-id", "sparring"]),
     ):
         config = configure(roots[side], role, mine, door, doors)
-        rows.append((name, cwd, config, opens, [*voice, *extra]))
+        rows.append((name, cwd, config, opening, [*voice, *extra]))
     print(f"us cop {us['cop']} thief {us['thief']} · them cop {them['cop']} thief {them['thief']}")
     return rows
 
 
-def run(games: int, timeout: float, quiet: bool) -> int:
+def run(games: int, timeout: float, quiet: bool, opens: str = "thief") -> int:
     """Play a split series between two split teams and report what happened."""
     with tempfile.TemporaryDirectory() as raw:
         work = Path(raw)
         logs: dict[str, Path] = {}
         peers: dict[str, subprocess.Popen] = {}
-        for name, cwd, config, opens, extra in plan(work, games, ["--quiet"] if quiet else ["--talk"]):
+        rows = plan(work, games, ["--quiet"] if quiet else ["--talk"], opens=opens)
+        for name, cwd, config, opening, extra in rows:
             logs[name] = work / f"{name}.log"
-            peers[name] = launch(cwd, config, opens, logs[name], extra)
+            peers[name] = launch(cwd, config, opening, logs[name], extra)
         print(f"launched {len(peers)} processes; {games} mini-games")
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline and any(p.poll() is None for p in peers.values()):
@@ -160,8 +168,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--games", type=int, default=6)
     parser.add_argument("--timeout", type=float, default=1200.0)
     parser.add_argument("--talk", action="store_true", help="LLM hints and scent, as in a match")
+    parser.add_argument("--opens", choices=["thief", "police"], default="thief",
+                        help="OUR group's role in mini-game 1")
     args = parser.parse_args(argv)
-    return run(args.games, args.timeout, quiet=not args.talk)
+    return run(args.games, args.timeout, quiet=not args.talk, opens=args.opens)
 
 
 if __name__ == "__main__":

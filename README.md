@@ -369,7 +369,12 @@ Two observation channels, with opposite trust properties:
   with absolute decay `τ ← τ - ρ`. We implement both, and both are registered in the
   interop kit: `ScentModel.BOOK` is `multiplicative_book_v1` (`934c220d…`) and
   `ScentModel.REFERENCE` is `subtractive_chebyshev_v1` (`81ebee59…`). Each reproduces the
-  kit's own published vectors, so matching an opponent is one key —
+  kit's own published vectors — including the wire's serve order, which the kit's
+  `field_walk` fixes as *age the prior trail, merge the fresh deposit undecayed,
+  transmit that*: our thief shipped the trail one decay step too fresh until
+  2026-08-22, an opponent's per-frame gate measured it, and the frames are now
+  pinned against the walk cell-for-cell (`test_wire_scent_serve_order.py`). So
+  matching an opponent is one key —
   `pheromones.pheromone_model` in `config/game.json` — and **not** a change to the fourteen
   signed terms, so the contract digest `a284082d…` survives the switch and nobody has to
   re-sign. The digest we declare at negotiate is looked up *from* the configured model, so
@@ -415,13 +420,28 @@ have delayed a reply past their 30-second deadline.
 
 ### Strategies, and why not RL
 
-**Cop** — belief-directed pursuit with lookahead diffusion, plus barrier placement scored by
-how much freedom it denies the *likely* thief cells rather than by raw distance. Standing next
-to a cell you cannot enter is worth nothing.
+**Cop** — a scripted halving seal (`strategy/seal_cop.py`), not per-turn scoring: wall the
+middle column while walking the lane beside it, take the gate, cut the half that holds the
+thief, and the thief ends in a 3×3 pocket with us. From there `domain/endgame.py` solves the
+pocket exactly — barrier placement is a move in its game tree — and prices every win to
+**co-location**, because a step-on claim is the one capture every implementation honours; a
+thief sealed where we can never walk is scored `remote seal` by our own bench and refused as
+a plan. The one-barrier lock (`strategy/lock.py`: our body plus one wall, adjacency
+required) finishes a pinned thief early. The bench (`tests/regression/`) drives it against
+reacting adversaries — including a thief that squats the script's own wall line — and it
+converts **all of them inside the 35 moves, by plain claimable capture**
+(`test_seal_converts_every_reacting_thief.py`). Belief-directed pursuit (`cop_brain.py`)
+remains the fallback for a board with no localisation.
 
-**Thief** — survival-horizon evasion, not greedy distance maximisation. The greedy move often
-walks into a corner that is one barrier from a capture; we search the horizon for cells that
-keep escape routes open.
+**Thief** — survival-horizon evasion as a stack of hard floors, not greedy distance
+maximisation: never end a turn within one step of the cop, refuse cells a half-built fence
+has already made cheap to seal, keep a reachable 4×4, stay on the cop's side of a forming
+cut (a sealer may not complete a wall that separates it from us), and stand in the gaps of
+a fence under construction — a preference that runs *after* the safety floors, because run
+before them it once marched us into the corner an opponent then walled
+(`test_ahk_yosi_corner_hunt.py` replays that kill line move for move). It survives every
+archived opponent line in `matches/` and all 24 tie-break variants of a reacting
+corner-hunter cop.
 
 **Hint policy** — bluffing is a strategic resource with a cost: a claim discloses the claimer's
 cell, so a false capture claim hands the thief our exact position for nothing.
@@ -451,14 +471,14 @@ Zero peer disagreements and zero audit failures across all 180 games.
 
 ![our brains vs the greedy baseline](assets/baseline-comparison.png)
 
-**The caveat this repository is obliged to state.** Our thief's 100 % survival
-is measured against the *greedy* cop. Against our own cop it survives about 4 %
-of games, and sweeping `thief.horizon` across 1–5 does not move it — every value
-is caught in 23 or 24 of 24 games, differences well inside the confidence
-intervals. So this is not a tuning problem, and the headline number is a
-statement about the opponent rather than about the evader. An opponent whose cop
-is as good as ours should be expected to catch our thief. It is recorded as the
-project's largest competitive risk in `docs/OPEN_ITEMS.md`.
+**The caveat this repository is obliged to state.** Our thief survives every
+cop we have ever faced or archived — every opponent line in `matches/`, all 24
+tie-break variants of a reacting corner-hunter, pursuit and random cops — and
+still loses, around step 30, to **our own sealer**, whose halving plan no
+opponent has shown. Both directions are pinned rather than smoothed over
+(`test_thief_beats_sealing_cops.py` records the defeat and its price; the
+corner-hunt and archive suites record the survivals), because a thief graded
+only against the cops it beats has been graded against itself.
 
 For the cop side, one tunable decides the match:
 
@@ -556,9 +576,9 @@ wire, which is why `FrameLog` keeps them as sent. The audit reports those as *no
 rather than folding them into a clean verdict — "we looked and agreed" and "there was nothing
 to look at" must never read the same.
 
-## Two results that constrain every strategy
+## Three results that constrain every strategy
 
-Both were established by measurement during the league phase, and both are load-bearing.
+All were established by measurement during the league phase, and all are load-bearing.
 
 **A barrier can shrink the board but can never take the thief.** The book gives three capture
 conditions (rules 46-47); the course reference implements exactly one. Its `rules.py` has
@@ -572,6 +592,14 @@ so its cop number is 2 (Maamoun & Meyniel 1987), and an exhaustive fixed-point o
 states finds *no* state from which a movement-only cop can force a capture under simultaneous
 moves. Our cop tracking a thief to distance 2 and holding there for 28 steps is a theorem,
 not a defect. Barriers are the only resource that changes the answer (PLAN ADR-021).
+
+**And with a plan, barriers do change it.** The halving seal converts every reacting thief
+the bench can build — the board halved, the half halved, the 3×3 solved exactly, ending in
+a co-location claim inside the 35 moves. The two constraints above still govern the *shape*
+of that win: it must end on a claim the thief confirms, and it cannot be had by movement
+alone. What was long recorded here as our largest competitive risk — a cop that tracks to
+distance 2 and holds — is closed; the risk that remains is an opponent whose own cop plays
+a plan as complete as ours, and the thief's floors are priced against exactly that.
 
 `tests/regression/cop_duel.py` is the cop-side benchmark those claims are tested with — our
 cop against an adaptive thief, with the belief the real ingress path builds from scent. A

@@ -21,7 +21,6 @@ from __future__ import annotations
 import pytest
 
 from najamjad_agent.domain.params import GameParams
-from najamjad_agent.shared.strength import SANDBAGGED
 from najamjad_agent.strategy.cop_brain import CopBrain
 from najamjad_agent.strategy.thief_brain import ThiefBrain
 from tests.regression.cop_duel import run_cop_duel
@@ -117,25 +116,19 @@ def test_the_cop_takes_a_thief_that_lets_it_reach_striking_range(params: GamePar
     assert result.step <= 13, f"closed at {result.step}, slower than the measured 13"
 
 
-def test_a_sandbagged_cop_now_plays_exactly_the_full_policy(params: GameParams) -> None:
-    """The levels are the same strategy; only the report's recipient differs.
+def test_the_cop_carries_no_strength_dial(params: GameParams) -> None:
+    """The levels are gone (2026-08-22), not merely equal.
 
-    This test used to assert the opposite — no barriers, no capture — because a
-    warm-up was meant to hide the real policy. Naji retired that on 2026-08-18
-    after two games were lost to it: a held-back cop finds nothing, so a warm-up
-    stopped being the place bugs surface and became a second policy to maintain
-    and a second way to lose. Sandbagging also only conceals anything if the
-    weak version is convincing, and ours was not.
-
-    So the level no longer touches play. `AT_FULL_STRENGTH` carries all three,
-    and what a warm-up still changes is the one thing that was ever the point:
-    the counted report goes to the grader, the friendly one does not.
+    This test's previous life asserted a sandbagged cop played the full
+    policy; before that, the opposite. The dial's whole history was one of
+    doing something other than what the operator believed, so its absence is
+    now the assertion - a `strength` argument must fail loudly rather than
+    be silently accepted and ignored.
     """
-    full = run_cop_duel(CopBrain(), [], params, thief_brain=Evader())
-    held = run_cop_duel(CopBrain(strength=SANDBAGGED), [], params, thief_brain=Evader())
+    import pytest
 
-    assert (held.captured, held.step) == (full.captured, full.step)
-    assert held.barriers == full.barriers, "same walls, same order"
+    with pytest.raises(TypeError):
+        CopBrain(strength="sandbagged")
 
 
 def test_the_harness_scores_only_captures_an_opponent_would_honour(params: GameParams) -> None:

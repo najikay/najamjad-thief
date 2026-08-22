@@ -110,6 +110,8 @@ def _names_our_window(message: Any, sub_game: int) -> bool:
     declared = getattr(message, "sub_game_number", None)
     if declared is None:
         declared = (getattr(message, "extras", None) or {}).get("sub_game_number")
+    if declared is None:
+        return False
     try:
         return int(declared) == int(sub_game)
     except (TypeError, ValueError):
