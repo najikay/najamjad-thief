@@ -119,3 +119,32 @@ def test_a_timed_out_call_drops_the_session_for_the_next_attempt() -> None:
         time.sleep(0.05)
 
     assert session.dropped, "a call that burned its cap must cycle the session"
+
+
+def test_fresh_session_env_drops_at_the_boundary(monkeypatch) -> None:
+    """NAJAMJAD_FRESH_SESSION=1: per-window peers get a re-initialize instead.
+
+    anrbj666's servers are per-window — fresh process, fresh bind — so a held
+    session is guaranteed dead at every boundary and resuming it first buys a
+    stale-session error before the reconnect. Opt-in per run, set only in that
+    pairing's launch scripts; the default (above) stays yamanagh's keep.
+    """
+    from najamjad_agent.net.peer_transport import PeerTransport
+
+    monkeypatch.setenv("NAJAMJAD_FRESH_SESSION", "1")
+    events: list[dict] = []
+
+    class _Client:
+        dropped = False
+
+        def drop_session(self) -> None:
+            _Client.dropped = True
+
+    transport = PeerTransport.__new__(PeerTransport)
+    transport._client = _Client()
+    transport._emit = events.append
+
+    transport.new_session()
+
+    assert _Client.dropped, "the flag must force a fresh session"
+    assert events and events[0]["event"] == "session.fresh"

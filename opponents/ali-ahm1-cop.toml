@@ -3,7 +3,7 @@
 # Both values come from THEM. `group_id` must equal what their handshake
 # declares, or the filer's rename never fires and our emitted report is keyed
 # by a placeholder instead of their name.
-url      = "https://b44e-2a06-c701-416f-9300-d5c6-8eec-e69c-a248.ngrok-free.app/mcp"
+url      = "https://separately-dry-comparing-earliest.trycloudflare.com/mcp"
 group_id = "ali-ahm1"
 name     = "ali-ahm1-cop"
 notes    = """
@@ -43,10 +43,37 @@ confusion already cost a counted series a mutual_agreement dispute.
 
 USE THIS ONE when running najamjad-thief: their cop answers window 1,
 which is what their alphabetical role convention asks for.
+
+CONTRACT RECEIVED (2026-08-23): email atrabe08@gmail.com. Terms hash
+a284082d CONFIRMED by them (old 0d90f525 whole-file confusion resolved),
+commit-reveal 4047830b confirmed, step-1-after-first-move confirmed, rule 47
+confirmed (caught:true when boxed). Scent A1 subtractive_chebyshev_v1
+81ebee59 — config flipped to "reference" both repos 2026-08-23; FLIP BACK TO
+"book" BEFORE THE anrbj666 EVENING COUNTED. Their stack: two --lock-role
+processes, ports 8801 cop / 8802 thief, ngrok free-tier BOTH ROLES —
+re-card both URLs immediately before every session. Watchdog 30s/turn,
+10s/call, 150s retry budget (short; our boundaries are fast, fine).
+Counted declared "4: imreeyal, amireman, gal-roy1, + one more" — EXACT list
+still owed. STILL OWED BEFORE PLAY: thief commit; repos currently 404
+anonymously (ask to flip public — league rule 49); explicit wire-shape
+confirmation (reference-v3 229ae648) + thief-moves-first; alphabetical role
+convention restated (they cop on odd windows, we open thief) — matches our
+--opens thief scripts.
+
+FOUR ITEMS ANSWERED (2026-08-23 midday): wire shape reference-v3 THIEF-FIRST
+CONFIRMED IN WRITING — last hard blocker gone. Thief commit = cop commit
+f0948ff8 (SINGLE REPO, two --lock-role processes 8801/8802; their "robber"
+repo URL is an unpushed placeholder). Honest flag from them; process
+separation satisfied per their spec 2.4.2 reading. For a COUNTED: their
+declaration would cite a placeholder thief-repo URL — their exposure;
+suggest they declare the one real repo for both roles instead. Counted
+list exact: imreeyal 2026-08-19, yamanagh 2026-08-22, amireman 2026-08-22
+(G077), gal-roy1 2026-08-22 = 4 unique (early declarations were stale-0 by
+their own admission). Endpoints: two ngrok URLs sent ~5 min before T.
 """
 
 # Awaiting their reply. Full 40 characters, one per repo - their cop and thief
 # are separate checkouts, so the pair can differ.
 [armed_commits]
-cop   = ""
-thief = ""
+cop   = "f0948ff8d2615d870c1583bdd92f1232830ad9bc"  # from contract; repo 404 anonymously, UNVERIFIED
+thief = "f0948ff8d2615d870c1583bdd92f1232830ad9bc"  # same as cop — single codebase, their contract 2026-08-23

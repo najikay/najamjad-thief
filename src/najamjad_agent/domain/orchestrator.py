@@ -21,6 +21,7 @@ from .game_state import GameState, TurnFacts
 from .movement import apply_move, legal_moves, place_barrier
 from .params import Position
 from .ports import Brain, Clock, Speaker, Transport
+from .redelivery import repush_last_turn, send_and_retain
 from .turn_egress import build_turn_message, outgoing_extras, record_emission
 from .turn_ingress import absorb_turn, decay_after_full_turn
 
@@ -112,8 +113,8 @@ class Orchestrator:
             # close on the same reason at the same point in the game.
             self.state.pending_end = None
             self.event("game.declared", reason=announced.value)
-            return self._resolve(announced)
-        return self._resolve(own_barrier_capture(self.state, barrier))
+            return self._end(announced) if announced is not None else None
+        return self._end(hit) if (hit := own_barrier_capture(self.state, barrier)) else None
 
     def receive_turn(self) -> EndReason | None:
         """Await, validate and absorb the opponent's turn."""
@@ -130,7 +131,7 @@ class Orchestrator:
             return self.end_reason
         self.state.full_turns += 1
         decay_after_full_turn(self.state)
-        ended = self._resolve(opponent_end_reason(self.state, message))
+        ended = self._end(why) if (why := opponent_end_reason(self.state, message)) else None
         if ended is None:
             self.fsm.to(Phase.WAITING_FOR_OPPONENT)
         return ended
@@ -208,7 +209,7 @@ class Orchestrator:
         self.fsm.to(Phase.COMMITTING)
         commit = self.state.ledger.commit(self.state.step, payload)
         message = build_turn_message(self.state, commit, payload)
-        self._transport.send_turn(message)
+        send_and_retain(self, message)
         self.state.ledger.acknowledge(self.state.step)
         self.state.ledger.reveal(self.state.step)
         self.fsm.to(Phase.AWAITING_REVEAL)
@@ -241,11 +242,8 @@ class Orchestrator:
                 return message
             self.event("turn.timeout", attempt=attempt + 1, waited=self._timeout,
                        opening=opening)
+            repush_last_turn(self)
         return None
-
-    def _resolve(self, reason: EndReason | None) -> EndReason | None:
-        """Close the mini-game when an end condition fired."""
-        return self._end(reason) if reason is not None else None
 
     def _end(self, reason: EndReason) -> EndReason:
         """Close the mini-game cleanly and open the audit phase."""

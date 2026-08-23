@@ -5,7 +5,7 @@
 # by a placeholder instead of their name.
 #
 # THEIR THIEF DOOR. Used by najamjad-cop, which faces their thief in every window it plays (2/4/6, since we open as thief).
-url      = "https://nebraska-eau-ccd-rio.trycloudflare.com/mcp"
+url      = "https://guys-offices-norfolk-simplified.trycloudflare.com/mcp"
 group_id = "rstabcde"
 name     = "rstabcde"
 notes    = """Rosette Khell and Arthur Rennert (rstabcde). First meeting, so the diversity reward rides on
@@ -63,12 +63,25 @@ EXPECT DETERMINISM. `llm_model: template` means no LLM anywhere in their loop,
 which is the profile of the two opponents that played byte-identical lines
 against us - uoh-sqak solved one thief line three times running. Their hints are
 template text, so `parse_locally` will most likely read nothing from them; that
-costs us nothing, it just means the hint channel is decorative this series."""
+costs us nothing, it just means the hint channel is decorative this series.
+FULL CONTRACT RECEIVED 2026-08-23 evening (submission eve): everything from
+the settled list re-confirmed through their own loader (terms a284082d,
+vector 4047830b, A1 81ebee59, serve order phrased "deposit, transmit, THEN
+decay" = the same pipeline as age->deposit->transmit, peak 0.90 undecayed).
+NEW: submit_audit pushed both ways at game end; rule 47 confirmed; per-turn
+envelope 150 s wait-not-take, retries 25x5s (~125 s); both processes stay up
+all six windows (NO per-window rebinds — the anrbj666 seam cannot occur);
+fresh negotiate per window. Counted so far: 1 (vibecode) -> a counted files
+games_played 8/2, first meeting, diversity to the winner. CAUTION: their
+contract says repos "both public" but BOTH 404 anonymously at receipt; their
+quoted tunnel pair was already dead DNS at receipt (quick tunnels — they
+re-post immediately before dialing, wait for the fresh pair).
+"""
 
 # Awaiting their reply, promised before the warm-up. Full 40 characters, one per
 # repo - their cop and thief are separate checkouts, so the pair can differ.
 # `scripts/audit_opponent.py` compares these per role against the `github_commit`
 # their step-0 declares.
 [armed_commits]
-cop   = "315ebe400631b4dc8bbc739d629d665705f2fb96"
-thief = "8d81ce209908082e5eccb0e9e0763fe271b9cd99"
+cop   = "47b5e26c46d111df74bb12a6fe2cae3cf46da3ba"
+thief = "b33a04d1e44e70c0e3d81eadf96611bf4e68cdc9"
