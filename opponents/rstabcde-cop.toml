@@ -5,7 +5,7 @@
 # by a placeholder instead of their name.
 #
 # THEIR COP DOOR. Used by najamjad-thief, which faces their cop in every window it plays (1/3/5, since we open as thief).
-url      = "https://tune-browsing-domain-why.trycloudflare.com/mcp"
+url      = "https://boulder-hazards-gentleman-kenneth.trycloudflare.com/mcp"
 group_id = "rstabcde"
 name     = "rstabcde-cop"
 notes    = """Rosette Khell and Arthur Rennert (rstabcde). First meeting, so the diversity reward rides on
@@ -40,7 +40,9 @@ SETTLED IN WRITING BEFORE PLAY:
                   subtractive_chebyshev_v1, they compute the same hash.
   wire shape      course reference, four tools, no variant.
   move order      thief-first, confirmed.
-  emission        they send scent AND hints, so we play --talk and match them.
+  emission        they send scent AND hints; WE PLAY HINTS OFF (operator decision
+                  2026-08-23, declared in writing before play — supersedes the
+                  earlier match-them note; rule 12 sets no floor). Scent full.
   opening role    WE OPEN AS THIEF (they configure police for mini-game 1):
                   najamjad-thief takes windows 1/3/5, najamjad-cop takes 2/4/6.
   llm_model       "template" - pure Python, zero tokens on their side.
@@ -83,5 +85,5 @@ re-post immediately before dialing, wait for the fresh pair).
 # `scripts/audit_opponent.py` compares these per role against the `github_commit`
 # their step-0 declares.
 [armed_commits]
-cop   = "47b5e26c46d111df74bb12a6fe2cae3cf46da3ba"
-thief = "b33a04d1e44e70c0e3d81eadf96611bf4e68cdc9"
+cop   = "809e801e8950c48bc81c5f8ef56a73a011638639"
+thief = "30c50d7532cb8a59313f70d9cf698b9a4e7e7908"
