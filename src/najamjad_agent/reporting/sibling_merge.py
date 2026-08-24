@@ -48,7 +48,14 @@ PARTIALS = "workspace/partials"
 #: playing ours — but it may be finishing an audit, so we wait rather than file
 #: a half series. Bounded, because a report that is late still counts and one
 #: that never comes does not.
-WAIT_SECONDS = 90.0
+#: Raised 90 -> 600 on 2026-08-24: ninety seconds assumed the halves finish
+#: within a minute of each other, which every clean series did — and the
+#: bestteam warm-up did not: their flaky cop server stretched our thief's
+#: windows while our cop's were done, and the filer mailed a 3-row half-series
+#: while the sibling was still playing. In a counted that email goes to the
+#: lecturer. Ten minutes covers a sibling grinding through retries; a sibling
+#: that is genuinely gone still resolves, just slowly enough to be sure.
+WAIT_SECONDS = 600.0
 
 
 def partial_path(root: Path, game_uid: str, role: Role) -> Path:
