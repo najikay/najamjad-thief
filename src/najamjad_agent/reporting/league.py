@@ -99,9 +99,16 @@ def document_extras(
     extra["num_sub_games"] = int(agreed_sub_games)
     extra["rows_in_this_document"] = len(rows)
     if len(rows) < agreed_sub_games:
+        # The only path to a short document since the merge became the filing
+        # rule is a sibling half that never appeared — the bestteam warm-up
+        # (2026-08-24) mailed this note while the sibling was still playing,
+        # and its old text falsely reassured the reader that another document
+        # carried the missing rows. Name the anomaly instead: a reader must
+        # see a flag, not a promise nobody verified.
         extra["rows_note"] = (
-            f"per-repo report: {len(rows)} of {agreed_sub_games} windows; "
-            "the sibling repository's document carries the other role's rows"
+            f"INCOMPLETE: {len(rows)} of {agreed_sub_games} windows; the "
+            "sibling process's half was not available at filing time — its "
+            "rows appear in no document unless it files separately"
         )
     started = [str(game.get("started_at", "")) for game in games if game.get("started_at")]
     ended = [str(game.get("ended_at", "")) for game in games if game.get("ended_at")]
