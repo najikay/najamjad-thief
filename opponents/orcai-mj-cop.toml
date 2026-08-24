@@ -1,0 +1,29 @@
+# orcai-mj
+#
+# Both values come from THEM. `group_id` must equal what their handshake
+# declares, or the filer's rename never fires and our emitted report is keyed
+# by a placeholder instead of their name.
+url      = "https://many-decades-rip-guitars.trycloudflare.com/mcp"
+group_id = "orcai-mj"
+name     = "orcai-mj-cop"
+notes    = """their COP direction — used when running najamjad-thief.
+
+Jude Khleif, Mohammad Akariya (Orcai-MJ). Contract 2026-08-24: the most
+complete confirmation set of the league — terms a284082d re-derived, vector
+4047830b, A2 book 934c220d with correct serve order (decay -> fresh deposit
+full strength -> transmit, occupied cell always 0.90), roles by group_id,
+step-1-after-move, rule 47, audits both ways, fresh negotiate per window
+WITH sub_game_number, same-number re-offer of failed windows, busy refusal
+retriable, 16.7-min window patience matching ours. Two processes, two
+repos, quick Cloudflare tunnels resent before every dial and after any
+restart. Counted declared: 1 (ahk-yosi, 75-75 draw — same scoreline as our
+own ahk-yosi counted). A counted files 9/2, first meeting, diversity to
+the winner. Config flipped to BOOK 2026-08-24 for this pairing. agent
+email jude021003@gmail.com — practice.redirect_to in both repos. ROLE
+ORDER CONFIRMED IN WRITING: najamjad thief in sub-game 1, orcai-mj police
+in 1, alternating. Dials: none — full defaults (robust stack, Cloudflare).
+"""
+
+[armed_commits]
+cop   = "67692e5639328c6c0c095abed5763cbd8620d17d"  # FINAL FROZEN (g3 turn/audit-order fix, 442-test regression)
+thief = "b0354056c4985a13f5cbf3cc6eb6480b8570e665"  # FINAL FROZEN

@@ -66,6 +66,16 @@ whichever team we played last.
 
 repos  github.com/Diana-Koroblov/bestteam-cop
        github.com/Diana-Koroblov/bestteam-thief
+
+2026-08-24 CONTRACT: pair cop e0f8bdde0a13dda10fc604d6821cf2e29774a5e3 /
+thief b3f5858e723b7d4686eae8dd36d47c9f730221b3 — BOTH VERIFIED 200
+anonymously at receipt. Counted declared: 4 (imreeyal, vibecode, nis-yar1,
+yanell11) -> a counted files 9/5, first meeting, diversity to the winner.
+They caught OUR unpushed pair via ls-remote (their standard: runner refuses
+unpushed hashes) — resend ours only after the push lands. Scent A1 =
+reference, already our active config. Their Qs answered 2026-08-24: SPEC-3.1
+resilience is our-side behavior only, nothing mandatory; tokens read from
+the step-0 seal, per-step tolerated as extras.
 """
 
 # Resent by them 2026-08-18 and armed the same day; supersedes the
@@ -73,5 +83,5 @@ repos  github.com/Diana-Koroblov/bestteam-cop
 # `scripts/audit_opponent.py` compares these per role against the
 # `github_commit` their step-0 declares.
 [armed_commits]
-cop   = "deca8eabf00f3f4a9795d2745b5fa9ab676dfe28"
-thief = "18710161d63b7086a4267dd4d26b2e286e5bd882"
+cop   = "e0f8bdde0a13dda10fc604d6821cf2e29774a5e3"
+thief = "b3f5858e723b7d4686eae8dd36d47c9f730221b3"

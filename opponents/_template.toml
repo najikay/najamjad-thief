@@ -24,3 +24,9 @@ notes    = ""
 [armed_commits]
 cop   = ""
 thief = ""
+
+# STANDING RULE (2026-08-24): an opponent on ngrok gets NAJAMJAD_SINGLE_REVEAL=1
+# in their launch scripts BY DEFAULT — ngrok free-tier relays drop and reorder
+# under our duplicate cadence, and fragile stacks cluster there (yamanagh,
+# ali-ahm1, bestteam). Cloudflare/named-tunnel peers keep the 3-copy default
+# unless their audits say otherwise.
