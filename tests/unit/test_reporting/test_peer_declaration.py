@@ -7,7 +7,7 @@ a literal `0` in the row builder, so an honestly declaring peer would still
 have been reported as having spent nothing.
 """
 
-from najamjad_agent.reporting.peer_declaration import UNKNOWN_COMMIT, peer_facts
+from najamjad_agent.reporting.peer_declaration import peer_facts
 from najamjad_agent.reporting.step_zero import RECORD_TYPE
 
 
@@ -68,8 +68,9 @@ def test_a_peer_who_declares_nothing_still_files(_records=None) -> None:
     """
     facts = peer_facts([{"sub_game": 1, "their_records": []}, {"sub_game": 2}])
 
-    assert facts[1] == {"commit": UNKNOWN_COMMIT, "tokens": 0}
-    assert facts[2]["commit"] == UNKNOWN_COMMIT
+    assert facts[1] == {"commit": "", "tokens": 0}, (
+        "absence stays falsy so the handshake fallback can fire (2026-08-24)")
+    assert facts[2]["commit"] == ""
 
 
 def test_the_declaration_is_found_by_type_not_by_position() -> None:
@@ -109,3 +110,19 @@ def test_facts_are_keyed_by_sub_game_not_by_order() -> None:
 
     assert facts[3]["commit"] == "three"
     assert facts[1]["commit"] == "one"
+
+
+def test_a_peer_without_step_zero_falls_back_to_the_handshake_commit() -> None:
+    """orcai-mj seal no declaration record; the handshake value must win.
+
+    UNKNOWN_COMMIT is a truthy string, and returning it from `peer_facts`
+    short-circuited the row's `declared or their_commit or unknown` chain —
+    the report filed "unknown" about a peer whose handshake stated the hash.
+    """
+    from najamjad_agent.reporting.peer_declaration import peer_facts
+
+    games = [{"sub_game": 1, "their_records": [
+        {"payload": {"step": 1, "sub_game": 1, "move": "N", "role": "police"}},
+    ]}]
+    facts = peer_facts(games)
+    assert facts[1]["commit"] == "", "absence must stay falsy for the fallback chain"

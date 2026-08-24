@@ -18,7 +18,7 @@ string in ours.
 
 from __future__ import annotations
 
-from najamjad_agent.reporting.peer_declaration import UNKNOWN_COMMIT, peer_facts
+from najamjad_agent.reporting.peer_declaration import peer_facts
 
 THEIR_THIEF = "a3be8b4e70c548e33d97464296d9751d319bdd21"
 
@@ -68,4 +68,5 @@ def test_a_peer_that_declares_nothing_is_still_filable() -> None:
     """Most peers declare nothing, and rule 35 punishes not reporting."""
     games = [_game(1, {"step": 4, "position": [1, 1]})]
 
-    assert peer_facts(games)[1]["commit"] == UNKNOWN_COMMIT
+    assert peer_facts(games)[1]["commit"] == "", (
+        "absence stays falsy so the handshake fallback can fire (2026-08-24)")

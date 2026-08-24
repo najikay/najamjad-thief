@@ -56,7 +56,13 @@ def peer_facts(games: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
         spend = _spend(stepwise, highest, running) or _spend_between(payload, following)
         running = max(running, highest)
         facts[number] = {
-            "commit": str(payload.get("github_commit") or UNKNOWN_COMMIT),
+            # Empty, not UNKNOWN_COMMIT: "unknown" is a truthy string, and it
+            # short-circuited the row's fallback chain before the commit the
+            # peer declared at the handshake was ever consulted — orcai-mj
+            # seal no step-0 record at all, and our report filed "unknown"
+            # about a peer whose handshake stated the hash plainly
+            # (2026-08-24). Absence must stay falsy until the last resort.
+            "commit": str(payload.get("github_commit") or ""),
             "tokens": spend,
         }
     return facts
