@@ -92,7 +92,13 @@ response_timeout_seconds = 30
 # caught this on start-up rather than in a match, which is where it belongs.
 call_timeout_seconds = 25
 watchdog_threshold_seconds = 60
-max_retries = 3
+# 3 -> 12 on 2026-08-24, sized from measurement: bestteam's door outages ran
+# 54-87 s per blip with one 305 s stretch, and three rounds of 30 s abandoned
+# a live game at step 28 over the shortest of them. Twelve rounds is six
+# minutes of riding the turn-redelivery cadence — above the worst measured
+# outage with headroom — so a blip of any observed size is survived in place,
+# while a peer whose process actually died still resolves, six minutes later.
+max_retries = 12
 # T-2447: a failed agreement exchange retries the SAME sub-game this many
 # times before resolving it as a technical outcome. Advancing on failure is
 # what desynchronised our numbering from the opponent's (rules 33-35).
