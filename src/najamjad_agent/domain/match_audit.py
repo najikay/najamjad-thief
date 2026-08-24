@@ -156,6 +156,16 @@ def exchange_audit(
     # ever got (measured at 11:39:09 UTC on 2026-08-22: one client.sent, no
     # resends, their handler empty-handed again). Their reveal arriving says
     # nothing about whether ours did; only the *waiting* is conditional.
+    # NAJAMJAD_SINGLE_REVEAL=1 is the compatibility dial: one copy, full-window
+    # wait. The resends exist because yamanagh's relay lost ACCEPTED reveals —
+    # but against a peer whose audit reader neither drains its queue between
+    # windows nor filters by sub_game, our extra copies are what fails THEIR
+    # audit (bestteam, 2026-08-24: window N read window N-1's unconsumed
+    # copies, every step "wrong"). Per launch script, per opponent, default off.
+    import os
+
+    if os.environ.get("NAJAMJAD_SINGLE_REVEAL") == "1":
+        return _settle(receive_reveal(transport, timeout, sub_game), result_claim)
     report = receive_reveal(transport, timeout / 3, sub_game)
     for _ in range(2):
         send_reveal(ledger, transport, sender, result_claim)
@@ -167,6 +177,11 @@ def exchange_audit(
     # now — while both agents are still connected — than after the lecturer
     # compares two emailed reports. An absent claim is not a dispute: an
     # opponent who reveals nothing has said nothing to disagree with.
+    return _settle(report, result_claim)
+
+
+def _settle(report: Any, result_claim: str) -> Any:
+    """Mark the one disagreement the envelope can carry: contradicting claims."""
     if report.their_claim and result_claim and report.their_claim != result_claim:
         return replace(report, disputed=True)
     return report
