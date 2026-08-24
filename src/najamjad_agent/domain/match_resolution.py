@@ -19,6 +19,7 @@ where the difference between them is one line and impossible to miss.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from ..constants import EndReason, Role
@@ -77,7 +78,12 @@ def tokens_for(meter: Any, sub_game: int) -> int:
 #: window, so we match it on the first re-offer; a peer that also advances on
 #: abandon has moved on, so we exhaust the bound, record and advance too —
 #: converging rather than deadlocking. Unbounded would only suit the first kind.
-ABANDON_RETRIES = 2
+#: Overridable per run: a peer whose relay collapses in bursts (bestteam's
+#: ngrok dropped both doors at the 3-4 window mark, three runs straight) needs
+#: more fresh attempts per window than the default's two — each attempt is
+#: bounded by the gatekeeper's own budget, so extra ones cost minutes, not
+#: hours. Default unchanged for everyone else.
+ABANDON_RETRIES = int(os.environ.get("NAJAMJAD_ABANDON_RETRIES", "2"))
 #: The same rule for a handshake that never agreed. Three, because each attempt
 #: already spans a generous wait, so this is measured in whole windows.
 HANDSHAKE_REOFFERS = 3
